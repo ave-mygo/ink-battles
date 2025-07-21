@@ -19,13 +19,13 @@ export default function WriterAnalysisHeader() {
 			</p>
 			<div className="mb-6 flex flex-col gap-3 items-center">
 				<Link
-					href="https://qm.qq.com/q/u9zjb4n5WU"
+					href="https://qm.qq.com/q/D6AK1DEQtq"
 					target="_blank"
 					rel="noopener noreferrer"
 					className="text-purple-700 px-4 py-2 rounded-lg bg-purple-50 inline-flex gap-2 transition-colors items-center hover:bg-purple-100"
 				>
 					<MessageCircle className="h-4 w-4" />
-					加入QQ群：785781649
+					加入QQ群：625618470
 					<ExternalLink className="h-3 w-3" />
 				</Link>
 				<div className="flex flex-col gap-3 items-center sm:flex-row">
@@ -61,12 +61,19 @@ export default function WriterAnalysisHeader() {
 				</div>
 			</div>
 			<Card className="mt-6 rounded-xl">
-				<div className="text-sm text-slate-500 p-4">
+				<div className="text-sm text-slate-500 p-2">
 					<p>
-						本分析报告由AI生成，仅供参考。测试量表由三角之外设计，站点由iykrzu和AI设计。
+						本分析报告由AI生成，AI提供的内容具有不确定性，仅供参考。测试量表由三角之外设计，站点由
+						<Link href="https://www.tnxg.top/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">iykrzu</Link>
+						和AI设计。
+					</p>
+					<p className="mt-2">
+						特别鸣谢
+						<Link href="https://yumetsuki.moe/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">Q78KG</Link>
+						的技术支持。
 					</p>
 				</div>
-				<div className="text-sm text-slate-500 p-4">
+				<div className="text-sm text-slate-500 p-2">
 					<p>我们将严格保护您的隐私，并仅将您的数据用于提供本服务。</p>
 					<p className="mt-2">
 						您在使用本服务即视为同意将相关数据提供给为本服务提供支持的第三方服务商，以便其提供本服务。我们不对第三方服务商的行为负责。

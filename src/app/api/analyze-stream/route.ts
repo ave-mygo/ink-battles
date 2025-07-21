@@ -4,35 +4,45 @@ import dotenv from "dotenv";
 import OpenAI from "openai";
 import { buildSystemPrompt, getModeInstructions } from "@/lib/ai";
 import { db_delete, db_find, db_insert } from "@/lib/db";
+import { findApiKeyByToken } from "@/lib/token-server";
 
 dotenv.config();
 
 export async function POST(request: NextRequest) {
 	try {
 		const { articleText, mode } = await request.json();
-		const token = request.headers.get("X-Token");
+		const session = request.headers.get("X-Token");
+		const apiKey = request.headers.get("X-Api-Key");
+
+		let orderNumber = null;
+
+		if (apiKey) {
+			const apiKeyInfo = await findApiKeyByToken(apiKey);
+			orderNumber = apiKeyInfo?.orderNumber;
+		}
+
 		const ip = request.headers.get("X-Forwarded-For");
 
-		if (!token) {
-			return Response.json({ error: "缺少 Token" }, { status: 400 });
+		if (!session) {
+			return Response.json({ error: "缺少 Session" }, { status: 400 });
 		}
 
-		let tokenInfo = null;
+		let sessionInfo = null;
 		try {
-			tokenInfo = await db_find("ink_battles", "tokens", { token });
+			sessionInfo = await db_find("ink_battles", "sessions", { session });
 		} catch (e) {
-			console.error("查找 token 失败", e);
-			return Response.json({ error: "Token 校验异常" }, { status: 500 });
+			console.error("查找 session 失败", e);
+			return Response.json({ error: "Session 校验异常" }, { status: 500 });
 		}
 
-		if (!tokenInfo) {
-			return Response.json({ error: "Token 不存在或已失效" }, { status: 401 });
+		if (!sessionInfo) {
+			return Response.json({ error: "Session 不存在或已失效" }, { status: 401 });
 		}
 
 		try {
-			await db_delete("ink_battles", "tokens", { token });
+			await db_delete("ink_battles", "sessions", { session });
 		} catch (e) {
-			console.error("删除 token 失败", e);
+			console.error("删除 session 失败", e);
 			// 不阻断主流程
 		}
 
@@ -41,6 +51,10 @@ export async function POST(request: NextRequest) {
 			baseURL: process.env.OPENAI_BASE_URL_2!,
 		});
 
+		// 读取模型名，优先使用环境变量，否则用默认值
+		type ModelType = string;
+		const model: ModelType = process.env.OPENAI_MODEL_2 || "gemini-2.5-flash";
+
 		// 拼接模式指令
 		const modeInstruction = await getModeInstructions(mode);
 
@@ -48,7 +62,7 @@ export async function POST(request: NextRequest) {
 		const systemPrompt = await buildSystemPrompt(modeInstruction);
 
 		const stream = await openAI.chat.completions.create({
-			model: "gemini-2.5-pro",
+			model,
 			messages: [
 				{
 					role: "system",
@@ -61,7 +75,6 @@ export async function POST(request: NextRequest) {
 			],
 			temperature: 0.1,
 			stream: true,
-			response_format: { type: "json_object" },
 			tools: [
 				{
 					type: "function",
@@ -70,7 +83,6 @@ export async function POST(request: NextRequest) {
 					},
 				},
 			],
-			tool_choice: "required",
 		});
 
 		// 创建一个可读流
@@ -108,15 +120,16 @@ export async function POST(request: NextRequest) {
 
 						await db_insert(
 							"ink_battles",
-							"analysis_requests",
+							"analysis_requests_flash",
 							{
-								articleText,
-								token,
+								session,
+								result: jsonContent,
 								ip,
 								usage: usageInfo,
 								mode: mode || "default",
 								timestamp: new Date().toISOString(),
 								overallScore,
+								orderNumber: orderNumber || null,
 							},
 						);
 					} catch (e) {

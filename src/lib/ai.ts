@@ -14,6 +14,9 @@ export const verifyArticleValue = async (articleText: string) => {
 		baseURL: process.env.OPENAI_BASE_URL_1!,
 	});
 
+	// 读取模型名，优先使用环境变量，否则用默认值
+	const model: string = process.env.OPENAI_MODEL_1 || "gemini-2.5-flash";
+
 	// 拦截一下文章长度，仅让6000字进入查询
 	if (articleText.length > 6000) {
 		articleText = articleText.slice(0, 6000);
@@ -21,12 +24,12 @@ export const verifyArticleValue = async (articleText: string) => {
 
 	try {
 		const response = await openAI.chat.completions.create({
-			model: "GLM-4-Flash-250414",
+			model,
 			messages: [
 				{
 					role: "system",
 					content:
-						"请先作为评估文章质量的助手，对给定内容（包括歌词、文章、论文、代码等）进行评估：若内容具备明确主体（如完整的观点、情节、论述、逻辑等）且有实质意义，仅返回 true（质量良好）；若为无主体内容（如仅单句碎片、无明确主题的零散字词）或无意义内容（如乱码、重复无逻辑的字符、无实际指向的符号堆砌等），则仅返回 false（质量较差）。请严格遵循此规则，不返回其他内容。",
+						"请先作为评估文章质量的助手，对给定内容（包括歌词、文章、论文、代码等）进行评估，对文章的体裁、年龄限制等不作出评价：若内容具备明确主体（如完整的观点、情节、论述、逻辑等）且有实质意义，仅返回 true（质量良好）；若为无主体内容（如仅单句碎片、无明确主题的零散字词）或无意义内容（如乱码、重复无逻辑的字符、无实际指向的符号堆砌等），则仅返回 false（质量较差）。请严格遵循此规则，不返回其他内容。",
 				},
 				{
 					role: "user",
@@ -34,10 +37,11 @@ export const verifyArticleValue = async (articleText: string) => {
 				},
 			],
 		});
-
 		const result = response.choices[0].message.content?.toLowerCase().trim();
+		console.log("Article value verification result:", result);
 		return result === "true";
-	} catch {
+	} catch (error) {
+		console.error("Failed to verify article value", error);
 		return false;
 	}
 };
@@ -54,6 +58,7 @@ export interface AnalysisResult {
 	title: string;
 	ratingTag: string;
 	overallAssessment: string;
+	summary: string;
 	dimensions: Dimension[];
 	strengths: string[];
 	improvements: string[];
@@ -293,17 +298,12 @@ ${modeInstruction}
 🏆 时代作家 / 高产佳作	1.91 – 2.4	1.6×1.2 到 1.6×1.5
 🪙 永垂不朽 / 文学圣徒	≥ 2.5	1.8×1.4 到 2.0×1.5
 
-
-# **第五部分：输出格式要求**
-
-你必须严格按照以下JSON格式返回你的分析结果，不要包含任何额外的解释性文字、markdown标记或其他内容。最终的输出必须是一个可以直接被解析的、格式正确的JSON对象。
-
-\`\`\`json
 {
   "overallScore": 0,
   "overallAssessment": "",
   "title": "",
   "ratingTag": "",
+  "summary": "",
   "dimensions": [
     { "name": "", "score": 0, "description": "" },
     { "name": "", "score": 0, "description": "" }
@@ -326,7 +326,7 @@ ${modeInstruction}
 - **dimensions**: 必须是一个包含全部16个维度的数组。每个对象必须包含\`name\`(维度名称), \`score\`(该维度的得分或权重值), \`description\`(一句精炼的、基于文本内容的评分理由)。
 - **strengths**: 一个字符串数组，总结作品的3-5个主要优点。
 - **improvements**: 一个字符串数组，提出3-5条具体的改进建议。
-
+- **summary**: 一个字符串，提供作品的概述，包括主要情节、主题、风格等 (string)。如果文本内容过于冗长，请精炼总结，突出重点。
 ---
 现在，请严格遵循以上所有规则，分析以下用户提供的文章，并只返回一个格式完全正确的JSON对象。
 `;
@@ -412,9 +412,11 @@ export const analyzeArticle = async (articleText: string, mode: string): Promise
 
 	const systemPrompt = await buildSystemPrompt(modeInstruction);
 
+	const model: string = process.env.OPENAI_MODEL_2 || "gemini-2.5-flash";
+
 	try {
 		const response = await openAI.chat.completions.create({
-			model: "gemini-2.5-pro",
+			model,
 			messages: [
 				{
 					role: "system",

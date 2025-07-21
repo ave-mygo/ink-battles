@@ -11,8 +11,10 @@
 		"lint": "next lint"
 	},
 	"dependencies": {
+		"@fingerprintjs/fingerprintjs": "^4.6.2",
 		"@radix-ui/react-avatar": "^1.1.10",
 		"@radix-ui/react-hover-card": "^1.1.14",
+		"@radix-ui/react-label": "^2.1.7",
 		"@radix-ui/react-progress": "^1.1.7",
 		"@radix-ui/react-scroll-area": "^1.2.9",
 		"@radix-ui/react-separator": "^1.1.7",
@@ -24,6 +26,7 @@
 		"clsx": "^2.1.1",
 		"date-fns": "^4.1.0",
 		"dotenv": "^17.0.1",
+		"html2canvas": "^1.4.1",
 		"lucide-react": "^0.525.0",
 		"md5": "^2.3.0",
 		"mongodb": "^6.17.0",

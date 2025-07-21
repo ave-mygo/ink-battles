@@ -1,13 +1,13 @@
 "use server";
 
-import { db_insert, db_read } from "@/lib/db";
+import { db_find, db_insert, db_read, db_update } from "@/lib/db";
 
 import "server-only";
 
-export const db_insert_token = async (): Promise<string> => {
-	const token = Math.random().toString(36).substring(2, 36) + Math.random().toString(36).substring(2, 36);
-	await db_insert("ink_battles", "tokens", { token });
-	return token;
+export const db_insert_session = async (): Promise<string> => {
+	const session = Math.random().toString(36).substring(2, 36) + Math.random().toString(36).substring(2, 36);
+	await db_insert("ink_battles", "sessions", { session });
+	return session;
 };
 
 export async function getScorePercentile(currentScore: number) {
@@ -25,4 +25,18 @@ export async function getScorePercentile(currentScore: number) {
 		return null;
 	}
 }
-// export async function getScorePercentile(currentScore: number) {
+export async function verifyTokenSSR(token: string): Promise<boolean> {
+	try {
+		const found = await db_find("ink_battles", "apikeys", { token });
+		if (found) {
+			if (!found.used) {
+				await db_update("ink_battles", "apikeys", { token }, { used: true });
+			}
+			return true;
+		}
+		return false;
+	} catch (error) {
+		console.error("Error verifying token:", error);
+		return false;
+	}
+}

@@ -12,7 +12,7 @@ import WriterAnalysisResult from "@/components/layouts/WriterPage/WriterAnalysis
 import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/WriterAnalysisResultPlaceholder";
 import { Button } from "@/components/ui/button";
 import { verifyArticleValue } from "@/lib/ai";
-import { db_insert_token } from "@/lib/utils-server";
+import { db_insert_session } from "@/lib/utils-server";
 
 const evaluationModes = [
 	{
@@ -152,8 +152,10 @@ export default function WriterAnalysisSystem() {
 
 		setStreamContent(prev => `${prev}校验通过，正在分析，分析过程可能需要几分钟...\n`);
 
-		// 随机生成一个token
-		const token = await db_insert_token();
+		// 随机生成一个session
+		const session = await db_insert_session();
+
+		const apiKey = localStorage.getItem("ink_battles_token");
 
 		try {
 			// 使用简化的流式实现
@@ -161,7 +163,8 @@ export default function WriterAnalysisSystem() {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
-					"X-Token": token,
+					"X-Token": session,
+					"X-Api-Key": apiKey || "",
 				},
 				body: JSON.stringify({
 					articleText,

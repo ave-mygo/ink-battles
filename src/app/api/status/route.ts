@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 	try {
 		// 获取当前页数据
 		const response = await fetch(
-			`https://ai.sparku.net/api/log/self?p=${page}&page_size=${pageSize}&type=0&start_timestamp=${start}&end_timestamp=${end}&group=`,
+			`https://newapi.yumetsuki.moe/api/log/self?p=${page}&page_size=${pageSize}&type=0&start_timestamp=${start}&end_timestamp=${end}&group=`,
 			{
 				headers: {
 					"Cookie": process.env.API_COOKIE || "",
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
 		// 获取统计数据（全部14天的数据）
 		const statsResponse = await fetch(
-			`https://ai.sparku.net/api/data/self?start_timestamp=${start}&end_timestamp=${end}&default_time=hour`,
+			`https://newapi.yumetsuki.moe/api/data/self?start_timestamp=${start}&end_timestamp=${end}&default_time=hour`,
 			{
 				headers: {
 					"Cookie": process.env.API_COOKIE || "",

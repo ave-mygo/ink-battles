@@ -31,7 +31,7 @@ export default function WriterAnalysisModes({
 	handleModeChange,
 }: WriterAnalysisModesProps) {
 	return (
-		<Card className="border-0 bg-white/80 h-full shadow-lg backdrop-blur-sm">
+		<Card className="mx-auto border-0 bg-white/80 h-full max-w-2xl w-full shadow-lg backdrop-blur-sm">
 			<CardHeader>
 				<CardTitle className="flex gap-2 items-center">
 					<Gauge className="text-blue-600 h-5 w-5" />
@@ -40,10 +40,10 @@ export default function WriterAnalysisModes({
 				<CardDescription>选择适合的评分视角，不同模式将采用不同的评判标准</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				{evaluationModes.slice(0, isModesExpanded ? undefined : 3).map(mode => (
+				{evaluationModes.slice(0, isModesExpanded ? undefined : 4).map(mode => (
 					<div
 						key={mode.id}
-						className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+						className={`p-4 rounded-lg border-2 transition-all duration-200 w-full ${
 							selectedMode === mode.id ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300"
 						}`}
 					>
