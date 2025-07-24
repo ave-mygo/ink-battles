@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
 							"ink_battles",
 							"analysis_requests_flash",
 							{
+								articleText,
 								session,
 								result: jsonContent,
 								ip,
