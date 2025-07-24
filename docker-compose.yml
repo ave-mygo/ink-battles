@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    container_name: ink-battles-app
+    ports:
+      - "4532:3000"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai # 时区设置
+      # 审核用的轻量模型
+      - OPENAI_API_KEY_1= # OpenAI API Key 1
+      - OPENAI_BASE_URL_1= # OpenAI Base URL 1
+      - OPENAI_MODEL_1= # OpenAI Model 1
+      # 评分用模型
+      - OPENAI_API_KEY_2= # OpenAI API Key 2
+      - OPENAI_BASE_URL_2= # OpenAI Base URL 2
+      - OPENAI_MODEL_2= # OpenAI Model 2
+      # 评分用模型Pro
+      - OPENAI_API_KEY_3= # OpenAI API Key 3
+      - OPENAI_BASE_URL_3= # OpenAI Base URL 3
+      - OPENAI_MODEL_3= # OpenAI Model 3
+      # MongoDB 连接配置
+      - MONGO_HOST= # MongoDB 主机
+      - MONGO_PORT= # MongoDB 端口
+      # afdian配置
+      - AFDIAN_API_TOKEN= # 爱发电 API Token
+      - AFDIAN_USER_ID= # 爱发电用户ID
+      # newapi session
+      - API_COOKIE= # newapi Cookie
+      - API_USER= # newapi 用户
+    restart: unless-stopped 
