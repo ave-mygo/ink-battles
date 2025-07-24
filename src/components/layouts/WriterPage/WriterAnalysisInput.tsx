@@ -34,6 +34,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 	const [showResult, setShowResult] = useState(false);
 	const [validationMessage, setValidationMessage] = useState<string>("");
 	const [browserFingerprint, setBrowserFingerprint] = useState<string>("");
+	const [isInitialTokenLoad, setIsInitialTokenLoad] = useState(false); // 新增
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	// 页面加载时初始化浏览器指纹并自动校验token
@@ -51,7 +52,10 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 		// 检查本地存储的token
 		const saved = localStorage.getItem("ink_battles_token");
 		if (saved) {
+			// eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
 			setToken(saved);
+			// eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+			setIsInitialTokenLoad(true); // 标记为初始化加载
 		}
 	}, []);
 
@@ -59,7 +63,6 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 		if (token)
 			localStorage.setItem("ink_battles_token", token);
 	}, [token]);
-
 	const handleTokenCheck = async () => {
 		if (!browserFingerprint) {
 			setValidationMessage("浏览器指纹未初始化，请刷新页面重试");
@@ -105,6 +108,13 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 		setShowResult(true);
 		setChecking(false);
 	};
+	useEffect(() => {
+		if (isInitialTokenLoad && token && browserFingerprint) {
+			handleTokenCheck();
+			// eslint-disable-next-line react-hooks-extra/no-direct-set-state-in-use-effect
+			setIsInitialTokenLoad(false);
+		}
+	}, [isInitialTokenLoad, token, browserFingerprint]);
 
 	const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
 		const val = e.target.value;
@@ -159,6 +169,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 								setToken(e.target.value);
 								setTokenValid(false);
 								setShowResult(false);
+								setIsInitialTokenLoad(false); // 用户手动输入时关闭自动验证
 							}}
 							className="text-sm px-3 py-2 border rounded-md flex-1 focus:border-blue-500 focus:ring-blue-500/20"
 						/>

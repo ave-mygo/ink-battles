@@ -96,12 +96,14 @@ export async function POST(request: NextRequest) {
 			token: result.token,
 			message: result.message || "Token签发成功！请妥善保管您的Token。",
 			isUpdate: result.isUpdate || false,
-			userInfo: orderData?.order ? {
-				userName: orderData.order.user_name || orderData.order.sponsor_name || "尊敬的用户",
-				orderNumber: orderData.order.out_trade_no,
-				amount: orderData.order.total_amount,
-				createTime: orderData.order.create_time
-			} : null,
+			userInfo: orderData?.order
+				? {
+						userName: orderData.order.user_name || orderData.order.sponsor_name || "尊敬的用户",
+						orderNumber: orderData.order.out_trade_no,
+						amount: orderData.order.total_amount,
+						createTime: orderData.order.create_time,
+					}
+				: null,
 		});
 	} catch (error) {
 		console.error("Token签发失败:", error);

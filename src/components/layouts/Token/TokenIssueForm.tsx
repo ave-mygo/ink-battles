@@ -173,7 +173,7 @@ export default function TokenIssueForm() {
 							<p className="text-xs text-gray-600">
 								前往
 								<a
-									href="https://afdian.com/p/9c65d9cc617011ed81c352540025c377"
+									href="https://afdian.com/a/tianxiang"
 									target="_blank"
 									rel="noopener noreferrer"
 									className="text-blue-500 mx-1 underline hover:text-blue-700"
@@ -343,7 +343,10 @@ export default function TokenIssueForm() {
 											<ul className="text-xs text-blue-600 space-y-1">
 												<li>• 请妥善保管您的Token，不要泄露给他人</li>
 												<li>• 在作品分析页面的Token输入框中使用此Token</li>
-												<li>• Token长期有效，如有问题请联系客服</li>
+												<li>• Token与当前浏览器绑定，如果更换了浏览器，请重新使用订单号或是旧Token申领新的Token</li>
+												<li>• 每个订单仅可申领一个Token，重复申领将覆盖旧Token</li>
+												<li>• 如遇Token失效或遗失，请通过原订单号或旧Token重新申领</li>
+												<li>• 旧Token一旦用于申领新Token，就会立即失效。后续所有操作都必须使用新申领的Token。</li>
 											</ul>
 										</div>
 									</div>

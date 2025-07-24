@@ -70,31 +70,53 @@ export async function generateOrUpdateToken(
 	orderTime?: Date,
 ): Promise<{ success: boolean; token?: string; message?: string; isUpdate?: boolean }> {
 	try {
-		// 检查是否为现有token更新
-		let existingRecord = await findApiKeyByToken(identifier);
+		let existingRecord = null;
 		let isUpdate = false;
 
-		if (!existingRecord) {
-			// 检查是否为订单号
-			existingRecord = await findApiKeyByOrderNumber(identifier);
-		}
-
+		// 首先检查是否为现有token
+		existingRecord = await findApiKeyByToken(identifier);
 		if (existingRecord) {
 			isUpdate = true;
-			// 使旧token失效
+		} else {
+			// 检查是否为订单号
+			existingRecord = await findApiKeyByOrderNumber(identifier);
+			if (existingRecord) {
+				isUpdate = true;
+			}
+		}
+
+		// 如果是token标识符但没找到记录，说明token无效或已过期
+		if (!existingRecord && isTokenLikeFormat(identifier)) {
+			return {
+				success: false,
+				message: "提供的Token无效或已过期",
+			};
+		}
+
+		// 如果是新建token，必须提供订单时间
+		if (!isUpdate && !orderTime) {
+			return {
+				success: false,
+				message: "创建新Token时必须提供订单时间",
+			};
+		}
+
+		// 如果是更新操作，使旧token失效
+		if (isUpdate && existingRecord) {
 			await deactivateOldTokens(existingRecord.orderNumber);
 		}
 
 		// 生成新token
 		const timestamp = Date.now();
 		const randomBytes = crypto.randomBytes(16).toString("hex");
-		const data = `${identifier}-${timestamp}-${randomBytes}-${TOKEN_SECRET}`;
+		const baseData = existingRecord?.orderNumber || identifier;
+		const data = `${baseData}-${timestamp}-${randomBytes}-${TOKEN_SECRET}`;
 		const newToken = crypto.createHash("sha256").update(data).digest("hex");
 
 		// 准备保存的数据
 		const apiKeyData = {
 			orderNumber: existingRecord?.orderNumber || identifier,
-			orderTime: existingRecord?.orderTime || orderTime || new Date(),
+			orderTime: existingRecord?.orderTime || orderTime!,
 			firstIssuedTime: existingRecord?.firstIssuedTime || new Date(),
 			lastFingerprintUpdateTime: new Date(),
 			userIp,
@@ -126,6 +148,16 @@ export async function generateOrUpdateToken(
 			message: "生成Token时发生错误",
 		};
 	}
+}
+
+/**
+ * 判断字符串是否像token格式
+ * 根据你的token生成规则来判断
+ */
+function isTokenLikeFormat(str: string): boolean {
+	// 假设token是64位十六进制字符串（SHA256输出）
+	const tokenPattern = /^[a-f0-9]{64}$/i;
+	return tokenPattern.test(str);
 }
 
 /**
@@ -181,6 +213,8 @@ export async function queryOrderByNumber(orderNumber: string) {
 
 	// 返回第一个订单记录
 	const order = data.data.list[0];
+
+	console.log(order);
 
 	return {
 		success: true,
@@ -375,25 +409,4 @@ export async function updateBrowserFingerprint(
 		console.error("更新浏览器指纹失败:", error);
 		return false;
 	}
-}
-
-/**
- * 验证token是否有效（简化版本）
- * 这个函数可以用于验证用户提交的token
- *
- * @param token - 要验证的token
- * @returns 是否为有效token
- */
-export async function validateToken(token: string): Promise<boolean> {
-	// 这里可以实现token验证逻辑
-	// 例如：检查token格式、查询数据库中的token记录等
-	// 目前简化处理，检查token格式
-
-	if (!token || typeof token !== "string") {
-		return false;
-	}
-
-	// 检查token是否为64位十六进制字符串（SHA256输出格式）
-	const tokenPattern = /^[a-f0-9]{64}$/i;
-	return tokenPattern.test(token);
 }

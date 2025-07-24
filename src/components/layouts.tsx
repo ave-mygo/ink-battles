@@ -111,8 +111,8 @@ export default function WriterAnalysisSystem() {
 
 	const parseStreamedResult = (content: string): AnalysisResult | null => {
 		try {
-			// 尝试提取JSON内容
-			const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/\{[\s\S]*\}/);
+			// 优化正则，避免 \s* 和 [\s\S]*? 组合导致的回溯
+			const jsonMatch = content.match(/```json\n?([\s\S]+?)\n?```/) || content.match(/\{[\s\S]+\}/);
 			if (jsonMatch) {
 				const jsonStr = jsonMatch[1] || jsonMatch[0];
 				return JSON.parse(jsonStr.trim());
@@ -137,11 +137,11 @@ export default function WriterAnalysisSystem() {
 		setStreamContent(prev => `${prev}正在校验文章内容...\n`);
 
 		// 验证文章内容
-		const result = await verifyArticleValue(articleText);
+		const verifyResult = await verifyArticleValue(articleText);
 
-		if (!result) {
-			setStreamContent(prev => `${prev}校验未通过，无法进行分析。\n`);
-			toast.error("文章具有激进的文学表达，无法进行分析");
+		if (!verifyResult.success) {
+			setStreamContent(prev => `${prev}校验未通过，无法进行分析。\n${verifyResult.error ? `原因：${verifyResult.error}\n` : ""}`);
+			toast.error(verifyResult.error || "文章具有激进的文学表达，无法进行分析");
 			setIsAnalyzing(false);
 			setTimeout(() => {
 				setShowStreamingDisplay(false);
