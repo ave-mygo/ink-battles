@@ -31,4 +31,4 @@ RUN chown -R nextjs:nodejs /app/.next
 USER nextjs
 
 EXPOSE 3000
-CMD ["corepack", "pnpm", "start"]
+CMD ["corepack", "pnpm", "next", "start", "-H", "0.0.0.0"]
