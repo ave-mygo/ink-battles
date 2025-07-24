@@ -3,6 +3,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable
+RUN corepack pnpm config set registry https://registry.npmmirror.com
 RUN corepack pnpm install --frozen-lockfile
 COPY . .
 RUN corepack pnpm build
@@ -21,7 +22,7 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/next.config.js ./
+COPY --from=builder /app/next.config.ts ./
 
 # 变更文件所有者
 RUN chown -R nextjs:nodejs /app/.next

@@ -1,8 +1,7 @@
 version: '3.8'
 services:
   app:
-    build: .
-    container_name: ink-battles-app
+    image: docker.cnb.cool/takamatsu_tomori/ink-battles:latest
     ports:
       - "4532:3000"
     env_file:
