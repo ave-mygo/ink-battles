@@ -8,7 +8,7 @@ import "server-only";
 
 dotenv.config();
 
-export const verifyArticleValue = async (articleText: string) => {
+export const verifyArticleValue = async (articleText: string): Promise<{ success: boolean; error?: string }> => {
 	const openAI = new OpenAI({
 		apiKey: process.env.OPENAI_API_KEY_1!,
 		baseURL: process.env.OPENAI_BASE_URL_1!,
@@ -38,11 +38,16 @@ export const verifyArticleValue = async (articleText: string) => {
 			],
 		});
 		const result = response.choices[0].message.content?.toLowerCase().trim();
-		console.log("Article value verification result:", result);
-		return result === "true";
-	} catch (error) {
+		if (result === "true") {
+			return { success: true };
+		} else if (result === "false") {
+			return { success: false, error: "内容不具备明确主体或无实际意义" };
+		} else {
+			return { success: false, error: `AI返回异常: ${result}` };
+		}
+	} catch (error: any) {
 		console.error("Failed to verify article value", error);
-		return false;
+		return { success: false, error: error?.message || "未知错误" };
 	}
 };
 

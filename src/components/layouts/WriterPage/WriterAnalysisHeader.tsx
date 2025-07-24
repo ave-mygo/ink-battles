@@ -46,7 +46,6 @@ export default function WriterAnalysisHeader() {
 							前往状态页
 							<ExternalLink className="h-3 w-3" />
 						</Link>
-						{/* 新增的 GitHub 按钮 */}
 						<Link
 							href="https://github.com/ave-mygo/ink-battles"
 							target="_blank"
@@ -71,6 +70,14 @@ export default function WriterAnalysisHeader() {
 						特别鸣谢
 						<Link href="https://yumetsuki.moe/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">Q78KG</Link>
 						的技术支持。
+					</p>
+					<p className="mt-1">
+						想要体会更具
+						<strong>趣味性</strong>
+						的评价，请移步Q78KG的
+						<Link href="https://ink-battles.yumetsuki.moe/" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">
+							Ink Battles
+						</Link>
 					</p>
 				</div>
 				<div className="text-sm text-slate-500 p-2">
