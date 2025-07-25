@@ -9,7 +9,7 @@ const runtimeEnv = {
 	MONGO_HOST: process.env.MONGO_HOST,
 	MONGO_PORT: process.env.MONGO_PORT,
 	MONGO_USER: process.env.MONGO_USER,
-	MONGO_PASSWORD: process.env.MONGO_PASSWORD,
+	MONGO_PASS: process.env.MONGO_PASS,
 };
 
 /**
@@ -20,12 +20,12 @@ function mongoClient(): MongoClient {
 	const MONGO_HOST = runtimeEnv.MONGO_HOST || "192.168.3.4";
 	let MONGO_PORT: string = (runtimeEnv.MONGO_PORT || 27017).toString();
 	const MONGO_USER = runtimeEnv.MONGO_USER;
-	const MONGO_PASSWORD = runtimeEnv.MONGO_PASSWORD;
+	const MONGO_PASS = runtimeEnv.MONGO_PASS;
 
 	MONGO_PORT = Number.isNaN(Number.parseInt(MONGO_PORT)) ? "27017" : Number.parseInt(MONGO_PORT).toString();
 
-	const uri = MONGO_USER && MONGO_PASSWORD
-		? `mongodb://${MONGO_USER}:${MONGO_PASSWORD}@${MONGO_HOST}:${MONGO_PORT}`
+	const uri = MONGO_USER && MONGO_PASS
+		? `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PORT}`
 		: `mongodb://${MONGO_HOST}:${MONGO_PORT}`;
 
 	return new MongoClient(uri);
