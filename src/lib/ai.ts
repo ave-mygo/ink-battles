@@ -17,9 +17,9 @@ export const verifyArticleValue = async (articleText: string): Promise<{ success
 	// 读取模型名，优先使用环境变量，否则用默认值
 	const model: string = process.env.OPENAI_MODEL_1 || "gemini-2.5-flash";
 
-	// 拦截一下文章长度，仅让6000字进入查询
-	if (articleText.length > 6000) {
-		articleText = articleText.slice(0, 6000);
+	// 拦截一下文章长度，仅让3000字进入查询
+	if (articleText.length > 3000) {
+		articleText = articleText.slice(0, 3000);
 	}
 
 	try {
@@ -29,25 +29,61 @@ export const verifyArticleValue = async (articleText: string): Promise<{ success
 				{
 					role: "system",
 					content:
-						"请先作为评估文章质量的助手，对给定内容（包括歌词、文章、论文、代码等）进行评估，对文章的体裁、年龄限制等不作出评价：若内容具备明确主体（如完整的观点、情节、论述、逻辑等）且有实质意义，仅返回 true（质量良好）；若为无主体内容（如仅单句碎片、无明确主题的零散字词）或无意义内容（如乱码、重复无逻辑的字符、无实际指向的符号堆砌等），则仅返回 false（质量较差）。请严格遵循此规则，不返回其他内容。",
+						`你是一个专业的文章质量评估助手。请对给定的内容进行详细分析，判断其是否适合进行文学分析。
+评估标准：
+1. 内容完整性：是否具备明确的主体、情节、观点或论述
+2. 逻辑连贯性：是否有清晰的逻辑结构或发展脉络
+3. 语言规范性：是否使用正常的语言表达，而非乱码或无意义字符
+4. 内容实质性：是否包含有意义的正文内容，而非简单的符号堆砌
+
+如果内容符合以上标准，返回：\`\`\`json
+{
+	"success": true
+}
+\`\`\`
+
+如果内容不符合标准，请详细分析原因并返回：\`\`\`json
+{
+	"success": false,
+	"message": "具体原因"
+}
+\`\`\`
+
+请严格按照以上格式返回，不要添加其他内容。`,
 				},
 				{
 					role: "user",
 					content: articleText,
 				},
 			],
+			response_format: { type: "json_object" },
 		});
-		const result = response.choices[0].message.content?.toLowerCase().trim();
-		if (result === "true") {
-			return { success: true };
-		} else if (result === "false") {
-			return { success: false, error: "内容不具备明确主体或无实际意义" };
-		} else {
-			return { success: false, error: `AI返回异常: ${result}` };
+		const result = response.choices[0].message.content?.trim();
+
+		if (!result) {
+			return { success: false, error: "AI返回内容为空" };
+		}
+
+		try {
+			// 合规化
+			const data = result.replace(/```json/g, "").replace(/```/g, "");
+			// 解析JSON响应
+			const parsedResult = JSON.parse(data);
+
+			if (parsedResult.success === true) {
+				return { success: true };
+			} else if (parsedResult.success === false) {
+				return { success: false, error: parsedResult.message || "内容不符合分析标准" };
+			} else {
+				return { success: false, error: `AI返回格式异常: 缺少success字段` };
+			}
+		} catch (parseError) {
+			console.error("解析AI响应JSON失败:", parseError);
+			return { success: false, error: `AI返回格式异常: ${result}` };
 		}
 	} catch (error: any) {
 		console.error("Failed to verify article value", error);
-		return { success: false, error: error?.message || "未知错误" };
+		return { success: false, error: error?.message || "网络连接异常，请检查网络后重试" };
 	}
 };
 

@@ -140,19 +140,19 @@ export default function WriterAnalysisSystem() {
 		const verifyResult = await verifyArticleValue(articleText);
 
 		if (!verifyResult.success) {
-			setStreamContent(prev => `${prev}校验未通过，无法进行分析。\n${verifyResult.error ? `原因：${verifyResult.error}\n` : ""}`);
-			toast.error(verifyResult.error || "文章具有激进的文学表达，无法进行分析");
+			const errorMessage = verifyResult.error || "文章内容不符合分析标准";
+			setStreamContent(prev => `${prev}校验未通过，无法进行分析。\n原因：${errorMessage}\n`);
+			toast.error(errorMessage);
 			setIsAnalyzing(false);
 			setTimeout(() => {
 				setShowStreamingDisplay(false);
 				setStreamContent("");
-			}, 2000);
+			}, 3000);
 			return;
 		}
 
 		setStreamContent(prev => `${prev}校验通过，正在分析，分析过程可能需要几分钟...\n`);
 
-		// 随机生成一个session
 		const session = await db_insert_session();
 
 		const apiKey = localStorage.getItem("ink_battles_token");
