@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
 					},
 				},
 			],
+			tool_choice: "required",
 		});
 
 		// 创建一个可读流
