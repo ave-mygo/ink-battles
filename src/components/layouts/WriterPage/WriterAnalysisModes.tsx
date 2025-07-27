@@ -17,7 +17,7 @@ interface Mode {
 
 interface WriterAnalysisModesProps {
 	evaluationModes: Mode[];
-	selectedMode: string;
+	selectedMode: string[];
 	isModesExpanded: boolean;
 	setIsModesExpanded: (v: boolean) => void;
 	handleModeChange: (modeId: string, checked: boolean, modeName: string) => void;
@@ -44,14 +44,14 @@ export default function WriterAnalysisModes({
 					<div
 						key={mode.id}
 						className={`p-4 rounded-lg border-2 transition-all duration-200 w-full ${
-							selectedMode === mode.id ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300"
+							selectedMode.includes(mode.id) ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300"
 						}`}
 					>
 						<div className="flex items-center justify-between">
 							<div className="flex gap-3 items-center">
 								<div
 									className={`p-2 rounded-lg ${
-										selectedMode === mode.id ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
+										selectedMode.includes(mode.id) ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
 									}`}
 								>
 									{mode.icon}
@@ -71,7 +71,7 @@ export default function WriterAnalysisModes({
 												</ul>
 											</HoverCardContent>
 										</HoverCard>
-										{selectedMode === mode.id && (
+										{selectedMode.includes(mode.id) && (
 											<Badge variant="default" className="bg-blue-600">
 												已选择
 											</Badge>
@@ -81,7 +81,7 @@ export default function WriterAnalysisModes({
 								</div>
 							</div>
 							<Switch
-								checked={selectedMode === mode.id}
+								checked={selectedMode.includes(mode.id)}
 								onCheckedChange={checked => handleModeChange(mode.id, checked, mode.name)}
 							/>
 						</div>

@@ -78,31 +78,51 @@ const evaluationModes = [
 - 总分不具出版级参考性，仅供速评或口播场景使用`,
 		icon: <PenTool className="h-4 w-4" />,
 	},
+	{
+		id: "fragment",
+		name: "碎片主义护法",
+		description: "强化先锋性、语言原创性、结构实验等维度的评分权重",
+		text: `允许上述维度使用主动偏好加权（如 ×1.5）
+- 可与其他提示词并行激活（如“热血粉丝”）`,
+		icon: <Zap className="h-4 w-4" />,
+	},
 ];
 
 export default function WriterAnalysisSystem() {
 	const [articleText, setArticleText] = useState("");
-	const [selectedMode, setSelectedMode] = useState("");
+	const [selectedMode, setSelectedMode] = useState<string[]>([]);
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
 	const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 	const [isModesExpanded, setIsModesExpanded] = useState(false);
-	const [selectedModeName, setSelectedModeName] = useState("");
+	const [selectedModeName, setSelectedModeName] = useState<string[]>([]);
 	const [streamContent, setStreamContent] = useState("");
 	const [showStreamingDisplay, setShowStreamingDisplay] = useState(false);
 
 	const handleModeChange = (modeId: string, checked: boolean, modeName: string) => {
-		if (checked) {
-			setSelectedMode(modeId);
-			setSelectedModeName(modeName);
-		} else if (selectedMode === modeId) {
-			setSelectedMode("");
+		if (modeId === "fragment") {
+			if (checked) {
+				// 并行激活碎片主义护法
+				setSelectedMode(prev => prev.includes("fragment") ? prev : [...prev, "fragment"]);
+				setSelectedModeName(prev => prev.includes("碎片主义护法") ? prev : [...prev, "碎片主义护法"]);
+			} else {
+				setSelectedMode(prev => prev.filter(id => id !== "fragment"));
+				setSelectedModeName(prev => prev.filter(name => name !== "碎片主义护法"));
+			}
+		} else {
+			if (checked) {
+				setSelectedMode(prev => prev.includes("fragment") ? [modeId, ...prev.filter(id => id === "fragment")] : [modeId]);
+				setSelectedModeName(prev => prev.includes("碎片主义护法") ? [modeName, ...prev.filter(name => name === "碎片主义护法")] : [modeName]);
+			} else {
+				setSelectedMode(prev => prev.filter(id => id !== modeId));
+				setSelectedModeName(prev => prev.filter(name => name !== modeName));
+			}
 		}
 	};
 
 	const handleClear = () => {
 		setArticleText("");
-		setSelectedMode("");
-		setSelectedModeName("");
+		setSelectedMode([]);
+		setSelectedModeName([]);
 		setAnalysisResult(null);
 		setStreamContent("");
 		setShowStreamingDisplay(false);
@@ -164,7 +184,7 @@ export default function WriterAnalysisSystem() {
 				},
 				body: JSON.stringify({
 					articleText,
-					mode: selectedModeName,
+					mode: selectedModeName.join(","),
 				}),
 			});
 
