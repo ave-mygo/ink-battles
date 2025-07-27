@@ -144,10 +144,6 @@ export default function WriterAnalysisSystem() {
 			setStreamContent(prev => `${prev}校验未通过，无法进行分析。\n原因：${errorMessage}\n`);
 			toast.error(errorMessage);
 			setIsAnalyzing(false);
-			setTimeout(() => {
-				setShowStreamingDisplay(false);
-				setStreamContent("");
-			}, 3000);
 			return;
 		}
 
@@ -199,20 +195,20 @@ export default function WriterAnalysisSystem() {
 				setAnalysisResult(parsedResult);
 				setStreamContent(prev => `${prev}\n分析完成。`);
 				toast.success("分析完成");
+				setTimeout(() => {
+					setShowStreamingDisplay(false);
+					setStreamContent("");
+				}, 5000);
 			} else {
 				setStreamContent(prev => `${prev}\n解析JSON失败，请重试。`);
 				toast.error("解析分析结果失败，请重试");
 			}
 		} catch (error) {
 			console.error("分析过程中出错:", error);
-			setStreamContent(prev => `${prev}\n分析文章时出错。`);
+			setStreamContent(prev => `${prev}\n分析文章时出错，请截图保留以下日志并联系开发者。\n${error}`);
 			toast.error("分析文章时出错");
 		} finally {
 			setIsAnalyzing(false);
-			setTimeout(() => {
-				setShowStreamingDisplay(false);
-				setStreamContent("");
-			}, 5000);
 		}
 	};
 

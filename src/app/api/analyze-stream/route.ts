@@ -1,8 +1,10 @@
 import type { NextRequest } from "next/server";
 import process from "node:process";
+import crypto from "crypto-js";
 import dotenv from "dotenv";
 import OpenAI from "openai";
 import { buildSystemPrompt, getModeInstructions } from "@/lib/ai";
+import { db_name, db_table } from "@/lib/constants";
 import { db_delete, db_find, db_insert } from "@/lib/db";
 import { findApiKeyByToken } from "@/lib/token-server";
 
@@ -11,6 +13,33 @@ dotenv.config();
 export async function POST(request: NextRequest) {
 	try {
 		const { articleText, mode } = await request.json();
+		const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
+		const sha1 = crypto.SHA1(normalizedText).toString();
+		const cached = await db_find(db_name, db_table, { sha1, mode: mode || "default" });
+		if (cached && cached.result) {
+			const encoder = new TextEncoder();
+			const resultStr = typeof cached.result === "string" ? cached.result : JSON.stringify(cached.result);
+			const chunkSize = 100;
+			let pos = 0;
+			const readable = new ReadableStream({
+				start(controller) {
+					while (pos < resultStr.length) {
+						const chunk = resultStr.slice(pos, pos + chunkSize);
+						controller.enqueue(encoder.encode(chunk));
+						pos += chunkSize;
+					}
+					controller.close();
+				},
+			});
+			return new Response(readable, {
+				headers: {
+					"Content-Type": "text/plain; charset=utf-8",
+					"Cache-Control": "no-cache",
+					"Connection": "keep-alive",
+				},
+			});
+		}
+
 		const session = request.headers.get("X-Token");
 		const apiKey = request.headers.get("X-Api-Key");
 
@@ -120,8 +149,8 @@ export async function POST(request: NextRequest) {
 						})();
 
 						await db_insert(
-							"ink_battles",
-							"analysis_requests_flash",
+							db_name,
+							db_table,
 							{
 								articleText,
 								session,
@@ -132,6 +161,7 @@ export async function POST(request: NextRequest) {
 								timestamp: new Date().toISOString(),
 								overallScore,
 								orderNumber: orderNumber || null,
+								sha1,
 							},
 						);
 					} catch (e) {

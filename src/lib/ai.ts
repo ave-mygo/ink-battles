@@ -1,14 +1,28 @@
 "use server";
 
 import process from "node:process";
-import dotenv from "dotenv";
+import crypto from "crypto-js";
 
+import dotenv from "dotenv";
 import { OpenAI } from "openai";
+
+import { db_name, db_table } from "@/lib/constants";
+import { db_find, db_insert } from "@/lib/db";
+
 import "server-only";
 
 dotenv.config();
 
-export const verifyArticleValue = async (articleText: string): Promise<{ success: boolean; error?: string }> => {
+export const verifyArticleValue = async (articleText: string, mode: string = "default"): Promise<{ success: boolean; error?: string }> => {
+	// 1. 预处理文本，去除符号、空格、换行符
+	const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
+	const sha1 = crypto.SHA1(normalizedText).toString();
+	// 2. 查找数据库缓存
+	const cached = await db_find(db_name, db_table, { sha1, mode });
+	if (cached) {
+		return { success: true };
+	}
+
 	const openAI = new OpenAI({
 		apiKey: process.env.OPENAI_API_KEY_1!,
 		baseURL: process.env.OPENAI_BASE_URL_1!,
@@ -443,6 +457,15 @@ export const getModeInstructions = async (mode: string): Promise<string> => {
 };
 
 export const analyzeArticle = async (articleText: string, mode: string): Promise<AnalysisResult | undefined> => {
+	// 1. 预处理文本，去除符号、空格、换行符
+	const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
+	const sha1 = crypto.SHA1(normalizedText).toString();
+	// 2. 查找数据库缓存
+	const cached = await db_find("ink_battles", "analysis_requests", { sha1, mode });
+	if (cached && cached.analysisResult) {
+		return cached.analysisResult;
+	}
+
 	const openAI = new OpenAI({
 		apiKey: process.env.OPENAI_API_KEY_2!,
 		baseURL: process.env.OPENAI_BASE_URL_2!,
@@ -484,6 +507,8 @@ export const analyzeArticle = async (articleText: string, mode: string): Promise
 		const cleanedJsonString = resultText.replace(/^```json\s*|```\s*$/g, "").trim();
 		const analysisResult: AnalysisResult = JSON.parse(cleanedJsonString);
 
+		// 在AI分析后，保存分析结果
+		await db_insert("ink_battles", "analysis_requests", { sha1, mode, analysisResult });
 		return analysisResult;
 	} catch (error) {
 		console.error("分析文章时出错:", error);

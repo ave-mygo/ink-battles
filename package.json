@@ -24,6 +24,7 @@
 		"@unocss/preset-wind4": "^66.3.3",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
+		"crypto-js": "^4.2.0",
 		"date-fns": "^4.1.0",
 		"dotenv": "^17.2.0",
 		"html2canvas": "^1.4.1",
