@@ -197,7 +197,19 @@ export default function WriterAnalysisResult({
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{analysisResult.dimensions.map((dim) => {
-						const maxScore = dim.name === "经典性" ? 2 : dim.name === "新锐性" ? 1.5 : 5;
+						const getMaxScore = (dimensionName: string): number => {
+							const cleanName = dimensionName.replace(/[^\u4E00-\u9FA5]/g, "");
+							switch (cleanName) {
+								case "经典性":
+									return 2;
+								case "新锐性":
+									return 1.5;
+								default:
+									return 5;
+							}
+						};
+
+						const maxScore = getMaxScore(dim.name);
 						return (
 							<div key={dim.name} className="space-y-2">
 								<div className="flex items-center justify-between">
