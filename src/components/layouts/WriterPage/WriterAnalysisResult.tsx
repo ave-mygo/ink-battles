@@ -196,19 +196,23 @@ export default function WriterAnalysisResult({
 					</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					{analysisResult.dimensions.map(dim => (
-						<div key={dim.name} className="space-y-2">
-							<div className="flex items-center justify-between">
-								<span className="text-slate-700 font-medium">{dim.name}</span>
-								<span className={`font-bold ${getScoreColor(dim.score)}`}>
-									{dim.score}
-									/5
-								</span>
+					{analysisResult.dimensions.map((dim) => {
+						const maxScore = dim.name === "经典性" ? 2 : dim.name === "新锐性" ? 1.5 : 5;
+						return (
+							<div key={dim.name} className="space-y-2">
+								<div className="flex items-center justify-between">
+									<span className="text-slate-700 font-medium">{dim.name}</span>
+									<span className={`font-bold ${getScoreColor(dim.score)}`}>
+										{dim.score}
+										/
+										{maxScore}
+									</span>
+								</div>
+								<Progress value={(dim.score / maxScore) * 100} className="h-2" />
+								<p className="text-sm text-slate-600">{dim.description}</p>
 							</div>
-							<Progress value={(dim.score / 5) * 100} className="h-2" />
-							<p className="text-sm text-slate-600">{dim.description}</p>
-						</div>
-					))}
+						);
+					})}
 				</CardContent>
 			</Card>
 
