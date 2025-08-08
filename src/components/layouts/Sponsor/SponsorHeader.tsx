@@ -15,12 +15,12 @@ export default function SponsorHeader() {
 					赞助者名单
 				</h1>
 			</div>
-			<Card className="bg-gradient-to-r mb-8 border-0 shadow-none from-yellow-50 to-pink-50">
+      <Card className="bg-gradient-to-r mb-8 border-0 shadow-none from-yellow-50 to-pink-50">
 				<CardContent className="p-6">
 					<p className="text-xl text-slate-700 font-medium mb-4">
 						感谢所有赞助者的支持！您的每一份赞助都让我们更有动力持续改进产品。
 					</p>
-					<div className="mt-2 flex flex-wrap gap-4 justify-center">
+          <div className="mt-2 flex flex-wrap gap-4 justify-center">
 						<a
 							href="https://afdian.com/a/tianxiang"
 							target="_blank"
@@ -31,12 +31,9 @@ export default function SponsorHeader() {
 							{" "}
 							成为赞助者
 						</a>
-						<Link
-							href="/"
-							className="text-lg text-slate-700 font-semibold px-8 py-4 border border-slate-200 rounded-2xl bg-white inline-flex min-w-[140px] shadow-sm transition-all duration-200 items-center justify-center hover:border-slate-300 hover:bg-slate-50 hover:shadow-md"
-						>
-							返回首页
-						</Link>
+            <Link href="/signin" className="text-lg text-slate-700 font-semibold px-8 py-4 border border-slate-200 rounded-2xl bg-white inline-flex min-w-[140px] shadow-sm transition-all duration-200 items-center justify-center hover:border-slate-300 hover:bg-slate-50 hover:shadow-md">
+              立即登录
+            </Link>
 					</div>
 				</CardContent>
 			</Card>

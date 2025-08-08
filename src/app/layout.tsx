@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Noto_Sans_SC } from "next/font/google";
-import NoticeBar from "@/components/ui/notice-bar";
+
+import AppHeader from "@/components/global/AppHeader";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -25,11 +26,6 @@ export default async function RootLayout({
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	// 服务端获取公告内容
-	const res = await fetch("https://mx.tnxg.top/api/v2/snippets/data/ink-battles", { cache: "no-store" });
-	const data = await res.json();
-	const message = data.message || "";
-	const link = data.link || "https://afdian.com/a/tianxiang?tab=feed";
 	return (
 		<html lang="zh-CN">
 			<head>
@@ -41,7 +37,7 @@ export default async function RootLayout({
 			<body
 				className={`${notoSans.variable} ${jetBrainsMono.variable} antialiased`}
 			>
-				<NoticeBar message={message} link={link} />
+				<AppHeader />
 				{children}
 				<Toaster />
 			</body>

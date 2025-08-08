@@ -4,7 +4,8 @@ import { BadgeCheck, BarChart3, BookOpen, Heart, Lightbulb, Share2, Star, Target
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import ShareImageGenerator from "@/components/ShareImageGenerator";
+import { RadarChart } from "@/components/layouts/WriterPage/RadarChart";
+import { ShareImageGenerator } from "@/components/ShareImageGenerator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
@@ -126,6 +127,26 @@ export default function WriterAnalysisResult({
 								? "良好作品"
 								: "待提升作品"}
 					</div>
+
+					{/* 雷达图：对维度进行 0..5 归一化，并对“经典性/新锐性”进行权重平衡 */}
+					{analysisResult.dimensions?.length > 0 && (
+						<div className="mt-2">
+							{(() => {
+								const normalize = (name: string, score: number) => {
+									const cleanName = name.replace(/[^\u4E00-\u9FA5]/g, "");
+									// 经典性上限 2，新锐性上限 1.5，其余上限 5
+									const max = cleanName === "经典性" ? 2 : cleanName === "新锐性" ? 1.5 : 5;
+									// 映射到 0..5：score/max * 5
+									const mapped = Math.max(0, Math.min(5, (score / max) * 5));
+									return mapped;
+								};
+
+								const labels = analysisResult.dimensions.map(d => d.name);
+								const values = analysisResult.dimensions.map(d => normalize(d.name, d.score));
+								return <RadarChart labels={labels} values={values} />;
+							})()}
+						</div>
+					)}
 
 					{percentile && (
 						<div className="text-sm text-slate-600 mt-4">

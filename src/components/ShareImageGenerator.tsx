@@ -26,7 +26,7 @@ interface ShareImageGeneratorProps {
 	data: ShareImageData;
 }
 
-export default function ShareImageGenerator({ data }: ShareImageGeneratorProps) {
+export function ShareImageGenerator({ data }: ShareImageGeneratorProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 
 	// 专业的设计系统
