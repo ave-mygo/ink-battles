@@ -1,7 +1,7 @@
 "use client";
 
 import type { AnalysisResult } from "@/lib/ai";
-import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Star, Target, Zap } from "lucide-react";
+import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import StreamingDisplay from "@/components/layouts/WriterPage/streaming-display";
@@ -83,8 +83,18 @@ const evaluationModes = [
 		name: "碎片主义护法",
 		description: "强化先锋性、语言原创性、结构实验等维度的评分权重",
 		text: `允许上述维度使用主动偏好加权（如 ×1.5）
-- 可与其他提示词并行激活（如“热血粉丝”）`,
+- 可与其他提示词并行激活（如"热血粉丝"）`,
 		icon: <Zap className="h-4 w-4" />,
+	},
+	{
+		id: "ai-detection",
+		name: "AI鉴别师",
+		description: "专门检测和评估文本的AI生成特征，提供AI含量分析",
+		text: `分析文本的AI生成可能性
+- 检测语言模式、结构规律性、创意独特性
+- 评估人类创作与AI辅助的混合程度
+- 可与碎片主义护法并行使用，提供双重分析视角`,
+		icon: <Shield className="h-4 w-4" />,
 	},
 ];
 
@@ -99,19 +109,23 @@ export default function WriterAnalysisSystem() {
 	const [showStreamingDisplay, setShowStreamingDisplay] = useState(false);
 
 	const handleModeChange = (modeId: string, checked: boolean, modeName: string) => {
-		if (modeId === "fragment") {
+		if (modeId === "fragment" || modeId === "ai-detection") {
+			// 并行激活碎片主义护法和AI鉴别师
 			if (checked) {
-				// 并行激活碎片主义护法
-				setSelectedMode(prev => prev.includes("fragment") ? prev : [...prev, "fragment"]);
-				setSelectedModeName(prev => prev.includes("碎片主义护法") ? prev : [...prev, "碎片主义护法"]);
+				setSelectedMode(prev => prev.includes(modeId) ? prev : [...prev, modeId]);
+				setSelectedModeName(prev => prev.includes(modeName) ? prev : [...prev, modeName]);
 			} else {
-				setSelectedMode(prev => prev.filter(id => id !== "fragment"));
-				setSelectedModeName(prev => prev.filter(name => name !== "碎片主义护法"));
+				setSelectedMode(prev => prev.filter(id => id !== modeId));
+				setSelectedModeName(prev => prev.filter(name => name !== modeName));
 			}
 		} else {
 			if (checked) {
-				setSelectedMode(prev => prev.includes("fragment") ? [modeId, ...prev.filter(id => id === "fragment")] : [modeId]);
-				setSelectedModeName(prev => prev.includes("碎片主义护法") ? [modeName, ...prev.filter(name => name === "碎片主义护法")] : [modeName]);
+				// 保留现有的并行模式，添加新选择的主模式
+				const parallelModes = selectedMode.filter(id => id === "fragment" || id === "ai-detection");
+				const parallelModeNames = selectedModeName.filter(name => name === "碎片主义护法" || name === "AI鉴别师");
+
+				setSelectedMode([modeId, ...parallelModes]);
+				setSelectedModeName([modeName, ...parallelModeNames]);
 			} else {
 				setSelectedMode(prev => prev.filter(id => id !== modeId));
 				setSelectedModeName(prev => prev.filter(name => name !== modeName));
