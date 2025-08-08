@@ -2,9 +2,10 @@
 
 import process from "node:process";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import nodemailer from "nodemailer";
-import { v4 as uuidv4 } from "uuid";
+import { DAILY_CAP_GUEST, PER_REQUEST_GUEST, PER_REQUEST_LOGGED } from "@/lib/constants";
 import { db_find, db_insert, db_read, db_update } from "@/lib/db";
 import "server-only";
 
@@ -90,8 +91,9 @@ export async function LoginUser(email: string, password: string): Promise<{ succ
 	if (!match) {
 		return { success: false, message: "密码错误" };
 	}
-	// 生成 token（如无 JWT，先用 uuid）
-	const token = uuidv4();
+	// 使用 JWT 签发登录令牌
+	const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+	const token = jwt.sign({ email }, secret, { expiresIn: "7d" });
 	const cookieStore = await cookies();
 	cookieStore.set("auth-token", token, {
 		httpOnly: true,
@@ -233,3 +235,87 @@ export const RegisterUser = async (
 	return { success: true, message: "注册成功，请登录" };
 };
 
+/**
+ * 获取当前登录用户邮箱（基于 Cookie `auth-token`）
+ */
+export const getCurrentUserEmail = async (): Promise<string | null> => {
+	const cookieStore = await cookies();
+	const token = cookieStore.get("auth-token")?.value;
+	if (!token)
+		return null;
+	try {
+		const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+		const payload = jwt.verify(token, secret) as { email?: string };
+		return payload.email ?? null;
+	} catch {
+		return null;
+	}
+};
+
+/**
+ * 校验并消耗使用额度。
+ * - 未登录：单次最大 5000 字，且当日累计（按 IP 或 指纹 任一标识）≤ 100000
+ * - 已登录：单次最大 60000 字，无当日累计上限
+ * @returns 是否允许本次请求与提示信息
+ */
+export const checkAndConsumeUsage = async (
+	params: {
+		userEmail: string | null;
+		ip?: string | null;
+		fingerprint?: string | null;
+		textLength: number;
+	},
+): Promise<{ allowed: boolean; message?: string }> => {
+	const { userEmail, ip, fingerprint, textLength } = params;
+	const isLoggedIn = Boolean(userEmail);
+
+	if (isLoggedIn) {
+		if (textLength > PER_REQUEST_LOGGED) {
+			return { allowed: false, message: `单次分析上限为 ${PER_REQUEST_LOGGED} 字` };
+		}
+		// 登录用户无日上限，不记录日计数，但可按需统计
+		return { allowed: true };
+	}
+
+	// 未登录：单次限制
+	if (textLength > PER_REQUEST_GUEST) {
+		return { allowed: false, message: `未登录单次分析上限为 ${PER_REQUEST_GUEST} 字` };
+	}
+
+	// 未登录：日累计限制（按任一：IP 或 指纹）
+	const dayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+	const ipKey = ip ? { dayKey, type: "ip", key: ip } : null;
+	const fpKey = fingerprint ? { dayKey, type: "fp", key: fingerprint } : null;
+
+	const readCounter = async (key: { dayKey: string; type: string; key: string } | null): Promise<number> => {
+		if (!key)
+			return 0;
+		const doc = await db_find(DB_NAME, "daily_usage", key);
+		return doc?.used ?? 0;
+	};
+
+	const ipUsed = await readCounter(ipKey);
+	const fpUsed = await readCounter(fpKey);
+	const existedMax = Math.max(ipUsed, fpUsed);
+
+	if (existedMax + textLength > DAILY_CAP_GUEST) {
+		return { allowed: false, message: `未登录当日累计上限为 ${DAILY_CAP_GUEST} 字，请登录后继续使用` };
+	}
+
+	const incCounter = async (key: { dayKey: string; type: string; key: string } | null, delta: number) => {
+		if (!key)
+			return;
+		const doc = await db_find(DB_NAME, "daily_usage", key);
+		if (doc) {
+			await db_update(DB_NAME, "daily_usage", key, { used: (doc.used ?? 0) + delta, updatedAt: new Date() });
+		} else {
+			await db_insert(DB_NAME, "daily_usage", { ...key, used: delta, createdAt: new Date() });
+		}
+	};
+
+	// 同步增加 IP 与 指纹计数，防止绕过
+	await incCounter(ipKey, textLength);
+	await incCounter(fpKey, textLength);
+
+	return { allowed: true };
+};

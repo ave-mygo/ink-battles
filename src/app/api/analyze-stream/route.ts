@@ -5,8 +5,8 @@ import dotenv from "dotenv";
 import OpenAI from "openai";
 import { buildSystemPrompt, getModeInstructions } from "@/lib/ai";
 import { db_name, db_table } from "@/lib/constants";
-import { db_delete, db_find, db_insert } from "@/lib/db";
-import { findApiKeyByToken } from "@/lib/token-server";
+import { db_find, db_insert } from "@/lib/db";
+import { checkAndConsumeUsage, getCurrentUserEmail } from "@/lib/utils-server";
 
 dotenv.config();
 
@@ -40,39 +40,18 @@ export async function POST(request: NextRequest) {
 			});
 		}
 
-		const session = request.headers.get("X-Token");
-		const apiKey = request.headers.get("X-Api-Key");
-
-		let orderNumber = null;
-
-		if (apiKey) {
-			const apiKeyInfo = await findApiKeyByToken(apiKey);
-			orderNumber = apiKeyInfo?.orderNumber;
-		}
-
-		const ip = request.headers.get("X-Forwarded-For");
-
-		if (!session) {
-			return Response.json({ error: "缺少 Session" }, { status: 400 });
-		}
-
-		let sessionInfo = null;
-		try {
-			sessionInfo = await db_find("ink_battles", "sessions", { session });
-		} catch (e) {
-			console.error("查找 session 失败", e);
-			return Response.json({ error: "Session 校验异常" }, { status: 500 });
-		}
-
-		if (!sessionInfo) {
-			return Response.json({ error: "Session 不存在或已失效" }, { status: 401 });
-		}
-
-		try {
-			await db_delete("ink_battles", "sessions", { session });
-		} catch (e) {
-			console.error("删除 session 失败", e);
-			// 不阻断主流程
+		// 新限额逻辑：基于登录状态、IP、指纹
+		const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null;
+		const fingerprint = request.headers.get("x-fingerprint");
+		const userEmail = await getCurrentUserEmail();
+		const usageCheck = await checkAndConsumeUsage({
+			userEmail,
+			ip,
+			fingerprint: fingerprint || null,
+			textLength: normalizedText.length,
+		});
+		if (!usageCheck.allowed) {
+			return Response.json({ error: usageCheck.message || "超出使用限制" }, { status: 429 });
 		}
 
 		const openAI = new OpenAI({
@@ -140,27 +119,32 @@ export async function POST(request: NextRequest) {
 					const jsonContent = match ? match[1].trim() : resultContent;
 
 					try {
-						const overallScore = (() => {
-							try {
-								return JSON.parse(jsonContent)?.overallScore || 0;
-							} catch {
-								return 0;
+						// 验证JSON解析是否成功
+						let parsedResult;
+						try {
+							parsedResult = JSON.parse(jsonContent);
+							if (!parsedResult || typeof parsedResult !== "object") {
+								throw new Error("Invalid JSON result");
 							}
-						})();
+						} catch (parseError) {
+							console.error("JSON解析失败，不保存到数据库:", parseError);
+							return; // 不保存失败的解析结果
+						}
+
+						const overallScore = parsedResult.overallScore || 0;
 
 						await db_insert(
 							db_name,
 							db_table,
 							{
 								articleText,
-								session,
+								userEmail,
 								result: jsonContent,
 								ip,
 								usage: usageInfo,
 								mode: mode || "default",
 								timestamp: new Date().toISOString(),
 								overallScore,
-								orderNumber: orderNumber || null,
 								sha1,
 							},
 						);
