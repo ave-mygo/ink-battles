@@ -57,7 +57,7 @@ const SignInForm = () => {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground flex items-center gap-2"><Mail className="h-4 w-4 text-blue-600" /> 邮箱</div>
-              <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" type="email" />
+              <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="请输入邮箱" type="email" />
             </div>
             <div className="space-y-2">
               <div className="text-sm text-muted-foreground flex items-center gap-2"><Lock className="h-4 w-4 text-blue-600" /> 密码</div>
