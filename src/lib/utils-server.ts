@@ -4,7 +4,6 @@ import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import nodemailer from "nodemailer";
 import { DAILY_CAP_GUEST, PER_REQUEST_GUEST, PER_REQUEST_LOGGED } from "@/lib/constants";
 import { db_find, db_insert, db_read, db_update } from "@/lib/db";
 import "server-only";
@@ -137,38 +136,11 @@ export const SendVerificationEmail = async (
 		await db_insert(DB_NAME, "email_verification_codes", { email, type, codeHash, createdAt, expiresAt, used: false });
 	}
 
-	// SMTP 发送
-	const transport = nodemailer.createTransport({
-		host: process.env.SMTP_HOST,
-		port: Number(process.env.SMTP_PORT || 587),
-		secure: Boolean(process.env.SMTP_SECURE === "true"),
-		auth: process.env.SMTP_USER && process.env.SMTP_PASS
-			? {
-					user: process.env.SMTP_USER,
-					pass: process.env.SMTP_PASS,
-				}
-			: undefined,
-	});
-
-	const fromAddress = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@example.com";
-
-	try {
-		await transport.sendMail({
-			from: fromAddress,
-			to: email,
-			subject: "您的验证码（10分钟内有效）",
-			html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; line-height: 1.6;">
-        <h2>验证码</h2>
-        <p>您正在进行${type === "register" ? "注册" : "登录"}验证，验证码如下：</p>
-        <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${code}</p>
-        <p>10 分钟内有效，请勿泄露给他人。</p>
-      </div>`,
-		});
-		return { success: true, message: "验证码已发送" };
-	} catch (error) {
-		console.error("发送邮件失败:", error);
-		return { success: false, message: "发送邮件失败，请稍后重试" };
-	}
+	// 使用 SMTP 库发送邮件
+	const { sendVerificationEmail } = await import("./smtp");
+	const result = await sendVerificationEmail(email, code, type);
+	
+	return result;
 };
 
 /**
@@ -216,6 +188,12 @@ export const RegisterUser = async (
 	if (!email || !password || !code) {
 		return { success: false, message: "邮箱、密码和验证码不能为空" };
 	}
+	// 验证密码强度
+	const { isPasswordValid } = await import("./password-strength");
+	if (!isPasswordValid(password)) {
+		return { success: false, message: "密码不符合要求。密码必须：至少8位字符、包含小写字母、数字和特殊字符" };
+	}
+	
 	const existing = await db_find(DB_NAME, "users", { email });
 	if (existing) {
 		return { success: false, message: "该邮箱已注册" };

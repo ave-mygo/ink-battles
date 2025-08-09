@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordStrengthIndicator, PasswordStrengthMeter } from "@/components/ui/password-strength";
+import { isPasswordValid, calculatePasswordStrength } from "@/lib/password-strength";
 
 /**
  * 注册表单组件（含邮箱验证码）
@@ -65,6 +67,10 @@ const SignUpForm = () => {
 			toast.error("请完整填写信息");
 			return;
 		}
+		if (!isPasswordValid(password)) {
+			toast.error("密码不符合要求，请检查密码强度");
+			return;
+		}
 		if (password !== confirmPassword) {
 			toast.error("两次输入的密码不一致");
 			return;
@@ -107,7 +113,7 @@ const SignUpForm = () => {
 								{" "}
 								邮箱
 							</div>
-							<Input value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" type="email" />
+							<Input value={email} onChange={e => setEmail(e.target.value)} placeholder="请输入邮箱" type="email" />
 						</div>
 
 						<div className="gap-2 grid grid-cols-[1fr_auto] items-end">
@@ -141,12 +147,21 @@ const SignUpForm = () => {
 								{" "}
 								设置密码
 							</div>
-							<Input value={password} onChange={e => setPassword(e.target.value)} placeholder="至少 8 位，建议包含大小写与数字" type="password" />
+							<Input value={password} onChange={e => setPassword(e.target.value)} placeholder="请输入密码" type="password" />
+							<PasswordStrengthMeter password={password} />
 						</div>
 						<div className="space-y-2">
 							<div className="text-muted-foreground text-sm">确认密码</div>
 							<Input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="再次输入密码" type="password" />
 						</div>
+						
+						{/* 密码强度详细指示器 */}
+						{password && (
+							<div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+								<PasswordStrengthIndicator password={password} />
+							</div>
+						)}
+						
 						<Button onClick={handleSubmit} className="w-full">
 							<span className="flex gap-2 items-center justify-center">
 								完成注册
