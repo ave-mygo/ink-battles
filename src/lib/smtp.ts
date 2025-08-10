@@ -8,13 +8,12 @@ interface EmailConfig {
 	host: string;
 	port: number;
 	secure: boolean;
-	starttls?: {
-		enable: boolean;
-		success?: boolean;
-	};
 	auth?: {
 		user: string;
 		pass: string;
+	};
+	starttls?: {
+		enable: boolean;
 	};
 }
 
@@ -25,7 +24,9 @@ interface EmailOptions {
 	to: string;
 	subject: string;
 	html: string;
+	text?: string;
 	from?: string;
+	headers?: Record<string, string>;
 }
 
 /**
@@ -39,15 +40,13 @@ interface EmailResult {
 
 /**
  * 获取SMTP配置
- * STARTTLS配置：port 587, secure: false, starttls.enable: true
  */
 export const getSmtpConfig = (): EmailConfig => ({
 	host: process.env.EMAIL_HOST || "",
 	port: Number(process.env.EMAIL_PORT || 587),
-	secure: false, // 明文连接，然后尝试升级
+	secure: process.env.EMAIL_PORT === "465",
 	starttls: {
-		enable: true, // 尝试 STARTTLS
-		success: false, // 升级失败也继续连接
+		enable: process.env.EMAIL_PORT === "587",
 	},
 	auth: process.env.EMAIL_USER && process.env.EMAIL_PASS
 		? {
@@ -61,7 +60,9 @@ export const getSmtpConfig = (): EmailConfig => ({
  * 获取发件人地址
  */
 export const getFromAddress = (): string => {
-	return process.env.EMAIL_FROM || process.env.EMAIL_USER || "noreply@localhost";
+	const address = process.env.EMAIL_USER || "noreply@localhost";
+	const name = "Rikki|狸希";
+	return name ? `${name} <${address}>` : address;
 };
 
 /**
@@ -85,6 +86,8 @@ export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => 
 			to: options.to,
 			subject: options.subject,
 			html: options.html,
+			text: options.text,
+			headers: options.headers,
 		});
 
 		return { success: true, message: "邮件发送成功" };
@@ -106,15 +109,147 @@ export const sendVerificationEmail = async (
 	code: string,
 	type: "register" | "login" = "register",
 ): Promise<EmailResult> => {
-	const subject = "您的验证码（10分钟内有效）";
-	const html = `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; line-height: 1.6;">
-    <h2>验证码</h2>
-    <p>您正在进行${type === "register" ? "注册" : "登录"}验证，验证码如下：</p>
-    <p style="font-size: 24px; font-weight: bold; letter-spacing: 4px;">${code}</p>
-    <p>10 分钟内有效，请勿泄露给他人。</p>
-  </div>`;
+	const brand = process.env.NEXT_PUBLIC_APP_NAME || "Rikki|狸希";
+	const actionText = type === "register" ? "账户注册" : "账户登录";
+	const subject = `欢迎使用 作家战力分析系统 Ink Battles | ${brand}`;
 
-	return sendEmail({ to: email, subject, html });
+	// 反垃圾邮件优化的HTML模板
+	const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>${subject}</title>
+	<style>
+		body {
+			margin: 0;
+			padding: 20px;
+			font-family: Arial, "Microsoft YaHei", sans-serif;
+			background-color: #f5f5f5;
+			color: #333333;
+		}
+		.email-container {
+			max-width: 600px;
+			margin: 0 auto;
+			background-color: #ffffff;
+			border-radius: 8px;
+			overflow: hidden;
+			border: 1px solid #dddddd;
+		}
+		.header {
+			background-color: #4a90e2;
+			color: #ffffff;
+			padding: 30px 20px;
+			text-align: center;
+		}
+		.header h1 {
+			margin: 0;
+			font-size: 24px;
+			font-weight: normal;
+		}
+		.content {
+			padding: 30px 20px;
+		}
+		.greeting {
+			font-size: 16px;
+			margin-bottom: 20px;
+		}
+		.verification-section {
+			background-color: #f8f9fa;
+			border: 1px solid #e9ecef;
+			border-radius: 6px;
+			padding: 20px;
+			text-align: center;
+			margin: 20px 0;
+		}
+		.verification-code {
+			font-size: 32px;
+			font-weight: bold;
+			color: #4a90e2;
+			letter-spacing: 4px;
+			margin: 10px 0;
+			font-family: monospace;
+		}
+		.notice {
+			font-size: 14px;
+			color: #666666;
+			margin-top: 20px;
+			line-height: 1.5;
+		}
+		.footer {
+			background-color: #f8f9fa;
+			padding: 20px;
+			text-align: center;
+			border-top: 1px solid #e9ecef;
+			font-size: 12px;
+			color: #888888;
+		}
+		@media only screen and (max-width: 600px) {
+			.email-container {
+				border-radius: 0;
+				margin: 0;
+			}
+			.content {
+				padding: 20px 15px;
+			}
+			.verification-code {
+				font-size: 28px;
+				letter-spacing: 2px;
+			}
+		}
+	</style>
+</head>
+<body>
+	<div class="email-container">
+		<div class="header">
+			<h1>${brand}</h1>
+		</div>
+		
+		<div class="content">
+			<div class="greeting">
+				您好，
+			</div>
+			
+			<p>您正在进行${actionText}操作，请使用以下验证码完成身份验证：</p>
+			
+			<div class="verification-section">
+				<div>验证码</div>
+				<div class="verification-code">${code}</div>
+				<div style="font-size: 14px; color: #666;">有效期：10分钟</div>
+			</div>
+			
+			<p>请在验证页面输入此验证码以完成操作。</p>
+			
+			<div class="notice">
+				温馨提示：<br>
+				• 此验证码仅用于本次${actionText}操作<br>
+				• 如非本人操作，请忽略此邮件<br>
+				• 请妥善保管验证码，勿泄露给他人
+			</div>
+		</div>
+		
+		<div class="footer">
+			<p>此邮件由系统自动发送，请勿回复</p>
+			<p>&copy; ${new Date().getFullYear()} ${brand} 版权所有</p>
+		</div>
+	</div>
+</body>
+</html>`;
+	// 优化邮件头，避免被识别为垃圾邮件
+	const headers = {
+		"X-Mailer": "Nodemailer",
+		"X-Auto-Response-Suppress": "OOF, DR, RN, NRN, AutoReply",
+		"Precedence": "list",
+		"Content-Type": "text/html; charset=UTF-8",
+	};
+
+	return sendEmail({
+		from: getFromAddress(),
+		to: email,
+		subject,
+		html,
+		headers,
+	});
 };
 
 /**
@@ -129,4 +264,39 @@ export const verifySmtpConfig = async (): Promise<boolean> => {
 		console.error("SMTP配置验证失败:", error);
 		return false;
 	}
+};
+
+/**
+ * 发送测试邮件
+ */
+export const sendTestEmail = async (email: string): Promise<EmailResult> => {
+	const brand = process.env.NEXT_PUBLIC_APP_NAME || "Ink Battles";
+	const subject = `${brand} 邮件服务测试`;
+
+	const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 20px; font-family: Arial, sans-serif; background-color: #f5f5f5;">
+	<div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 8px;">
+		<h2 style="color: #4a90e2; margin-bottom: 20px;">${brand} 邮件服务测试</h2>
+		<p>您好，</p>
+		<p>这是一封测试邮件，用于验证邮件服务是否正常工作。</p>
+		<p>如果您收到此邮件，说明邮件服务配置成功。</p>
+		<p style="margin-top: 30px; font-size: 14px; color: #666;">
+			发送时间：${new Date().toLocaleString("zh-CN")}<br>
+			© ${new Date().getFullYear()} ${brand}
+		</p>
+	</div>
+</body>
+</html>`;
+
+	return sendEmail({
+		to: email,
+		subject,
+		html,
+	});
 };
