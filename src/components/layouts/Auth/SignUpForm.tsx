@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PasswordStrengthIndicator, PasswordStrengthMeter } from "@/components/ui/password-strength";
-import { isPasswordValid, calculatePasswordStrength } from "@/lib/password-strength";
+import { isPasswordValid } from "@/lib/password-strength";
 
 /**
  * 注册表单组件（含邮箱验证码）
@@ -95,8 +95,8 @@ const SignUpForm = () => {
 	};
 
 	return (
-		<div className="bg-gradient-to-br min-h-[calc(100vh-0px)] from-slate-50 to-slate-100">
-			<div className="mx-auto px-4 py-16 container max-w-md">
+		<div className="bg-gradient-to-br flex min-h-[calc(100vh-57px)] items-center from-slate-50 to-slate-100">
+			<div className="mx-auto px-4 py-6 container max-w-md sm:py-8">
 				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
 					<CardHeader>
 						<CardTitle className="text-xl flex gap-2 items-center">
@@ -154,14 +154,14 @@ const SignUpForm = () => {
 							<div className="text-muted-foreground text-sm">确认密码</div>
 							<Input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="再次输入密码" type="password" />
 						</div>
-						
+
 						{/* 密码强度详细指示器 */}
 						{password && (
 							<div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
 								<PasswordStrengthIndicator password={password} />
 							</div>
 						)}
-						
+
 						<Button onClick={handleSubmit} className="w-full">
 							<span className="flex gap-2 items-center justify-center">
 								完成注册
