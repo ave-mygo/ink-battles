@@ -21,8 +21,8 @@ function LimitModal({ open, onClose, isLoggedIn, currentLimit }: {
 				<div className="text-2xl text-blue-600 font-bold mb-2">已达单次字数上限</div>
 				<div className="text-slate-700 mb-2 text-center">
 					{isLoggedIn
-						? `登录用户单次最多 ${(currentLimit / 1000).toFixed(0)}k 字`
-						: `未登录用户单次最多 ${(currentLimit / 1000).toFixed(0)}k 字，每日累计 100k 字`}
+						? `登录用户单次最多 ${currentLimit} 字`
+						: `未登录用户单次最多 ${currentLimit} 字，每日累计 ${DAILY_CAP_GUEST} 字`}
 				</div>
 				<div className="text-sm text-slate-600 text-center">
 					{isLoggedIn
@@ -111,73 +111,81 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 				<CardDescription>请粘贴您要分析的完整作品内容，支持小说、散文、诗歌等各类文体</CardDescription>
 			</CardHeader>
 			<CardContent>
-				{/* 当前状态显示区域 */}
-				<div className="mb-4 p-3 border border-blue-200 rounded-lg bg-blue-50">
+				{/* 用户状态与限额信息 */}
+				<div className="mb-4 p-4 border border-blue-200 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50">
 					{isLoggedIn
 						? (
-								<div className="flex gap-2 items-center">
-									<User className="text-green-600 h-4 w-4" />
-									<span className="text-sm text-green-700 font-medium">已登录</span>
-									<span className="text-xs text-green-600">{userEmail}</span>
-									<span className="text-xs text-slate-500">·</span>
-									<span className="text-xs text-green-600">
-										单次限额
-										{" "}
-										{PER_REQUEST_LOGGED}
-										{" "}
-										字，每日累计
-										{" "}
-										{DAILY_CAP_GUEST}
-										{" "}
-										字
-									</span>
+								<div className="space-y-2">
+									<div className="flex items-center justify-between">
+										<div className="flex gap-2 items-center">
+											<User className="text-green-600 h-5 w-5" />
+											<span className="text-sm font-semibold text-green-700">欢迎回来</span>
+										</div>
+										<div className="text-xs text-green-600 font-medium bg-green-100 px-2 py-1 rounded-full">
+											会员用户
+										</div>
+									</div>
+									<div className="text-xs text-slate-600 flex items-center gap-1">
+										<span>当前账号：</span>
+										<span className="text-green-700 font-mono">{userEmail}</span>
+									</div>
+									<div className="text-xs text-green-600 bg-white/60 rounded px-2 py-1 inline-block">
+										✨ 单次最多 {PER_REQUEST_LOGGED.toLocaleString()} 字，无每日限制
+									</div>
 								</div>
 							)
 						: (
-								<div className="flex gap-2 items-center">
-									<LogIn className="text-yellow-600 h-4 w-4" />
-									<span className="text-sm text-yellow-700 font-medium">未登录</span>
-									<span className="text-xs text-yellow-600">
-										单次限额
-										{" "}
-										{PER_REQUEST_GUEST}
-										{" "}
-										字，每日累计
-										{" "}
-										{DAILY_CAP_GUEST}
-										{" "}
-										字
-									</span>
+								<div className="space-y-2">
+									<div className="flex items-center justify-between">
+										<div className="flex gap-2 items-center">
+											<LogIn className="text-amber-600 h-5 w-5" />
+											<span className="text-sm font-semibold text-amber-700">体验模式</span>
+										</div>
+										<div className="text-xs text-amber-600 font-medium bg-amber-100 px-2 py-1 rounded-full">
+											游客用户
+										</div>
+									</div>
+									<div className="text-xs text-amber-600 bg-white/60 rounded px-2 py-1 inline-block">
+										单次最多 {PER_REQUEST_GUEST.toLocaleString()} 字，每日累计 {DAILY_CAP_GUEST.toLocaleString()} 字
+									</div>
+									<div className="text-xs text-slate-600">
+										<a href="/signin" className="text-blue-600 hover:text-blue-700 underline">登录</a> 
+										<span className="mx-1">或</span> 
+										<a href="/signup" className="text-blue-600 hover:text-blue-700 underline">注册</a> 
+										<span className="ml-1">获得更好体验</span>
+									</div>
 								</div>
 							)}
 				</div>
 
-				{/* 使用说明区域 */}
-				<div className="mb-4 p-3 border border-slate-200 rounded-lg bg-slate-50">
-					<div className="mb-2 flex gap-2 items-center">
-						<div className="rounded-full bg-green-500 h-2 w-2"></div>
-						<span className="text-sm text-green-700 font-medium">登录用户</span>
-						<span className="text-xs text-green-600">
-							单次
-							{PER_REQUEST_LOGGED}
-							{" "}
-							字，无每日上限
-						</span>
+				{/* 使用说明区域 - 仅在未登录时显示对比 */}
+				{!isLoggedIn && (
+					<div className="mb-4 p-3 border border-slate-200 rounded-lg bg-slate-50">
+						<div className="mb-2 flex gap-2 items-center">
+							<div className="rounded-full bg-green-500 h-2 w-2"></div>
+							<span className="text-sm text-green-700 font-medium">登录用户</span>
+							<span className="text-xs text-green-600">
+								单次
+								{PER_REQUEST_LOGGED}
+								{" "}
+								字，无每日上限
+							</span>
+						</div>
+						<div className="flex gap-2 items-center">
+							<div className="rounded-full bg-yellow-500 h-2 w-2"></div>
+							<span className="text-sm text-yellow-700 font-medium">未登录用户</span>
+							<span className="text-xs text-yellow-600">
+								单次
+								{PER_REQUEST_GUEST}
+								{" "}
+								字，当日累计
+								{DAILY_CAP_GUEST}
+								{" "}
+								字
+							</span>
+						</div>
 					</div>
-					<div className="flex gap-2 items-center">
-						<div className="rounded-full bg-yellow-500 h-2 w-2"></div>
-						<span className="text-sm text-yellow-700 font-medium">未登录用户</span>
-						<span className="text-xs text-yellow-600">
-							单次
-							{PER_REQUEST_GUEST}
-							{" "}
-							字，当日累计
-							{DAILY_CAP_GUEST}
-							{" "}
-							字
-						</span>
-					</div>
-				</div>
+				)}
 
 				<Textarea
 					ref={textareaRef}

@@ -20,16 +20,12 @@ export interface PasswordStrength {
 export const PASSWORD_REQUIREMENTS = {
 	minLength: 8,
 	maxLength: 128,
+	// 仅用于提示展示，不做强制：校验规则改为“长度达标 + 任意两类”
 	requireLowercase: true,
-	requireUppercase: false, // 可选
+	requireUppercase: true,
 	requireNumber: true,
 	requireSpecial: true,
 };
-
-/**
- * 特殊字符集合
- */
-const SPECIAL_CHARS = "!@#$%^&*()_=[]{}|;:,.<>?~`\"'\\|-";
 
 /**
  * 计算密码强度
@@ -40,79 +36,44 @@ export const calculatePasswordStrength = (password: string): PasswordStrength =>
 		lowercase: /[a-z]/.test(password),
 		uppercase: /[A-Z]/.test(password),
 		number: /\d/.test(password),
-		// eslint-disable-next-line regexp/strict
-		special: new RegExp(`[${SPECIAL_CHARS}]`).test(password),
+		// “特殊字符”定义为非字母、非数字（不区分大小写），且排除点号 '.'
+		special: /[^a-z0-9]/i.test(password),
 	};
 
 	const feedback: string[] = [];
-
-	// 检查长度
 	if (!requirements.length) {
 		feedback.push(`至少需要 ${PASSWORD_REQUIREMENTS.minLength} 位字符`);
 	}
 
-	// 检查必填项
-	if (PASSWORD_REQUIREMENTS.requireLowercase && !requirements.lowercase) {
-		feedback.push("需要包含小写字母");
-	}
+	// 仅用于提示（不影响是否通过）：
+	if (!requirements.lowercase)
+		feedback.push("建议包含小写字母");
+	if (!requirements.uppercase)
+		feedback.push("建议包含大写字母");
+	if (!requirements.number)
+		feedback.push("建议包含数字");
+	if (!requirements.special)
+		feedback.push("建议包含特殊字符 (!@#$%^&* 等)");
 
-	if (PASSWORD_REQUIREMENTS.requireUppercase && !requirements.uppercase) {
-		feedback.push("需要包含大写字母");
-	}
+	const categories = [
+		requirements.lowercase,
+		requirements.uppercase,
+		requirements.number,
+		requirements.special,
+	];
+	const categoriesMet = categories.filter(Boolean).length;
+	// 不进行加权打分，仅用于 UI 进度条展示（0-100 基于满足的类别数）
+	const score = requirements.length ? Math.round((categoriesMet / 4) * 100) : 0;
 
-	if (PASSWORD_REQUIREMENTS.requireNumber && !requirements.number) {
-		feedback.push("需要包含数字");
-	}
-
-	if (PASSWORD_REQUIREMENTS.requireSpecial && !requirements.special) {
-		feedback.push("需要包含特殊字符 (!@#$%^&* 等)");
-	}
-
-	// 计算分数
-	let score = 0;
-	const metRequirements = Object.values(requirements).filter(Boolean).length;
-	const totalRequirements = Object.keys(requirements).length;
-
-	// 基础分数：满足要求的项目数
-	score = (metRequirements / totalRequirements) * 60;
-
-	// 额外分数：长度奖励
-	if (password.length >= 12)
-		score += 10;
-	if (password.length >= 16)
-		score += 10;
-
-	// 额外分数：复杂度奖励
-	if (requirements.uppercase)
-		score += 5;
-	if (requirements.special)
-		score += 5;
-
-	// 额外分数：组合奖励
-	const hasMultipleTypes = [requirements.lowercase, requirements.uppercase, requirements.number, requirements.special]
-		.filter(Boolean)
-		.length;
-	if (hasMultipleTypes >= 3)
-		score += 10;
-
-	// 确保分数在 0-100 范围内
-	score = Math.min(100, Math.max(0, score));
-
-	// 确定强度等级
 	let level: PasswordStrength["level"] = "weak";
-	if (score >= 80)
+	if (categoriesMet >= 4)
 		level = "very-strong";
-	else if (score >= 60)
+	else if (categoriesMet === 3)
 		level = "strong";
-	else if (score >= 40)
+	else if (categoriesMet === 2 && requirements.length)
 		level = "medium";
 
-	return {
-		score,
-		level,
-		requirements,
-		feedback,
-	};
+	return { score, level, requirements, feedback };
 };
 
 /**
@@ -120,11 +81,15 @@ export const calculatePasswordStrength = (password: string): PasswordStrength =>
  */
 export const isPasswordValid = (password: string): boolean => {
 	const strength = calculatePasswordStrength(password);
-	return strength.score >= 40 // 至少中等强度
-		&& strength.requirements.length
-		&& strength.requirements.lowercase
-		&& strength.requirements.number
-		&& strength.requirements.special;
+	const categoriesMet = [
+		strength.requirements.lowercase,
+		strength.requirements.uppercase,
+		strength.requirements.number,
+		strength.requirements.special,
+	].filter(Boolean).length;
+
+	// 要求：长度达标，且四类中任意满足两类即可
+	return strength.requirements.length && categoriesMet >= 2;
 };
 
 /**
