@@ -138,9 +138,8 @@ feat(auth): 添加用户注册功能
 
 Generated with [Claude Code](https://claude.ai/code) 喵喵喵~
 
-Co-Authored-By: 张三 <zhangsan@example.com>
+Co-Authored-By: TNXG <tnxg@outlook.jp>
 ```
-
 ## 测试和质量
 
 - **代码检查**: 提交前运行 `pnpm lint`
