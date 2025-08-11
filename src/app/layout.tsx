@@ -17,8 +17,14 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "作家战力分析系统",
+	title: {
+		template: "%s | 作家战力分析系统",
+		default: "作家战力分析系统",
+	},
 	description: "基于AI技术的专业文本分析工具，为您的创作提供深度洞察",
+	icons: {
+		icon: "/favicon.png",
+	},
 };
 
 export default async function RootLayout({
