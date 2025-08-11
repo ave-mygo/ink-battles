@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({
 				user: {
 					id: user._id,
-					username: user.username,
+					username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
 					email: user.email,
 					avatar: user.avatar,
 					afdian_bound: false,
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({
 				user: {
 					id: user._id,
-					username: user.username,
+					username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
 					email: user.email,
 					avatar: user.avatar || user.afdian_avatar,
 					afdian_bound: true,
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json({
 			user: {
 				id: user._id,
-				username: user.username,
+				username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
 				email: user.email,
 				avatar: user.avatar || user.afdian_avatar,
 				afdian_bound: true,

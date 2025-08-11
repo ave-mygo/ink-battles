@@ -138,7 +138,7 @@ feat(auth): 添加用户注册功能
 
 Generated with [Claude Code](https://claude.ai/code) 喵喵喵~
 
-Co-Authored-By: TNXG <tnxg@outlook.jp>
+Co-Authored-By: TNXG<tnxg@outlook.jp>
 ```
 ## 测试和质量
 
