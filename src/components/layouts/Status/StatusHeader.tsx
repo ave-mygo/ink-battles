@@ -1,30 +1,84 @@
-import { ArrowLeft, RefreshCw } from "lucide-react";
-import Link from "next/link";
+"use client";
 
-export default function StatusHeader() {
+import { Activity, ArrowLeft, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+
+interface Props {
+	autoRefresh?: boolean;
+	secondsLeft?: number;
+	refreshing?: boolean;
+	onToggleAuto?: () => void;
+	onRefresh?: () => void;
+}
+
+export default function StatusHeader({
+	autoRefresh = true,
+	secondsLeft = 60,
+	refreshing = false,
+	onToggleAuto,
+	onRefresh,
+}: Props) {
 	return (
-		<div className="mb-8">
-			<div className="mb-2 flex gap-4 items-center">
-				<h1 className="text-4xl text-blue-900 tracking-tight font-extrabold flex gap-2 items-center drop-shadow-sm md:text-5xl">
-					系统使用状态
+		<div className="mb-8 text-center">
+			<div className="mb-6 flex gap-4 items-center justify-center">
+				<div className="bg-gradient-to-br p-4 rounded-2xl flex shadow-xl items-center justify-center from-emerald-500 to-cyan-600 via-teal-500">
+					<Activity className="text-white h-8 w-8 animate-pulse" />
+				</div>
+				<h1 className="bg-gradient-to-r text-4xl text-transparent tracking-tight font-extrabold from-slate-700 to-slate-900 bg-clip-text drop-shadow-sm md:text-5xl">
+					系统监控面板
 				</h1>
-				<Link
-					href="/"
-					className="text-sm text-white px-4 py-2 rounded-lg bg-blue-600 inline-flex gap-1 shadow transition-all duration-150 items-center hover:bg-blue-700"
-				>
-					<ArrowLeft className="mr-1 h-4 w-4" />
-					{" "}
-					返回首页
-				</Link>
 			</div>
-			<p className="text-lg text-blue-700/80 font-medium flex gap-2 items-center">
-				实时监控系统近14天的使用情况，包括请求数、响应时间、Token消耗等指标
-				<span className="text-sm text-blue-400 ml-2 inline-flex gap-1 items-center">
-					<RefreshCw className="animate-spin-slow h-4 w-4" />
-					{" "}
-					数据每分钟自动刷新
-				</span>
-			</p>
+
+			<Card className="bg-gradient-to-r mb-8 border-0 shadow-lg from-emerald-50 to-cyan-50 via-teal-50">
+				<CardContent className="p-8">
+					<div className="flex flex-wrap gap-4 justify-center">
+						<Button
+							asChild
+							variant="ghost"
+							size="sm"
+							className="text-slate-700 px-4 py-2 border border-slate-200 rounded-full shadow-sm hover:bg-slate-50"
+						>
+							<Link href="/" className="flex gap-2 items-center">
+								<ArrowLeft className="h-5 w-5" />
+								返回首页
+							</Link>
+						</Button>
+						<div className="flex gap-3 items-center">
+							<div className="text-sm text-slate-700 px-3 py-1.5 border border-slate-200 rounded-full bg-slate-100 flex gap-2 items-center">
+								<Switch checked={autoRefresh} onCheckedChange={onToggleAuto} />
+								<span className="leading-none">
+									{autoRefresh
+										? (
+												<>
+													自动刷新
+													<span className="text-xs text-slate-700 font-medium ml-2 px-2 py-0.5 border border-slate-200 rounded-full bg-white inline-flex items-center">
+														{Math.max(0, secondsLeft)}
+														s
+													</span>
+												</>
+											)
+										: (
+												"自动刷新已关闭"
+											)}
+								</span>
+							</div>
+							<Button
+								size="sm"
+								variant="default"
+								onClick={onRefresh}
+								className="text-white px-4 rounded-full bg-emerald-500 shadow-sm hover:bg-emerald-600"
+								disabled={refreshing}
+							>
+								<RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+								刷新
+							</Button>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 		</div>
 	);
 }
