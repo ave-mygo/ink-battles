@@ -1,9 +1,3 @@
----
-description: 数据库表结构和数据类型规范（自动生成）
-globs: "**/src/**/*.{ts,tsx}"
-alwaysApply: true
----
-
 ## 数据库概览
 
 项目使用 MongoDB 作为数据库，数据库名为 `ink_battles`。
