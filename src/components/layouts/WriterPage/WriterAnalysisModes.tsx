@@ -50,7 +50,7 @@ export default function WriterAnalysisModes({
 		checkLoginStatus();
 	}, []);
 	return (
-		<Card className="mx-auto border-0 bg-white/80 h-full max-w-2xl w-full shadow-lg backdrop-blur-sm">
+		<Card className="border-0 bg-white/80 h-full w-full shadow-lg backdrop-blur-sm">
 			<CardHeader>
 				<CardTitle className="flex gap-2 items-center">
 					<Gauge className="text-blue-600 h-5 w-5" />
