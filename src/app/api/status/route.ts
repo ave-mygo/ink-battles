@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 			`https://newapi.yumetsuki.moe/api/log/self?p=${page}&page_size=${pageSize}&type=0&start_timestamp=${start}&end_timestamp=${end}&group=`,
 			{
 				headers: {
-					"Cookie": process.env.API_COOKIE || "",
+					"Authorization": `Bearer ${process.env.API_KEY || ""}`,
 					"new-api-user": process.env.API_USER || "",
 				},
 			},
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 			`https://newapi.yumetsuki.moe/api/data/self?start_timestamp=${start}&end_timestamp=${end}&default_time=hour`,
 			{
 				headers: {
-					"Cookie": process.env.API_COOKIE || "",
+					"Authorization": `Bearer ${process.env.API_KEY || ""}`,
 					"new-api-user": process.env.API_USER || "",
 				},
 			},
