@@ -1,8 +1,3 @@
----
-description:
-globs: "**/src/**/*.{ts,tsx}"
-alwaysApply: true
----
 1.项目应该使用RSC的方式从服务器端传递数据
 2.部分无法实现的用本地api实现（如流式请求）
 3.将纯服务器端函数放到`src/lib/utils-server.ts`当中

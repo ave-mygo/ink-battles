@@ -1,7 +1,3 @@
----
-trigger: manual
----
-
 ## 命名规范
 
 - **变量命名**: 使用小驼峰命名法 (camelCase)
