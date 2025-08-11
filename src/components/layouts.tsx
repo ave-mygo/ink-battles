@@ -262,42 +262,47 @@ export default function WriterAnalysisSystem() {
 
 	return (
 		<div className="bg-gradient-to-br min-h-screen from-slate-50 to-slate-100">
-			<div className="mx-auto px-4 py-8 container max-w-6xl">
+			<div className="mx-auto px-4 py-6 container max-w-7xl sm:py-8">
 				{/* Header */}
 				<WriterAnalysisHeader />
 
-				<div className="mb-8 gap-8 grid lg:grid-cols-2">
-					{/* Left Column - Article Input */}
-					<WriterAnalysisInput articleText={articleText} setArticleText={setArticleText} />
+				{/* 主要内容区域 - 优化布局比例 */}
+				<div className="mb-6 gap-6 grid lg:gap-8 lg:grid-cols-5">
+					{/* 左侧：文章输入区 - 扩大宽度 */}
+					<div className="lg:col-span-3">
+						<WriterAnalysisInput articleText={articleText} setArticleText={setArticleText} />
+					</div>
 
-					{/* Right Column - Evaluation Modes */}
-					<WriterAnalysisModes
-						evaluationModes={evaluationModes}
-						selectedMode={selectedMode}
-						isModesExpanded={isModesExpanded}
-						setIsModesExpanded={setIsModesExpanded}
-						handleModeChange={handleModeChange}
-					/>
+					{/* 右侧：评估模式选择 - 适度缩小 */}
+					<div className="lg:col-span-2">
+						<WriterAnalysisModes
+							evaluationModes={evaluationModes}
+							selectedMode={selectedMode}
+							isModesExpanded={isModesExpanded}
+							setIsModesExpanded={setIsModesExpanded}
+							handleModeChange={handleModeChange}
+						/>
+					</div>
 				</div>
 
-				{/* Action Buttons */}
-				<div className="mb-8 flex gap-4 justify-center">
+				{/* 操作按钮区 - 优化UX体验 */}
+				<div className="mb-8 flex flex-col gap-4 items-center sm:flex-row sm:justify-center">
 					<Button
 						onClick={handleAnalyze}
 						disabled={isAnalyzing || !articleText.trim()}
 						size="lg"
-						className="bg-gradient-to-r text-lg font-medium px-8 py-3 shadow-lg from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+						className="text-base text-white font-medium px-8 py-3 rounded-lg bg-blue-600 w-full shadow-md transition-all duration-150 disabled:bg-gray-300 hover:bg-blue-700 sm:w-auto disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500/20 disabled:shadow-none hover:shadow-lg"
 					>
 						{isAnalyzing
 							? (
 									<>
-										<Zap className="mr-2 h-5 w-5 animate-spin" />
+										<Zap className="mr-2 h-4 w-4 animate-spin" />
 										正在分析中...
 									</>
 								)
 							: (
 									<>
-										<BarChart3 className="mr-2 h-5 w-5" />
+										<BarChart3 className="mr-2 h-4 w-4" />
 										开始战力评测
 									</>
 								)}
@@ -308,9 +313,9 @@ export default function WriterAnalysisSystem() {
 						disabled={isAnalyzing}
 						size="lg"
 						variant="outline"
-						className="text-lg font-medium px-8 py-3 bg-transparent shadow-lg"
+						className="text-base font-medium px-8 py-3 border-gray-300 rounded-lg bg-white w-full transition-all duration-150 hover:border-gray-400 hover:bg-gray-50 disabled:opacity-50 sm:w-auto disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500/20"
 					>
-						<RefreshCw className="mr-2 h-5 w-5" />
+						<RefreshCw className="mr-2 h-4 w-4" />
 						清除重置
 					</Button>
 				</div>

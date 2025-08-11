@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import StatusDashboard from "@/components/layouts/Status/StatusDashboard";
+
+export async function generateMetadata(): Promise<Metadata> {
+	return {
+		title: "系统状态",
+		description: "查看系统运行状态、服务可用性和性能监控信息",
+	};
+}
 
 export default function StatusPage() {
 	return (

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import process from "node:process";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
@@ -5,6 +6,13 @@ import { redirect } from "next/navigation";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
 import { db_name } from "@/lib/constants";
 import { db_find } from "@/lib/db";
+
+export async function generateMetadata(): Promise<Metadata> {
+	return {
+		title: "用户中心",
+		description: "管理您的账户信息、查看使用统计和订阅状态",
+	};
+}
 
 async function getDashboardData(token: string) {
 	try {
