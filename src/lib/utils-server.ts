@@ -141,7 +141,7 @@ export const SendVerificationEmail = async (
 	// 使用 SMTP 库发送邮件
 	const { sendVerificationEmail } = await import("./smtp");
 	const result = await sendVerificationEmail(email, code, type);
-	
+
 	return result;
 };
 
@@ -195,7 +195,7 @@ export const RegisterUser = async (
 	if (!isPasswordValid(password)) {
 		return { success: false, message: "密码不符合要求。密码必须：至少8位字符、包含小写字母、数字和特殊字符" };
 	}
-	
+
 	const existing = await db_find(DB_NAME, "users", { email });
 	if (existing) {
 		return { success: false, message: "该邮箱已注册" };
@@ -234,8 +234,8 @@ export const getCurrentUserEmail = async (): Promise<string | null> => {
 
 /**
  * 校验并消耗使用额度。
- * - 未登录：单次最大 5000 字，且当日累计（按 IP 或 指纹 任一标识）≤ 100000
- * - 已登录：单次最大 60000 字，无当日累计上限
+ * - 未登录：单次最大 {PER_REQUEST_GUEST} 字，且当日累计（按 IP 或 指纹 任一标识）≤ {DAILY_CAP_GUEST}
+ * - 已登录：单次最大 {PER_REQUEST_LOGGED} 字，无当日累计上限
  * @returns 是否允许本次请求与提示信息
  */
 export const checkAndConsumeUsage = async (
@@ -251,7 +251,7 @@ export const checkAndConsumeUsage = async (
 
 	if (isLoggedIn) {
 		if (textLength > PER_REQUEST_LOGGED) {
-			return { allowed: false, message: `单次分析上限为 ${PER_REQUEST_LOGGED} 字` };
+			return { allowed: false, message: `单次分析上限为 ${PER_REQUEST_LOGGED.toLocaleString()} 字` };
 		}
 		// 登录用户无日上限，不记录日计数，但可按需统计
 		return { allowed: true };
@@ -259,7 +259,7 @@ export const checkAndConsumeUsage = async (
 
 	// 未登录：单次限制
 	if (textLength > PER_REQUEST_GUEST) {
-		return { allowed: false, message: `未登录单次分析上限为 ${PER_REQUEST_GUEST} 字` };
+		return { allowed: false, message: `未登录单次分析上限为 ${PER_REQUEST_GUEST.toLocaleString()} 字` };
 	}
 
 	// 未登录：日累计限制（按任一：IP 或 指纹）

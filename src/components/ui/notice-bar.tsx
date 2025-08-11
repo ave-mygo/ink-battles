@@ -8,14 +8,14 @@ interface NoticeBarProps {
 
 export default function NoticeBar({ message, link }: NoticeBarProps) {
 	return (
-		<div className="text-yellow-800 px-4 py-2 bg-yellow-100 flex w-full whitespace-nowrap items-center justify-center overflow-hidden">
+		<div className="bg-gradient-to-r text-amber-900 px-4 py-3 border-b border-yellow-200 flex w-full whitespace-nowrap shadow-sm items-center justify-center overflow-hidden from-yellow-50 to-amber-50">
 			<div className="animate-marquee flex min-w-full items-center justify-center">
 				{link
 					? (
-							<a href={link} target="_blank" rel="noopener noreferrer" className="text-center underline w-full block hover:text-yellow-600">{message}</a>
+							<a href={link} target="_blank" rel="noopener noreferrer" className="font-medium text-center underline w-full block transition-colors hover:text-amber-700">{message}</a>
 						)
 					: (
-							<span className="text-center w-full block">{message}</span>
+							<span className="font-medium text-center w-full block">{message}</span>
 						)}
 			</div>
 		</div>
