@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { webcrypto } from "node:crypto";
 import process from "node:process";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
@@ -83,6 +84,28 @@ async function getDashboardData(token: string) {
 	}
 }
 
+// 服务端生成OAuth URL和state
+async function generateOAuthUrl() {
+	const clientId = process.env.AFDIAN_CLIENT_ID;
+	const redirectUri = process.env.AFDIAN_REDIRECT_URI;
+
+	if (!clientId || !redirectUri) {
+		throw new Error("OAuth配置缺失");
+	}
+
+	// 服务端生成安全的state
+	const state = webcrypto.getRandomValues(new Uint32Array(4)).join("");
+	const scope = "basic";
+
+	// 构建OAuth URL
+	const authUrl = `https://afdian.com/oauth2/authorize?response_type=code&scope=${scope}&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+
+	return {
+		authUrl,
+		state,
+	};
+}
+
 export default async function DashboardPage() {
 	const cookieStore = await cookies();
 	const token = cookieStore.get("auth-token")?.value;
@@ -93,7 +116,9 @@ export default async function DashboardPage() {
 
 	try {
 		const data = await getDashboardData(token);
-		return <DashboardClient initialData={data} />;
+		const oauthConfig = await generateOAuthUrl();
+
+		return <DashboardClient initialData={data} oauthConfig={oauthConfig} />;
 	} catch {
 		// 如果获取数据失败，重定向到登录页
 		redirect("/signin");

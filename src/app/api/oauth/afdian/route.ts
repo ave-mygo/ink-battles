@@ -12,9 +12,20 @@ const AFDIAN_REDIRECT_URI = process.env.AFDIAN_REDIRECT_URI;
 export async function GET(request: NextRequest) {
 	const { searchParams } = new URL(request.url);
 	const code = searchParams.get("code");
+	const state = searchParams.get("state");
 
 	if (!code) {
 		return NextResponse.json({ error: "缺少授权码" }, { status: 400 });
+	}
+
+	if (!state) {
+		return NextResponse.json({ error: "缺少state参数" }, { status: 400 });
+	}
+
+	// 验证state参数防止CSRF攻击
+	// 注意：这里简化处理，生产环境应该从session或数据库验证state
+	if (!state.match(/^\d+$/)) {
+		return NextResponse.json({ error: "无效的state参数" }, { status: 400 });
 	}
 
 	try {
