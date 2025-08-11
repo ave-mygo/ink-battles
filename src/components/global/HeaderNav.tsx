@@ -63,7 +63,7 @@ export const HeaderNav = () => {
 											<span>仪表盘</span>
 										</Link>
 									</Button>
-									<Button size="sm" variant="outline" className="px-3 rounded-full text-red-600 border-red-200 hover:bg-red-50" onClick={logout}>
+									<Button size="sm" variant="outline" className="text-red-600 px-3 border-red-200 rounded-full hover:bg-red-50" onClick={logout}>
 										<LogOut className="mr-1 h-4 w-4" />
 										退出
 									</Button>
