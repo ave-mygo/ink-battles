@@ -8,12 +8,12 @@ export function middleware(request: NextRequest) {
 	// 保护 /dashboard 路径
 	if (pathname.startsWith("/dashboard")) {
 		if (!token) {
-			return NextResponse.redirect(new URL("/login", request.url));
+			return NextResponse.redirect(new URL("/signin", request.url));
 		}
 	}
 
-	// 已登录用户访问 /login 或 /register 跳转到首页
-	if ((pathname === "/login" || pathname === "/register") && token) {
+	// 已登录用户访问 /signin 或 /signup 跳转到首页
+	if ((pathname === "/signin" || pathname === "/signup") && token) {
 		return NextResponse.redirect(new URL("/", request.url));
 	}
 
@@ -21,5 +21,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-	matcher: ["/dashboard/:path*", "/login", "/register"],
+	matcher: ["/dashboard/:path*", "/signin", "/signup"],
 };
