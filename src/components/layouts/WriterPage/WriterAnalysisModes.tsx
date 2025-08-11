@@ -59,7 +59,7 @@ export default function WriterAnalysisModes({
 				<CardDescription>选择适合的评分视角，不同模式将采用不同的评判标准</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				{evaluationModes.slice(0, isModesExpanded ? undefined : 4).map((mode) => {
+				{evaluationModes.slice(0, 4).map((mode) => {
 					const isAiDetection = mode.id === "ai-detection";
 					const isLocked = isAiDetection && !isLoggedIn;
 
@@ -137,23 +137,123 @@ export default function WriterAnalysisModes({
 					);
 				})}
 
+				{/* 可展开的额外模式 */}
+				<div
+					className={`overflow-hidden transition-all duration-500 ease-out ${
+						isModesExpanded 
+							? 'max-h-[2000px] opacity-100' 
+							: 'max-h-0 opacity-0'
+					}`}
+				>
+					<div className="space-y-4 pt-2">
+						{evaluationModes.slice(4).map((mode) => {
+							const isAiDetection = mode.id === "ai-detection";
+							const isLocked = isAiDetection && !isLoggedIn;
+
+							return (
+								<div
+									key={mode.id}
+									className={`p-4 rounded-lg border-2 transition-all duration-200 w-full transform ${
+										isModesExpanded 
+											? 'translate-y-0 opacity-100' 
+											: 'translate-y-2 opacity-0'
+									} ${
+										selectedMode.includes(mode.id)
+											? "border-blue-500 bg-blue-50"
+											: isLocked
+												? "border-slate-200 bg-slate-50 opacity-60"
+												: "border-slate-200 hover:border-slate-300"
+									}`}
+									style={{
+										transitionDelay: isModesExpanded ? `${evaluationModes.slice(4).indexOf(mode) * 50}ms` : '0ms'
+									}}
+								>
+									<div className="flex items-center justify-between">
+										<div className="flex gap-3 items-center">
+											<div
+												className={`p-2 rounded-lg ${
+													selectedMode.includes(mode.id) ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
+												}`}
+											>
+												{isLocked ? <Lock className="h-4 w-4" /> : mode.icon}
+											</div>
+											<div>
+												<div className="flex gap-2 items-center">
+													<span className="text-slate-800 font-medium">{mode.name}</span>
+													{isLocked && (
+														<Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+															需要登录
+														</Badge>
+													)}
+													<HoverCard>
+														<HoverCardTrigger>
+															<CircleQuestionMark className="text-slate-500 h-3 w-3" />
+														</HoverCardTrigger>
+														<HoverCardContent>
+															<ul className="pl-6 list-disc space-y-2">
+																{mode.text.split("-").map((line, index) => (
+																	<li key={index}>{line}</li>
+																))}
+															</ul>
+														</HoverCardContent>
+													</HoverCard>
+													{selectedMode.includes(mode.id) && (
+														<Badge variant="default" className="bg-blue-600">
+															已选择
+														</Badge>
+													)}
+												</div>
+												<p className="text-sm text-slate-600 mt-1">{mode.description}</p>
+											</div>
+										</div>
+										{isLocked
+											? (
+													<div className="flex gap-2 items-center">
+														<Button
+															size="sm"
+															variant="outline"
+															className="text-blue-600 border-blue-300 hover:bg-blue-50"
+															onClick={() => window.location.href = "/signin"}
+														>
+															<LogIn className="mr-1 h-3 w-3" />
+															去登录
+														</Button>
+													</div>
+												)
+											: (
+													<Switch
+														checked={selectedMode.includes(mode.id)}
+														onCheckedChange={checked => handleModeChange(mode.id, checked, mode.name)}
+													/>
+												)}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</div>
+
 				<Button
 					variant="ghost"
-					className="text-slate-600 w-full hover:text-blue-600"
+					className="text-slate-600 w-full hover:text-blue-600 transition-all duration-200"
 					onClick={() => setIsModesExpanded(!isModesExpanded)}
 				>
 					{isModesExpanded
 						? (
 								<>
-									<ChevronUp className="mr-2 h-4 w-4" />
+									<ChevronUp className={`mr-2 h-4 w-4 transition-transform duration-200 ${
+										isModesExpanded ? 'rotate-180' : 'rotate-0'
+									}`} />
 									收起更多模式
 								</>
 							)
 						: (
 								<>
-									<ChevronDown className="mr-2 h-4 w-4" />
+									<ChevronDown className={`mr-2 h-4 w-4 transition-transform duration-200 ${
+										isModesExpanded ? 'rotate-180' : 'rotate-0'
+									}`} />
 									展开更多模式 (
-									{evaluationModes.length - 3}
+									{evaluationModes.length - 4}
 									)
 								</>
 							)}
