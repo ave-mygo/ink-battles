@@ -32,7 +32,7 @@ const SignInForm = () => {
 			const data = await res.json();
 			if (data.success) {
 				toast.success("登录成功");
-				window.location.href = "/";
+				window.location.href = "/dashboard";
 			} else {
 				toast.error(data.message || "登录失败");
 			}

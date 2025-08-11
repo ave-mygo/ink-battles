@@ -96,7 +96,9 @@ export async function LoginUser(email: string, password: string): Promise<{ succ
 	const cookieStore = await cookies();
 	cookieStore.set("auth-token", token, {
 		httpOnly: true,
+		secure: process.env.NODE_ENV === "production",
 		sameSite: "lax",
+		path: "/",
 		maxAge: 24 * 60 * 60 * 7,
 	});
 	return { success: true, message: "登录成功" };
