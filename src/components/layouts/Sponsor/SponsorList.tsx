@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,6 +58,7 @@ export default function SponsorList() {
 	const [currentPage, setCurrentPage] = useState(1);
 	const [loading, setLoading] = useState(false);
 	const [initialLoading, setInitialLoading] = useState(true);
+	const sentinelRef = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
 		const fetchData = async () => {
@@ -100,6 +101,42 @@ export default function SponsorList() {
 			setLoading(false);
 		}
 	};
+
+	// 自动加载：滚动至底部哨兵时触发加载更多
+	useEffect(() => {
+		if (initialLoading)
+			return;
+		const total = data?.data.total_page ?? 0;
+		if (!sentinelRef.current || !data || currentPage >= total)
+			return;
+
+		const el = sentinelRef.current;
+		let ticking = false;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				const entry = entries[0];
+				if (!entry.isIntersecting)
+					return;
+				if (ticking || loading)
+					return;
+				ticking = true;
+				// 小延迟避免连续触发
+				timer = setTimeout(() => {
+					loadMoreData().finally(() => {
+						ticking = false;
+					});
+				}, 100);
+			},
+			{ root: null, rootMargin: "200px 0px", threshold: 0.1 },
+		);
+		observer.observe(el);
+		return () => {
+			if (timer)
+				clearTimeout(timer);
+			observer.disconnect();
+		};
+	}, [data, currentPage, loading, initialLoading]);
 
 	// 如果还在初始加载，显示骨架屏
 	if (initialLoading) {
@@ -188,7 +225,10 @@ export default function SponsorList() {
 				})}
 			</div>
 
-			{/* 加载更多按钮 */}
+			{/* 滚动哨兵：可见即自动加载 */}
+			<div ref={sentinelRef} className="h-1" />
+
+			{/* 加载更多按钮（兜底） */}
 			{currentPage < data.data.total_page && (
 				<div className="py-6 text-center">
 					<Button

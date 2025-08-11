@@ -54,7 +54,8 @@ function getCanvasFingerprint(): string {
 	try {
 		const canvas = document.createElement("canvas");
 		const ctx = canvas.getContext("2d");
-		if (!ctx) return "no-canvas";
+		if (!ctx)
+			return "no-canvas";
 
 		canvas.width = 200;
 		canvas.height = 50;
@@ -91,10 +92,12 @@ function getWebGLFingerprint(): string {
 	try {
 		const canvas = document.createElement("canvas");
 		const gl = canvas.getContext("webgl") as WebGLRenderingContext | null;
-		if (!gl) return "no-webgl";
+		if (!gl)
+			return "no-webgl";
 
 		const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-		if (!debugInfo) return "no-debug-info";
+		if (!debugInfo)
+			return "no-debug-info";
 
 		const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
 		const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
@@ -111,14 +114,28 @@ function getWebGLFingerprint(): string {
  */
 function getFontFingerprint(): string {
 	const testFonts = [
-		"Arial", "Helvetica", "Times New Roman", "Courier New", "Verdana",
-		"Georgia", "Palatino", "Garamond", "Bookman", "Comic Sans MS",
-		"Trebuchet MS", "Arial Black", "Impact", "微软雅黑", "宋体", "黑体"
+		"Arial",
+		"Helvetica",
+		"Times New Roman",
+		"Courier New",
+		"Verdana",
+		"Georgia",
+		"Palatino",
+		"Garamond",
+		"Bookman",
+		"Comic Sans MS",
+		"Trebuchet MS",
+		"Arial Black",
+		"Impact",
+		"微软雅黑",
+		"宋体",
+		"黑体",
 	];
 
 	const canvas = document.createElement("canvas");
 	const ctx = canvas.getContext("2d");
-	if (!ctx) return "no-canvas";
+	if (!ctx)
+		return "no-canvas";
 
 	const baseFonts = ["monospace", "sans-serif", "serif"];
 	const testString = "mmmmmmmmmmlli";
@@ -170,7 +187,7 @@ function simpleHash(str: string): string {
 
 /**
  * 生成浏览器指纹
- * 
+ *
  * @returns Promise<string> 浏览器指纹字符串
  */
 export async function generateBrowserFingerprint(): Promise<string> {

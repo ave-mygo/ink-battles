@@ -81,10 +81,12 @@ export default function StatusDashboard() {
 
 	// 友好自动刷新：可开关、显示倒计时、页面隐藏时暂停
 	useEffect(() => {
-		if (!autoRefresh) return;
+		if (!autoRefresh)
+			return;
 		const interval = setInterval(() => {
-			if (document.hidden) return; // 页面不可见时暂停计时
-			setSecondsLeft(prev => {
+			if (document.hidden)
+				return; // 页面不可见时暂停计时
+			setSecondsLeft((prev) => {
 				if (prev <= 1) {
 					// 触发静默刷新（不改变 currentPage，刷新第一页与统计）
 					fetchLogs(1, true);

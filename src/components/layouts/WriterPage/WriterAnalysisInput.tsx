@@ -21,8 +21,8 @@ function LimitModal({ open, onClose, isLoggedIn, currentLimit }: {
 				<div className="text-2xl text-blue-600 font-bold mb-2">已达单次字数上限</div>
 				<div className="text-slate-700 mb-2 text-center">
 					{isLoggedIn
-						? `登录用户单次最多 ${currentLimit} 字`
-						: `未登录用户单次最多 ${currentLimit} 字，每日累计 ${DAILY_CAP_GUEST} 字`}
+						? `登录用户单次最多 ${currentLimit.toLocaleString()} 字`
+						: `未登录用户单次最多 ${currentLimit.toLocaleString()} 字，每日累计 ${DAILY_CAP_GUEST.toLocaleString()} 字`}
 				</div>
 				<div className="text-sm text-slate-600 text-center">
 					{isLoggedIn
@@ -102,7 +102,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 	};
 
 	return (
-		<Card className="mx-auto border-0 bg-white/80 h-full max-w-2xl w-full shadow-lg backdrop-blur-sm">
+		<Card className="border-0 bg-white/80 h-full w-full shadow-lg backdrop-blur-sm">
 			<CardHeader>
 				<CardTitle className="flex gap-2 items-center">
 					<FileText className="text-blue-600 h-5 w-5" />
@@ -110,27 +110,31 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 				</CardTitle>
 				<CardDescription>请粘贴您要分析的完整作品内容，支持小说、散文、诗歌等各类文体</CardDescription>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="flex flex-col h-full">
 				{/* 用户状态与限额信息 */}
-				<div className="mb-4 p-4 border border-blue-200 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50">
+				<div className="bg-gradient-to-r mb-4 p-4 border border-blue-200 rounded-lg from-blue-50 to-indigo-50">
 					{isLoggedIn
 						? (
 								<div className="space-y-2">
 									<div className="flex items-center justify-between">
 										<div className="flex gap-2 items-center">
 											<User className="text-green-600 h-5 w-5" />
-											<span className="text-sm font-semibold text-green-700">欢迎回来</span>
+											<span className="text-sm text-green-700 font-semibold">欢迎回来</span>
 										</div>
-										<div className="text-xs text-green-600 font-medium bg-green-100 px-2 py-1 rounded-full">
+										<div className="text-xs text-green-600 font-medium px-2 py-1 rounded-full bg-green-100">
 											会员用户
 										</div>
 									</div>
-									<div className="text-xs text-slate-600 flex items-center gap-1">
+									<div className="text-xs text-slate-600 flex gap-1 items-center">
 										<span>当前账号：</span>
 										<span className="text-green-700 font-mono">{userEmail}</span>
 									</div>
-									<div className="text-xs text-green-600 bg-white/60 rounded px-2 py-1 inline-block">
-										✨ 单次最多 {PER_REQUEST_LOGGED.toLocaleString()} 字，无每日限制
+									<div className="text-xs text-green-600 px-2 py-1 rounded bg-white/60 inline-block">
+										✨ 单次最多
+										{" "}
+										{PER_REQUEST_LOGGED.toLocaleString()}
+										{" "}
+										字，无每日限制
 									</div>
 								</div>
 							)
@@ -139,19 +143,27 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 									<div className="flex items-center justify-between">
 										<div className="flex gap-2 items-center">
 											<LogIn className="text-amber-600 h-5 w-5" />
-											<span className="text-sm font-semibold text-amber-700">体验模式</span>
+											<span className="text-sm text-amber-700 font-semibold">体验模式</span>
 										</div>
-										<div className="text-xs text-amber-600 font-medium bg-amber-100 px-2 py-1 rounded-full">
+										<div className="text-xs text-amber-600 font-medium px-2 py-1 rounded-full bg-amber-100">
 											游客用户
 										</div>
 									</div>
-									<div className="text-xs text-amber-600 bg-white/60 rounded px-2 py-1 inline-block">
-										单次最多 {PER_REQUEST_GUEST.toLocaleString()} 字，每日累计 {DAILY_CAP_GUEST.toLocaleString()} 字
+									<div className="text-xs text-amber-600 px-2 py-1 rounded bg-white/60 inline-block">
+										单次最多
+										{" "}
+										{PER_REQUEST_GUEST.toLocaleString()}
+										{" "}
+										字，每日累计
+										{" "}
+										{DAILY_CAP_GUEST.toLocaleString()}
+										{" "}
+										字
 									</div>
 									<div className="text-xs text-slate-600">
-										<a href="/signin" className="text-blue-600 hover:text-blue-700 underline">登录</a> 
-										<span className="mx-1">或</span> 
-										<a href="/signup" className="text-blue-600 hover:text-blue-700 underline">注册</a> 
+										<a href="/signin" className="text-blue-600 underline hover:text-blue-700">登录</a>
+										<span className="mx-1">或</span>
+										<a href="/signup" className="text-blue-600 underline hover:text-blue-700">注册</a>
 										<span className="ml-1">获得更好体验</span>
 									</div>
 								</div>
@@ -166,7 +178,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 							<span className="text-sm text-green-700 font-medium">登录用户</span>
 							<span className="text-xs text-green-600">
 								单次
-								{PER_REQUEST_LOGGED}
+								{PER_REQUEST_LOGGED.toLocaleString()}
 								{" "}
 								字，无每日上限
 							</span>
@@ -176,10 +188,10 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 							<span className="text-sm text-yellow-700 font-medium">未登录用户</span>
 							<span className="text-xs text-yellow-600">
 								单次
-								{PER_REQUEST_GUEST}
+								{PER_REQUEST_GUEST.toLocaleString()}
 								{" "}
 								字，当日累计
-								{DAILY_CAP_GUEST}
+								{DAILY_CAP_GUEST.toLocaleString()}
 								{" "}
 								字
 							</span>
@@ -192,8 +204,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 					placeholder="请在此处粘贴要分析的作品全文..."
 					value={articleText}
 					onChange={handleTextChange}
-					className="text-base leading-relaxed border-slate-200 max-h-[500px] min-h-[200px] w-full resize-y overflow-auto focus:border-blue-500 focus:ring-blue-500/20"
-					style={{ height: "auto", maxHeight: 500 }}
+					className="text-base leading-relaxed border-slate-200 flex-1 min-h-[200px] w-full resize-none overflow-auto focus:border-blue-500 focus:ring-blue-500/20"
 				/>
 				<div className="text-sm text-slate-500 mt-2 flex items-center justify-between">
 					<span>
