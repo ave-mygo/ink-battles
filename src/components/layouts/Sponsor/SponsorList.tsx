@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Sponsor {
 	user: {
@@ -24,17 +25,29 @@ interface SponsorData {
 	};
 }
 
-function LoadingModal({ open }: { open: boolean }) {
-	if (!open)
-		return null;
+function SponsorCardSkeleton() {
 	return (
-		<div className="bg-black/40 flex items-center inset-0 justify-center fixed z-50">
-			<div className="px-8 py-8 rounded-2xl bg-white flex flex-col gap-4 min-w-[220px] shadow-2xl items-center animate-fade-in">
-				<svg className="text-pink-500 h-10 w-10 animate-spin" viewBox="0 0 24 24">
-					<circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-					<path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-				</svg>
-				<div className="text-lg text-slate-700 font-medium">正在加载赞助者...</div>
+		<Card className="border-2 border-slate-100 overflow-hidden">
+			<div className="p-6 flex flex-col gap-3 items-center">
+				<Skeleton className="rounded-full h-20 w-20" />
+				<Skeleton className="h-6 w-32" />
+				<div className="flex gap-2">
+					<Skeleton className="rounded-full h-6 w-20" />
+					<Skeleton className="rounded-full h-6 w-16" />
+				</div>
+				<Skeleton className="h-4 w-24" />
+			</div>
+		</Card>
+	);
+}
+
+function SponsorLoadingSkeleton() {
+	return (
+		<div className="space-y-8">
+			<div className="gap-8 grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1">
+				{Array.from({ length: 9 }).map((_, i) => (
+					<SponsorCardSkeleton key={i} />
+				))}
 			</div>
 		</div>
 	);
@@ -44,11 +57,10 @@ export default function SponsorList() {
 	const [data, setData] = useState<SponsorData | null>(null);
 	const [currentPage, setCurrentPage] = useState(1);
 	const [loading, setLoading] = useState(false);
+	const [initialLoading, setInitialLoading] = useState(true);
 
 	useEffect(() => {
-		// 首次挂载时拉取第一页
 		const fetchData = async () => {
-			setLoading(true);
 			try {
 				const response = await fetch(`/api/sponsors?page=1`);
 				const newData: SponsorData = await response.json();
@@ -57,18 +69,22 @@ export default function SponsorList() {
 			} catch (error) {
 				console.error("Failed to fetch sponsors:", error);
 			} finally {
-				setLoading(false);
+				setInitialLoading(false);
 			}
 		};
 		fetchData();
 	}, []);
 
 	const loadMoreData = async () => {
+		if (!data || loading)
+			return;
+
 		setLoading(true);
 		try {
 			const nextPage = currentPage + 1;
 			const response = await fetch(`/api/sponsors?page=${nextPage}`);
 			const newData: SponsorData = await response.json();
+
 			setData(prev => prev && newData
 				? {
 						data: {
@@ -85,67 +101,119 @@ export default function SponsorList() {
 		}
 	};
 
+	// 如果还在初始加载，显示骨架屏
+	if (initialLoading) {
+		return <SponsorLoadingSkeleton />;
+	}
+
+	// 如果没有数据，显示空状态
+	if (!data || !data.data.list.length) {
+		return (
+			<div className="py-16 text-center">
+				<div className="text-6xl mb-4">💝</div>
+				<h3 className="text-xl text-slate-700 font-semibold mb-2">暂无赞助者</h3>
+				<p className="text-slate-500">成为第一个赞助者，支持我们的项目发展！</p>
+			</div>
+		);
+	}
+
 	// 找到累计最多和最新的赞助者
-	const mostSponsor = data?.data.list.reduce((max, cur) => Number.parseFloat(cur.all_sum_amount) > Number.parseFloat(max.all_sum_amount) ? cur : max, data.data.list[0]);
-	const latestSponsor = data?.data.list.reduce((latest, cur) => cur.last_pay_time > latest.last_pay_time ? cur : latest, data.data.list[0]);
+	const mostSponsor = data.data.list.reduce((max, cur) =>
+		Number.parseFloat(cur.all_sum_amount) > Number.parseFloat(max.all_sum_amount) ? cur : max, data.data.list[0]);
+	const latestSponsor = data.data.list.reduce((latest, cur) =>
+		cur.last_pay_time > latest.last_pay_time ? cur : latest, data.data.list[0]);
 
 	return (
-		<>
-			<LoadingModal open={loading || !data} />
-			<div className="space-y-8" style={{ filter: loading || !data ? "blur(2px)" : undefined, pointerEvents: loading || !data ? "none" : undefined }}>
-				<div className="gap-8 grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1">
-					{data?.data.list.map((sponsor) => {
-						const isMost = sponsor.user.user_id === mostSponsor?.user.user_id;
-						const isLatest = sponsor.user.user_id === latestSponsor?.user.user_id;
-						return (
-							<Card
-								key={sponsor.user.user_id}
-								className={`overflow-hidden transition-all duration-200 hover:shadow-2xl hover:-translate-y-1 border-2 ${isMost ? "border-yellow-400" : isLatest ? "border-blue-400" : "border-slate-100"}`}
-							>
-								<div className="p-6 flex flex-col gap-3 items-center">
-									<div className="relative">
-										<img
-											src={sponsor.user.avatar}
-											alt={sponsor.user.name}
-											className="border-4 border-white rounded-full h-20 w-20 shadow-md object-cover"
-											loading="lazy"
-										/>
-										{isMost && <span className="text-xs text-white font-bold px-2 py-0.5 rounded-full bg-yellow-400 shadow absolute -right-2 -top-2">累计最多</span>}
-										{isLatest && !isMost && <span className="text-xs text-white font-bold px-2 py-0.5 rounded-full bg-blue-400 shadow absolute -right-2 -top-2">最新赞助</span>}
-									</div>
-									<h3 className="text-xl text-slate-900 font-bold text-center w-full truncate">{sponsor.user.name}</h3>
-									<div className="flex flex-wrap gap-2 w-full items-center justify-center">
-										<span className="text-sm text-yellow-800 font-semibold px-3 py-1 rounded-full bg-yellow-100">
-											累计 ¥
-											{sponsor.all_sum_amount}
-										</span>
-										{sponsor.current_plan.name && (
-											<span className="text-sm text-blue-700 font-semibold px-3 py-1 rounded-full bg-blue-100">{sponsor.current_plan.name}</span>
-										)}
-									</div>
-									<div className="text-xs text-slate-500 mt-2">
-										最后赞助：
-										{new Date(sponsor.last_pay_time * 1000).toLocaleDateString("zh-CN")}
-									</div>
-								</div>
-							</Card>
-						);
-					})}
-				</div>
-				{data && currentPage < data.data.total_page && (
-					<div className="py-4 text-center">
-						<Button
-							onClick={loadMoreData}
-							disabled={loading}
-							variant="outline"
-							size="lg"
-							className="text-lg rounded-full min-w-[200px]"
+		<div className="space-y-8">
+			<div className="gap-8 grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1">
+				{data.data.list.map((sponsor) => {
+					const isMost = sponsor.user.user_id === mostSponsor?.user.user_id;
+					const isLatest = sponsor.user.user_id === latestSponsor?.user.user_id;
+					return (
+						<Card
+							key={sponsor.user.user_id}
+							className={`overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-2 ${
+								isMost
+									? "border-yellow-400 bg-gradient-to-br from-yellow-50 to-orange-50"
+									: isLatest
+										? "border-blue-400 bg-gradient-to-br from-blue-50 to-cyan-50"
+										: "border-slate-100 hover:border-slate-200"
+							}`}
 						>
-							{loading ? <span className="animate-pulse">加载中...</span> : "加载更多赞助者"}
-						</Button>
-					</div>
-				)}
+							<div className="p-6 flex flex-col gap-4 items-center">
+								<div className="relative">
+									<img
+										src={sponsor.user.avatar}
+										alt={sponsor.user.name}
+										className="border-4 border-white rounded-full h-20 w-20 shadow-lg object-cover"
+										loading="lazy"
+									/>
+									{isMost && (
+										<span className="bg-gradient-to-r text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-yellow-400 to-orange-400 -right-2 -top-2">
+											💎 累计最多
+										</span>
+									)}
+									{isLatest && !isMost && (
+										<span className="bg-gradient-to-r text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-blue-400 to-cyan-400 -right-2 -top-2">
+											⭐ 最新赞助
+										</span>
+									)}
+								</div>
+								<div className="text-center">
+									<h3 className="text-lg text-slate-900 font-bold mb-1 max-w-full truncate">
+										{sponsor.user.name}
+									</h3>
+								</div>
+								<div className="flex flex-wrap gap-2 w-full items-center justify-center">
+									<span className="bg-gradient-to-r text-sm text-amber-800 font-semibold px-3 py-1.5 border border-amber-200 rounded-full from-amber-100 to-yellow-100">
+										💰 ¥
+										{sponsor.all_sum_amount}
+									</span>
+									{sponsor.current_plan.name && (
+										<span className="bg-gradient-to-r text-sm text-blue-800 font-semibold px-3 py-1.5 border border-blue-200 rounded-full from-blue-100 to-cyan-100">
+											🎯
+											{" "}
+											{sponsor.current_plan.name}
+										</span>
+									)}
+								</div>
+								<div className="text-xs text-slate-500 px-3 py-1 rounded-full bg-slate-50">
+									🕒
+									{" "}
+									{new Date(sponsor.last_pay_time * 1000).toLocaleDateString("zh-CN")}
+								</div>
+							</div>
+						</Card>
+					);
+				})}
 			</div>
-		</>
+
+			{/* 加载更多按钮 */}
+			{currentPage < data.data.total_page && (
+				<div className="py-6 text-center">
+					<Button
+						onClick={loadMoreData}
+						disabled={loading}
+						variant="outline"
+						size="lg"
+						className="text-base border-2 rounded-full min-w-[200px] hover:border-pink-300 hover:bg-pink-50"
+					>
+						{loading
+							? (
+									<>
+										<div className="mr-2 border-2 border-pink-300 border-t-transparent rounded-full h-4 w-4 animate-spin" />
+										加载中...
+									</>
+								)
+							: (
+									<>
+										<span className="mr-2">📄</span>
+										加载更多赞助者
+									</>
+								)}
+					</Button>
+				</div>
+			)}
+		</div>
 	);
 }
