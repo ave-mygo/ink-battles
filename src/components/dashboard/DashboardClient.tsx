@@ -1,6 +1,5 @@
 "use client";
 
-import process from "node:process";
 import { CreditCard, Crown, ExternalLink, Link2, RefreshCw, Unlink, User } from "lucide-react";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -34,11 +33,17 @@ interface DashboardData {
 	subscription: SubscriptionInfo;
 }
 
-interface DashboardClientProps {
-	initialData: DashboardData;
+interface OAuthConfig {
+	authUrl: string;
+	state: string;
 }
 
-export const DashboardClient = ({ initialData }: DashboardClientProps) => {
+interface DashboardClientProps {
+	initialData: DashboardData;
+	oauthConfig: OAuthConfig;
+}
+
+export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientProps) => {
 	const [data, setData] = useState<DashboardData>(initialData);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -65,13 +70,11 @@ export const DashboardClient = ({ initialData }: DashboardClientProps) => {
 	};
 
 	const handleAfdianAuth = () => {
-		const clientId = process.env.NEXT_PUBLIC_AFDIAN_CLIENT_ID;
-		const redirectUri = process.env.NEXT_PUBLIC_AFDIAN_REDIRECT_URI;
-		const scope = "basic";
-		const state = Math.random().toString(36).substring(2);
-
-		const authUrl = `https://afdian.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&state=${state}`;
-		window.location.href = authUrl;
+		// 将服务端生成的 state 存储到 sessionStorage 以便回调时验证
+		sessionStorage.setItem('oauth_state', oauthConfig.state);
+		
+		// 直接使用服务端生成的OAuth URL
+		window.location.href = oauthConfig.authUrl;
 	};
 
 	const handleUnbindAfdian = async () => {
