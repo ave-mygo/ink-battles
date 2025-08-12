@@ -9,7 +9,7 @@ export default function WriterAnalysisHeader() {
 	return (
 		<div className="mb-8 text-center">
 			<div className="mb-6 flex flex-col gap-4 items-center justify-center sm:flex-row sm:gap-6">
-				<div className="bg-gradient-to-r p-4 rounded-xl shadow-lg from-blue-600 to-purple-600">
+				<div className="p-4 rounded-xl shadow-lg from-blue-600 to-purple-600 bg-gradient-to-r">
 					<PenTool className="text-white h-8 w-8" />
 				</div>
 				<h1 className="text-3xl text-slate-800 leading-tight font-bold sm:text-4xl">作家战力分析系统</h1>
@@ -92,7 +92,7 @@ export default function WriterAnalysisHeader() {
 					</p>
 				</div>
 				<Separator />
-				<div className="bg-gradient-to-r text-sm text-slate-600 p-6 border-l-4 border-blue-200 from-slate-50/80 to-blue-50/80 backdrop-blur-sm">
+				<div className="text-sm text-slate-600 p-6 border-l-4 border-blue-200 from-slate-50/80 to-blue-50/80 bg-gradient-to-r backdrop-blur-sm">
 					<h3 className="text-slate-800 font-semibold mb-3 flex gap-2 items-center">
 						<PenTool className="h-4 w-4" />
 						创作理念

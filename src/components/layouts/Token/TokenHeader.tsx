@@ -9,15 +9,15 @@ export default function TokenHeader() {
 	return (
 		<div className="mb-8 text-center">
 			<div className="mb-6 flex gap-4 items-center justify-center">
-				<div className="bg-gradient-to-br p-4 rounded-2xl flex shadow-xl items-center justify-center from-orange-500 to-red-600 via-yellow-500">
+				<div className="p-4 rounded-2xl flex shadow-xl items-center justify-center from-orange-500 to-red-600 via-yellow-500 bg-gradient-to-br">
 					<AlertTriangle className="text-white h-8 w-8" />
 				</div>
-				<h1 className="bg-gradient-to-r text-4xl text-transparent tracking-tight font-extrabold from-slate-700 to-slate-900 bg-clip-text drop-shadow-sm md:text-5xl">
+				<h1 className="text-4xl text-transparent tracking-tight font-extrabold from-slate-700 to-slate-900 bg-gradient-to-r bg-clip-text drop-shadow-sm md:text-5xl">
 					Token 管理
 				</h1>
 			</div>
 
-			<Card className="bg-gradient-to-r mb-8 border-0 shadow-lg from-orange-50 to-red-50 via-yellow-50">
+			<Card className="mb-8 border-0 shadow-lg from-orange-50 to-red-50 via-yellow-50 bg-gradient-to-r">
 				<CardContent className="p-8">
 					<p className="text-xl text-slate-700 leading-relaxed font-medium mb-6">
 						Token 功能已下线，系统已全面切换为账号系统。
@@ -26,7 +26,7 @@ export default function TokenHeader() {
 						<Button
 							asChild
 							size="lg"
-							className="bg-gradient-to-r text-white font-bold px-8 py-4 rounded-full shadow-lg transition-all duration-300 from-blue-500 to-indigo-500 hover:shadow-xl hover:scale-105 hover:from-blue-600 hover:to-indigo-600"
+							className="text-white font-bold px-8 py-4 rounded-full shadow-lg transition-all duration-300 from-blue-500 to-indigo-500 bg-gradient-to-r hover:shadow-xl hover:scale-105 hover:from-blue-600 hover:to-indigo-600"
 						>
 							<Link href="/signin" className="flex gap-2 items-center">
 								<LogIn className="h-5 w-5" />

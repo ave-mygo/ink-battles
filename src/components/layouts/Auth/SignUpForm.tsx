@@ -95,7 +95,7 @@ const SignUpForm = () => {
 	};
 
 	return (
-		<div className="bg-gradient-to-br flex min-h-[calc(100vh-57px)] items-center from-slate-50 to-slate-100">
+		<div className="flex min-h-[calc(100vh-57px)] items-center from-slate-50 to-slate-100 bg-gradient-to-br">
 			<div className="mx-auto px-4 py-6 container max-w-md sm:py-8">
 				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
 					<CardHeader>

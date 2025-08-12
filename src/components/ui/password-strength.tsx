@@ -37,10 +37,10 @@ export const PasswordStrengthIndicator = ({
 	].filter(Boolean).length;
 
 	return (
-		<div className={`rounded-lg border bg-white/70 backdrop-blur p-3 sm:p-4 space-y-3 ${className}`}>
+		<div className={`p-3 border rounded-lg bg-white/70 backdrop-blur space-y-3 sm:p-4 ${className}`}>
 			<div className="flex items-center justify-between">
 				<div className="text-sm text-slate-700 font-medium">密码要求（满足任意两项即可）</div>
-				<div className={`text-xs px-2 py-0.5 rounded-full border ${
+				<div className={`text-xs px-2 py-0.5 border rounded-full ${
 					categoriesMet >= 2 ? "text-green-700 border-green-200 bg-green-50" : "text-amber-700 border-amber-200 bg-amber-50"
 				}`}
 				>
@@ -54,7 +54,7 @@ export const PasswordStrengthIndicator = ({
 			{/* 进度条：更纤细，颜色柔和 */}
 			<div className="rounded-full bg-slate-200/70 h-1.5 w-full">
 				<div
-					className={`h-1.5 rounded-full transition-all duration-300 ${progressColor}`}
+					className={`rounded-full h-1.5 transition-all duration-300 ${progressColor}`}
 					style={{ width: `${strength.score}%` }}
 				/>
 			</div>
@@ -189,7 +189,7 @@ export const PasswordStrengthMeter = ({
 			</div>
 			<div className="rounded-full bg-gray-200 h-1.5 w-full">
 				<div
-					className={`h-1.5 rounded-full transition-all duration-300 ${progressColor}`}
+					className={`rounded-full h-1.5 transition-all duration-300 ${progressColor}`}
 					style={{ width: `${strength.score}%` }}
 				/>
 			</div>

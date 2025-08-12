@@ -261,7 +261,7 @@ export default function WriterAnalysisSystem() {
 	};
 
 	return (
-		<div className="bg-gradient-to-br min-h-screen from-slate-50 to-slate-100">
+		<div className="min-h-screen from-slate-50 to-slate-100 bg-gradient-to-br">
 			<div className="mx-auto px-4 py-6 container max-w-7xl sm:py-8">
 				{/* Header */}
 				<WriterAnalysisHeader />

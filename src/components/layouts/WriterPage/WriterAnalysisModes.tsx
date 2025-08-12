@@ -66,7 +66,7 @@ export default function WriterAnalysisModes({
 					return (
 						<div
 							key={mode.id}
-							className={`p-4 rounded-lg border-2 transition-all duration-200 w-full ${
+							className={`p-4 border-2 rounded-lg w-full transition-all duration-200 ${
 								selectedMode.includes(mode.id)
 									? "border-blue-500 bg-blue-50"
 									: isLocked
@@ -139,13 +139,13 @@ export default function WriterAnalysisModes({
 
 				{/* 可展开的额外模式 */}
 				<div
-					className={`overflow-hidden transition-all duration-500 ease-out ${
-						isModesExpanded 
-							? 'max-h-[2000px] opacity-100' 
-							: 'max-h-0 opacity-0'
+					className={`transition-all duration-500 ease-out overflow-hidden ${
+						isModesExpanded
+							? "max-h-[2000px] opacity-100"
+							: "max-h-0 opacity-0"
 					}`}
 				>
-					<div className="space-y-4 pt-2">
+					<div className="pt-2 space-y-4">
 						{evaluationModes.slice(4).map((mode) => {
 							const isAiDetection = mode.id === "ai-detection";
 							const isLocked = isAiDetection && !isLoggedIn;
@@ -153,11 +153,11 @@ export default function WriterAnalysisModes({
 							return (
 								<div
 									key={mode.id}
-									className={`p-4 rounded-lg border-2 transition-all duration-200 w-full transform ${
-										isModesExpanded 
-											? 'translate-y-0 opacity-100' 
-											: 'translate-y-2 opacity-0'
-									} ${
+									className={`p-4 border-2 rounded-lg w-full transform transition-all duration-200 ${
+										isModesExpanded
+											? "translate-y-0 opacity-100"
+											: "translate-y-2 opacity-0"
+									}  ${
 										selectedMode.includes(mode.id)
 											? "border-blue-500 bg-blue-50"
 											: isLocked
@@ -165,7 +165,7 @@ export default function WriterAnalysisModes({
 												: "border-slate-200 hover:border-slate-300"
 									}`}
 									style={{
-										transitionDelay: isModesExpanded ? `${evaluationModes.slice(4).indexOf(mode) * 50}ms` : '0ms'
+										transitionDelay: isModesExpanded ? `${evaluationModes.slice(4).indexOf(mode) * 50}ms` : "0ms",
 									}}
 								>
 									<div className="flex items-center justify-between">
@@ -235,23 +235,25 @@ export default function WriterAnalysisModes({
 
 				<Button
 					variant="ghost"
-					className="text-slate-600 w-full hover:text-blue-600 transition-all duration-200"
+					className="text-slate-600 w-full transition-all duration-200 hover:text-blue-600"
 					onClick={() => setIsModesExpanded(!isModesExpanded)}
 				>
 					{isModesExpanded
 						? (
 								<>
 									<ChevronUp className={`mr-2 h-4 w-4 transition-transform duration-200 ${
-										isModesExpanded ? 'rotate-180' : 'rotate-0'
-									}`} />
+										isModesExpanded ? "rotate-180" : "rotate-0"
+									}`}
+									/>
 									收起更多模式
 								</>
 							)
 						: (
 								<>
 									<ChevronDown className={`mr-2 h-4 w-4 transition-transform duration-200 ${
-										isModesExpanded ? 'rotate-180' : 'rotate-0'
-									}`} />
+										isModesExpanded ? "rotate-180" : "rotate-0"
+									}`}
+									/>
 									展开更多模式 (
 									{evaluationModes.length - 4}
 									)

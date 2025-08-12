@@ -9,15 +9,15 @@ export default function SponsorHeader() {
 	return (
 		<div className="mb-8 text-center">
 			<div className="mb-6 flex gap-4 items-center justify-center">
-				<div className="bg-gradient-to-br p-4 rounded-2xl flex shadow-xl items-center justify-center from-pink-500 to-rose-600 via-red-500">
+				<div className="p-4 rounded-2xl flex shadow-xl items-center justify-center from-pink-500 to-rose-600 via-red-500 bg-gradient-to-br">
 					<Heart className="text-white h-8 w-8 animate-pulse" fill="currentColor" />
 				</div>
-				<h1 className="bg-gradient-to-r text-4xl text-transparent tracking-tight font-extrabold from-slate-700 to-slate-900 bg-clip-text drop-shadow-sm md:text-5xl">
+				<h1 className="text-4xl text-transparent tracking-tight font-extrabold from-slate-700 to-slate-900 bg-gradient-to-r bg-clip-text drop-shadow-sm md:text-5xl">
 					赞助者名单
 				</h1>
 			</div>
 
-			<Card className="bg-gradient-to-r mb-8 border-0 shadow-lg from-rose-50 to-orange-50 via-pink-50">
+			<Card className="mb-8 border-0 shadow-lg from-rose-50 to-orange-50 via-pink-50 bg-gradient-to-r">
 				<CardContent className="p-8">
 					<p className="text-xl text-slate-700 leading-relaxed font-medium mb-6">
 						✨ 感谢所有赞助者的支持！您的每一份赞助都让我们更有动力持续改进产品。
@@ -26,7 +26,7 @@ export default function SponsorHeader() {
 						<Button
 							asChild
 							size="lg"
-							className="bg-gradient-to-r text-white font-bold px-8 py-4 rounded-full shadow-lg transition-all duration-300 from-red-500 to-pink-500 hover:shadow-xl hover:scale-105 hover:from-red-600 hover:to-pink-600"
+							className="text-white font-bold px-8 py-4 rounded-full shadow-lg transition-all duration-300 from-red-500 to-pink-500 bg-gradient-to-r hover:shadow-xl hover:scale-105 hover:from-red-600 hover:to-pink-600"
 						>
 							<a
 								href="https://afdian.com/a/tianxiang"

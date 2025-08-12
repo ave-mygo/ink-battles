@@ -32,7 +32,58 @@ export async function GET(request: NextRequest) {
 		}
 
 		// 检查是否绑定了爱发电账号
-		if (!user.afdian_user_id || !user.afdian_access_token) {
+		if (!user.afdian_user_id) {
+			return NextResponse.json({
+				user: {
+					id: user._id,
+					username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
+					email: user.email,
+					avatar: user.avatar,
+					afdian_bound: false,
+				},
+				subscription: {
+					isSubscribed: false,
+					sponsorInfo: null,
+					totalAmount: 0,
+					currentPlan: null,
+					subscriptionStatus: "not_bound",
+				},
+			});
+		}
+
+		// 如果是通过订单号绑定的用户，直接使用存储的总捐赠额
+		if (user.afdian_bound_order_id && user.afdian_total_amount !== undefined) {
+			const totalAmount = user.afdian_total_amount || 0;
+			const isSubscribed = totalAmount > 0;
+
+			return NextResponse.json({
+				user: {
+					id: user._id,
+					username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
+					email: user.email,
+					avatar: user.avatar || user.afdian_avatar,
+					afdian_bound: true,
+					afdian_user_id: user.afdian_user_id,
+					afdian_username: user.afdian_username,
+				},
+				subscription: {
+					isSubscribed,
+					sponsorInfo: isSubscribed
+						? {
+								user_id: user.afdian_user_id,
+								all_sum_amount: totalAmount,
+								bound_order_id: user.afdian_bound_order_id,
+							}
+						: null,
+					totalAmount,
+					currentPlan: null,
+					subscriptionStatus: isSubscribed ? "active" : "inactive",
+				},
+			});
+		}
+
+		// 对于OAuth绑定的用户，使用原有的API查询逻辑
+		if (!user.afdian_access_token) {
 			return NextResponse.json({
 				user: {
 					id: user._id,

@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
 						afdian_avatar: "",
 						afdian_access_token: "",
 						afdian_refresh_token: "",
+						afdian_bound_order_id: "",
+						afdian_total_amount: "",
 					},
 					updated_at: new Date(),
 				},

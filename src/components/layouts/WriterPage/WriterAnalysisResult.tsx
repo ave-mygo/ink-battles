@@ -117,9 +117,9 @@ export default function WriterAnalysisResult({
 					<div className="text-sm text-slate-600 mb-4">{analysisResult.ratingTag}</div>
 
 					<div
-						className={`inline-flex px-4 py-2 rounded-full text-sm font-medium ${getScoreBgColor(
+						className={`text-sm font-medium px-4 py-2 rounded-full inline-flex ${getScoreBgColor(
 							analysisResult.overallScore,
-						)} ${getScoreColor(analysisResult.overallScore)} mb-4`}
+						)}  ${getScoreColor(analysisResult.overallScore)} mb-4`}
 					>
 						{analysisResult.overallScore >= 80
 							? "优秀作品"

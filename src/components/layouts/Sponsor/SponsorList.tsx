@@ -169,7 +169,7 @@ export default function SponsorList() {
 					return (
 						<Card
 							key={sponsor.user.user_id}
-							className={`overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border-2 ${
+							className={`border-2 transition-all duration-300 overflow-hidden hover:shadow-xl hover:-translate-y-1 ${
 								isMost
 									? "border-yellow-400 bg-gradient-to-br from-yellow-50 to-orange-50"
 									: isLatest
@@ -186,12 +186,12 @@ export default function SponsorList() {
 										loading="lazy"
 									/>
 									{isMost && (
-										<span className="bg-gradient-to-r text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-yellow-400 to-orange-400 -right-2 -top-2">
+										<span className="text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-yellow-400 to-orange-400 bg-gradient-to-r -right-2 -top-2">
 											💎 累计最多
 										</span>
 									)}
 									{isLatest && !isMost && (
-										<span className="bg-gradient-to-r text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-blue-400 to-cyan-400 -right-2 -top-2">
+										<span className="text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-blue-400 to-cyan-400 bg-gradient-to-r -right-2 -top-2">
 											⭐ 最新赞助
 										</span>
 									)}
@@ -202,12 +202,12 @@ export default function SponsorList() {
 									</h3>
 								</div>
 								<div className="flex flex-wrap gap-2 w-full items-center justify-center">
-									<span className="bg-gradient-to-r text-sm text-amber-800 font-semibold px-3 py-1.5 border border-amber-200 rounded-full from-amber-100 to-yellow-100">
+									<span className="text-sm text-amber-800 font-semibold px-3 py-1.5 border border-amber-200 rounded-full from-amber-100 to-yellow-100 bg-gradient-to-r">
 										💰 ¥
 										{sponsor.all_sum_amount}
 									</span>
 									{sponsor.current_plan.name && (
-										<span className="bg-gradient-to-r text-sm text-blue-800 font-semibold px-3 py-1.5 border border-blue-200 rounded-full from-blue-100 to-cyan-100">
+										<span className="text-sm text-blue-800 font-semibold px-3 py-1.5 border border-blue-200 rounded-full from-blue-100 to-cyan-100 bg-gradient-to-r">
 											🎯
 											{" "}
 											{sponsor.current_plan.name}

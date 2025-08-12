@@ -10,7 +10,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function StatusPage() {
 	return (
-		<div className="bg-gradient-to-br min-h-screen from-slate-50 to-slate-100">
+		<div className="min-h-screen from-slate-50 to-slate-100 bg-gradient-to-br">
 			<div className="mx-auto px-4 py-8 container max-w-7xl">
 				<StatusDashboard />
 			</div>

@@ -45,7 +45,7 @@ const SignInForm = () => {
 	};
 
 	return (
-		<div className="bg-gradient-to-br min-h-[calc(100vh-0px)] from-slate-50 to-slate-100">
+		<div className="min-h-[calc(100vh-0px)] from-slate-50 to-slate-100 bg-gradient-to-br">
 			<div className="mx-auto px-4 py-16 container max-w-md">
 				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
 					<CardHeader>
