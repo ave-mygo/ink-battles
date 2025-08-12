@@ -147,7 +147,18 @@ export async function db_update(dbName: string, collectionName: string, query: o
 		await connectWithTimeout(client);
 		const db = client.db(dbName);
 		const collection = db.collection(collectionName);
-		await collection.updateOne(query, { $set: data });
+
+		// 检查data是否已经包含MongoDB更新操作符
+		const hasUpdateOperators = Object.keys(data).some(key => key.startsWith("$"));
+
+		if (hasUpdateOperators) {
+			// 如果包含更新操作符，直接使用data
+			await collection.updateOne(query, data);
+		} else {
+			// 如果不包含更新操作符，使用$set包装
+			await collection.updateOne(query, { $set: data });
+		}
+
 		return true;
 	} catch (error) {
 		console.error(`更新数据时出错: ${(error as Error).message}`);

@@ -65,15 +65,15 @@ async function readCollection(dbName, collectionName, filter = {}, options = {})
 		await client.connect();
 		const db = client.db(dbName);
 		const collection = db.collection(collectionName);
-		
+
 		// 提取排序选项
 		const { sort, ...findOptions } = options;
-		
+
 		// 如果有排序选项，使用sort方法
 		if (sort) {
 			return await collection.find(filter, findOptions).sort(sort).toArray();
 		}
-		
+
 		return await collection.find(filter, findOptions).toArray();
 	} catch (error) {
 		console.error(`读取数据时出错: ${error.message}`);
@@ -89,9 +89,9 @@ async function readCollection(dbName, collectionName, filter = {}, options = {})
 async function analyzeCollection(collectionName) {
 	try {
 		// 读取集合中的后 100 条文档来分析结构
-		const documents = await readCollection(DB_NAME, collectionName, {}, { 
+		const documents = await readCollection(DB_NAME, collectionName, {}, {
 			limit: 100,
-			sort: { _id: -1 } // 按_id降序排列，获取最新的文档
+			sort: { _id: -1 }, // 按_id降序排列，获取最新的文档
 		});
 
 		if (documents.length === 0) {
