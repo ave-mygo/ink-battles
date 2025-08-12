@@ -4,8 +4,9 @@ import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { DAILY_CAP_GUEST, PER_REQUEST_GUEST, PER_REQUEST_LOGGED } from "@/lib/constants";
+import { calculateAdvancedModelCalls, getUserType, USER_LIMITS, UserType } from "@/lib/constants";
 import { db_find, db_insert, db_read, db_update } from "@/lib/db";
+import { getUserSubscriptionData } from "@/lib/subscription";
 import "server-only";
 
 const DB_NAME = "ink_battles";
@@ -233,10 +234,11 @@ export const getCurrentUserEmail = async (): Promise<string | null> => {
 };
 
 /**
- * 校验并消耗使用额度。
- * - 未登录：单次最大 {PER_REQUEST_GUEST} 字，且当日累计（按 IP 或 指纹 任一标识）≤ {DAILY_CAP_GUEST}
- * - 已登录：单次最大 {PER_REQUEST_LOGGED} 字，无当日累计上限
- * @returns 是否允许本次请求与提示信息
+ * 校验并消耗使用额度 - 支持用户分级
+ * - 游客（未登录）：按配置的单次和每日限制
+ * - 普通用户（已登录但未捐赠）：按配置的单次限制，无日累计限制
+ * - 会员用户（已登录且已捐赠）：无单次和日累计限制，可使用高级模型
+ * @returns 是否允许本次请求、提示信息和用户信息
  */
 export const checkAndConsumeUsage = async (
 	params: {
@@ -244,58 +246,149 @@ export const checkAndConsumeUsage = async (
 		ip?: string | null;
 		fingerprint?: string | null;
 		textLength: number;
+		isAdvancedModel?: boolean; // 是否使用高级模型
 	},
-): Promise<{ allowed: boolean; message?: string }> => {
-	const { userEmail, ip, fingerprint, textLength } = params;
+): Promise<{
+	allowed: boolean;
+	message?: string;
+	userType?: UserType;
+	dailyAdvancedModelCalls?: number;
+	remainingAdvancedModelCalls?: number;
+}> => {
+	const { userEmail, ip, fingerprint, textLength, isAdvancedModel = false } = params;
 	const isLoggedIn = Boolean(userEmail);
 
-	if (isLoggedIn) {
-		if (textLength > PER_REQUEST_LOGGED) {
-			return { allowed: false, message: `单次分析上限为 ${PER_REQUEST_LOGGED.toLocaleString()} 字` };
+	let donationAmount = 0;
+	let userType = getUserType(isLoggedIn, donationAmount);
+
+	// 如果用户已登录，获取订阅信息
+	if (isLoggedIn && userEmail) {
+		try {
+			const subscriptionData = await getUserSubscriptionData(userEmail);
+			donationAmount = subscriptionData.subscription.totalAmount || 0;
+			userType = getUserType(isLoggedIn, donationAmount);
+		} catch (error) {
+			console.warn("获取用户订阅信息失败，使用默认限制:", error);
 		}
-		// 登录用户无日上限，不记录日计数，但可按需统计
-		return { allowed: true };
 	}
 
-	// 未登录：单次限制
-	if (textLength > PER_REQUEST_GUEST) {
-		return { allowed: false, message: `未登录单次分析上限为 ${PER_REQUEST_GUEST.toLocaleString()} 字` };
+	const limits = USER_LIMITS[userType];
+
+	// 检查单次字数限制
+	if (limits.perRequest && textLength > limits.perRequest) {
+		return {
+			allowed: false,
+			message: `${userType === UserType.GUEST ? "游客" : userType === UserType.REGULAR ? "普通用户" : "会员"}单次分析上限为 ${limits.perRequest.toLocaleString()} 字`,
+			userType,
+		};
 	}
 
-	// 未登录：日累计限制（按任一：IP 或 指纹）
-	const dayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-	const ipKey = ip ? { dayKey, type: "ip", key: ip } : null;
-	const fpKey = fingerprint ? { dayKey, type: "fp", key: fingerprint } : null;
-
-	const readCounter = async (key: { dayKey: string; type: string; key: string } | null): Promise<number> => {
-		if (!key)
-			return 0;
-		const doc = await db_find(DB_NAME, "daily_usage", key);
-		return doc?.used ?? 0;
-	};
-
-	const ipUsed = await readCounter(ipKey);
-	const fpUsed = await readCounter(fpKey);
-	const existedMax = Math.max(ipUsed, fpUsed);
-
-	if (existedMax + textLength > DAILY_CAP_GUEST) {
-		return { allowed: false, message: `未登录当日累计上限为 ${DAILY_CAP_GUEST} 字，请登录后继续使用` };
-	}
-
-	const incCounter = async (key: { dayKey: string; type: string; key: string } | null, delta: number) => {
-		if (!key)
-			return;
-		const doc = await db_find(DB_NAME, "daily_usage", key);
-		if (doc) {
-			await db_update(DB_NAME, "daily_usage", key, { used: (doc.used ?? 0) + delta, updatedAt: new Date() });
-		} else {
-			await db_insert(DB_NAME, "daily_usage", { ...key, used: delta, createdAt: new Date() });
+	// 检查高级模型使用权限
+	if (isAdvancedModel) {
+		if (userType === UserType.GUEST || userType === UserType.REGULAR) {
+			return {
+				allowed: false,
+				message: "高级模型需要会员权限，请先成为会员用户",
+				userType,
+			};
 		}
+
+		// 检查会员用户的高级模型调用次数
+		if (userType === UserType.MEMBER && donationAmount > 0) {
+			const maxCalls = calculateAdvancedModelCalls(donationAmount);
+			const dayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+			const usageKey = { dayKey, type: "advanced_model", key: userEmail };
+
+			const usageDoc = await db_find(DB_NAME, "daily_usage", usageKey);
+			const currentUsage = usageDoc?.used ?? 0;
+
+			if (currentUsage >= maxCalls) {
+				return {
+					allowed: false,
+					message: `今日高级模型调用次数已用完（${maxCalls}次），请明日再试或增加捐赠`,
+					userType,
+					dailyAdvancedModelCalls: maxCalls,
+					remainingAdvancedModelCalls: 0,
+				};
+			}
+
+			// 消耗一次高级模型调用次数
+			if (usageDoc) {
+				await db_update(DB_NAME, "daily_usage", usageKey, {
+					used: currentUsage + 1,
+					updatedAt: new Date(),
+				});
+			} else {
+				await db_insert(DB_NAME, "daily_usage", {
+					...usageKey,
+					used: 1,
+					createdAt: new Date(),
+				});
+			}
+
+			return {
+				allowed: true,
+				userType,
+				dailyAdvancedModelCalls: maxCalls,
+				remainingAdvancedModelCalls: maxCalls - currentUsage - 1,
+			};
+		}
+	}
+
+	// 对于游客用户，检查每日累计限制
+	if (userType === UserType.GUEST && limits.dailyLimit) {
+		const dayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+		const ipKey = ip ? { dayKey, type: "ip", key: ip } : null;
+		const fpKey = fingerprint ? { dayKey, type: "fp", key: fingerprint } : null;
+
+		const readCounter = async (key: { dayKey: string; type: string; key: string } | null): Promise<number> => {
+			if (!key)
+				return 0;
+			const doc = await db_find(DB_NAME, "daily_usage", key);
+			return doc?.used ?? 0;
+		};
+
+		const ipUsed = await readCounter(ipKey);
+		const fpUsed = await readCounter(fpKey);
+		const existedMax = Math.max(ipUsed, fpUsed);
+
+		if (existedMax + textLength > limits.dailyLimit) {
+			return {
+				allowed: false,
+				message: `游客当日累计上限为 ${limits.dailyLimit.toLocaleString()} 字，请登录后继续使用`,
+				userType,
+			};
+		}
+
+		const incCounter = async (key: { dayKey: string; type: string; key: string } | null, delta: number) => {
+			if (!key)
+				return;
+			const doc = await db_find(DB_NAME, "daily_usage", key);
+			if (doc) {
+				await db_update(DB_NAME, "daily_usage", key, {
+					used: (doc.used ?? 0) + delta,
+					updatedAt: new Date(),
+				});
+			} else {
+				await db_insert(DB_NAME, "daily_usage", {
+					...key,
+					used: delta,
+					createdAt: new Date(),
+				});
+			}
+		};
+
+		// 同步增加 IP 与 指纹计数，防止绕过
+		await incCounter(ipKey, textLength);
+		await incCounter(fpKey, textLength);
+	}
+
+	return {
+		allowed: true,
+		userType,
+		...(userType === UserType.MEMBER && donationAmount > 0 && {
+			dailyAdvancedModelCalls: calculateAdvancedModelCalls(donationAmount),
+			remainingAdvancedModelCalls: calculateAdvancedModelCalls(donationAmount) - 0, // 基础模型不消耗
+		}),
 	};
-
-	// 同步增加 IP 与 指纹计数，防止绕过
-	await incCounter(ipKey, textLength);
-	await incCounter(fpKey, textLength);
-
-	return { allowed: true };
 };
