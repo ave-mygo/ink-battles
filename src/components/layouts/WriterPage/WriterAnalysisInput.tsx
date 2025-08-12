@@ -112,7 +112,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 			</CardHeader>
 			<CardContent className="flex flex-col h-full">
 				{/* 用户状态与限额信息 */}
-				<div className="bg-gradient-to-r mb-4 p-4 border border-blue-200 rounded-lg from-blue-50 to-indigo-50">
+				<div className="mb-4 p-4 border border-blue-200 rounded-lg from-blue-50 to-indigo-50 bg-gradient-to-r">
 					{isLoggedIn
 						? (
 								<div className="space-y-2">

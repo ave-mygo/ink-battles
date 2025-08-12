@@ -1,12 +1,15 @@
 "use client";
 
 import { CreditCard, Crown, ExternalLink, Link2, RefreshCw, Unlink, User } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 
@@ -48,6 +51,9 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [bindLoading, setBindLoading] = useState(false);
+	const [orderIdDialogOpen, setOrderIdDialogOpen] = useState(false);
+	const [orderId, setOrderId] = useState("");
+	const [orderBindLoading, setOrderBindLoading] = useState(false);
 
 	const refreshData = async () => {
 		try {
@@ -69,10 +75,17 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 		}
 	};
 
+	// 如果初始数据的订阅状态是loading，自动刷新获取最新数据
+	React.useEffect(() => {
+		if (initialData.subscription.subscriptionStatus === "loading") {
+			refreshData();
+		}
+	}, []);
+
 	const handleAfdianAuth = () => {
 		// 将服务端生成的 state 存储到 sessionStorage 以便回调时验证
-		sessionStorage.setItem('oauth_state', oauthConfig.state);
-		
+		sessionStorage.setItem("oauth_state", oauthConfig.state);
+
 		// 直接使用服务端生成的OAuth URL
 		window.location.href = oauthConfig.authUrl;
 	};
@@ -101,7 +114,45 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 		}
 	};
 
+	const handleOrderIdBind = async () => {
+		if (!orderId.trim()) {
+			setError("请输入订单号");
+			return;
+		}
+
+		try {
+			setOrderBindLoading(true);
+			setError(null);
+
+			const response = await fetch("/api/user/bind-order", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ orderId: orderId.trim() }),
+			});
+
+			const result = await response.json();
+
+			if (!response.ok) {
+				throw new Error(result.error || "绑定失败");
+			}
+
+			setOrderIdDialogOpen(false);
+			setOrderId("");
+			await refreshData();
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "绑定失败");
+		} finally {
+			setOrderBindLoading(false);
+		}
+	};
+
 	const getSubscriptionStatusBadge = (status: string, isSubscribed: boolean) => {
+		if (status === "loading") {
+			return <Badge variant="secondary">加载中...</Badge>;
+		}
+
 		if (!isSubscribed) {
 			return <Badge variant="secondary">未订阅</Badge>;
 		}
@@ -140,7 +191,7 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="text-3xl font-bold">用户控制台</h1>
 				<Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
-					<RefreshCw className="mr-2 h-4 w-4" />
+					<RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
 					刷新
 				</Button>
 			</div>
@@ -219,22 +270,83 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 										</div>
 									)
 								: (
-										<div className="p-3 border border-orange-200 rounded-lg bg-orange-50 flex items-center justify-between">
-											<div className="flex items-center space-x-3">
-												<div className="rounded-full bg-orange-500 h-2 w-2"></div>
-												<div>
-													<p className="text-sm text-orange-800 font-medium">未绑定爱发电账号</p>
-													<p className="text-xs text-orange-600">绑定后可享受订阅功能</p>
+										<div className="space-y-3">
+											<div className="p-3 border border-orange-200 rounded-lg bg-orange-50">
+												<div className="flex items-center space-x-3">
+													<div className="rounded-full bg-orange-500 h-2 w-2"></div>
+													<div>
+														<p className="text-sm text-orange-800 font-medium">未绑定爱发电账号</p>
+														<p className="text-xs text-orange-600">绑定后可享受订阅功能</p>
+													</div>
 												</div>
 											</div>
-											<Button
-												size="sm"
-												onClick={handleAfdianAuth}
-												className="text-white bg-orange-500 hover:bg-orange-600"
-											>
-												<Link2 className="mr-1 h-3 w-3" />
-												立即绑定
-											</Button>
+
+											<div className="flex gap-2">
+												<Button
+													size="sm"
+													onClick={handleAfdianAuth}
+													className="text-white bg-orange-500 flex-1 hover:bg-orange-600"
+												>
+													<Link2 className="mr-1 h-3 w-3" />
+													OAuth绑定
+												</Button>
+
+												<Dialog open={orderIdDialogOpen} onOpenChange={setOrderIdDialogOpen}>
+													<DialogTrigger asChild>
+														<Button
+															size="sm"
+															variant="outline"
+															className="flex-1"
+														>
+															订单号绑定
+														</Button>
+													</DialogTrigger>
+													<DialogContent className="sm:max-w-[425px]">
+														<DialogHeader>
+															<DialogTitle>通过订单号绑定爱发电账号</DialogTitle>
+															<DialogDescription>
+																请输入您在爱发电的任意一笔订单号，我们将通过订单号查询并绑定您的爱发电账号。
+															</DialogDescription>
+														</DialogHeader>
+														<div className="py-4 gap-4 grid">
+															<div className="gap-2 grid">
+																<Label htmlFor="order-id">订单号</Label>
+																<Input
+																	id="order-id"
+																	placeholder="请输入爱发电订单号"
+																	value={orderId}
+																	onChange={e => setOrderId(e.target.value)}
+																	disabled={orderBindLoading}
+																/>
+															</div>
+															{error && (
+																<Alert variant="destructive">
+																	<AlertDescription>{error}</AlertDescription>
+																</Alert>
+															)}
+														</div>
+														<div className="flex justify-end space-x-2">
+															<Button
+																variant="outline"
+																onClick={() => {
+																	setOrderIdDialogOpen(false);
+																	setOrderId("");
+																	setError(null);
+																}}
+																disabled={orderBindLoading}
+															>
+																取消
+															</Button>
+															<Button
+																onClick={handleOrderIdBind}
+																disabled={orderBindLoading || !orderId.trim()}
+															>
+																{orderBindLoading ? "绑定中..." : "确认绑定"}
+															</Button>
+														</div>
+													</DialogContent>
+												</Dialog>
+											</div>
 										</div>
 									)}
 						</div>

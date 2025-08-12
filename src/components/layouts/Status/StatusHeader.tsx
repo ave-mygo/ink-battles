@@ -24,15 +24,15 @@ export default function StatusHeader({
 	return (
 		<div className="mb-8 text-center">
 			<div className="mb-6 flex gap-4 items-center justify-center">
-				<div className="bg-gradient-to-br p-4 rounded-2xl flex shadow-xl items-center justify-center from-emerald-500 to-cyan-600 via-teal-500">
+				<div className="p-4 rounded-2xl flex shadow-xl items-center justify-center from-emerald-500 to-cyan-600 via-teal-500 bg-gradient-to-br">
 					<Activity className="text-white h-8 w-8 animate-pulse" />
 				</div>
-				<h1 className="bg-gradient-to-r text-4xl text-transparent tracking-tight font-extrabold from-slate-700 to-slate-900 bg-clip-text drop-shadow-sm md:text-5xl">
+				<h1 className="text-4xl text-transparent tracking-tight font-extrabold from-slate-700 to-slate-900 bg-gradient-to-r bg-clip-text drop-shadow-sm md:text-5xl">
 					系统监控面板
 				</h1>
 			</div>
 
-			<Card className="bg-gradient-to-r mb-8 border-0 shadow-lg from-emerald-50 to-cyan-50 via-teal-50">
+			<Card className="mb-8 border-0 shadow-lg from-emerald-50 to-cyan-50 via-teal-50 bg-gradient-to-r">
 				<CardContent className="p-8">
 					<div className="flex flex-wrap gap-4 justify-center">
 						<Button
