@@ -76,7 +76,7 @@ export default function StatusList({ logs, loading = false }: StatusListProps) {
 	}
 
 	return (
-		<Card className="bg-gradient-to-br border-0 shadow-lg overflow-hidden from-white to-slate-50">
+		<Card className="border-0 shadow-lg overflow-hidden from-white to-slate-50 bg-gradient-to-br">
 			<CardHeader>
 				<CardTitle className="text-slate-800 flex gap-2 items-center">
 					<Database className="text-emerald-600 h-5 w-5" />
@@ -131,7 +131,7 @@ export default function StatusList({ logs, loading = false }: StatusListProps) {
 											</span>
 										</TableCell>
 										<TableCell className="text-center whitespace-nowrap">
-											<span className={`font-mono text-sm px-2 py-1 rounded-md ${
+											<span className={`text-sm font-mono px-2 py-1 rounded-md ${
 												log.use_time < 1000
 													? "bg-green-100 text-green-800"
 													: log.use_time < 3000
@@ -150,7 +150,7 @@ export default function StatusList({ logs, loading = false }: StatusListProps) {
 										</TableCell>
 										<TableCell>
 											<span
-												className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200 ${
+												className={`text-xs font-semibold px-3 py-1 rounded-full inline-flex gap-1 transition-all duration-200 items-center ${
 													isSuccess
 														? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200"
 														: "bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-200"
