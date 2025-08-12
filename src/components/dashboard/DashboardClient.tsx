@@ -201,10 +201,11 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 											<h3 className="text-xl font-semibold truncate">{displayName}</h3>
 											<p className="text-muted-foreground text-sm truncate">{data.user.email || "未设置邮箱"}</p>
 											{data.user.afdian_bound && data.user.afdian_username && (
-												<div className="flex items-center space-x-2 mt-1">
+												<div className="mt-1 flex items-center space-x-2">
 													<div className="rounded-full bg-green-500 h-2 w-2"></div>
 													<p className="text-muted-foreground text-xs">
-														爱发电: @{data.user.afdian_username}
+														爱发电: @
+														{data.user.afdian_username}
 													</p>
 												</div>
 											)}
@@ -228,16 +229,22 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 										<div className="p-3 border border-green-200 rounded-lg bg-green-50">
 											<div className="flex items-center justify-between">
 												<div className="flex-1">
-													<div className="flex items-center space-x-2 mb-1">
+													<div className="mb-1 flex items-center space-x-2">
 														<div className="rounded-full bg-green-500 h-2 w-2"></div>
 														<p className="text-sm text-green-800 font-medium">已绑定</p>
 													</div>
 													<div className="text-xs text-green-600 space-y-1">
 														{data.user.afdian_username && (
-															<p>用户名: @{data.user.afdian_username}</p>
+															<p>
+																用户名: @
+																{data.user.afdian_username}
+															</p>
 														)}
 														{data.user.afdian_user_id && (
-															<p>ID: {data.user.afdian_user_id}</p>
+															<p>
+																ID:
+																{data.user.afdian_user_id}
+															</p>
 														)}
 													</div>
 												</div>
@@ -246,7 +253,7 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 													variant="outline"
 													onClick={handleUnbindAfdian}
 													disabled={bindLoading}
-													className="ml-3 text-green-700 border-green-300 hover:bg-green-100"
+													className="text-green-700 ml-3 border-green-300 hover:bg-green-100"
 												>
 													<Unlink className="mr-1 h-3 w-3" />
 													解绑
