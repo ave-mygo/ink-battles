@@ -49,7 +49,9 @@ export async function POST(request: NextRequest) {
 						afdian_bound_order_id: "",
 						afdian_total_amount: "",
 					},
-					updated_at: new Date(),
+					$set: {
+						updated_at: new Date(),
+					},
 				},
 			);
 

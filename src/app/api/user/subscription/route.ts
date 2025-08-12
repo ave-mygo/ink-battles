@@ -1,13 +1,8 @@
 import type { NextRequest } from "next/server";
 import process from "node:process";
 import jwt from "jsonwebtoken";
-import md5 from "md5";
 import { NextResponse } from "next/server";
-import { db_name } from "@/lib/constants";
-import { db_find } from "@/lib/db";
-
-const AFDIAN_API_TOKEN = process.env.AFDIAN_API_TOKEN;
-const AFDIAN_USER_ID = process.env.AFDIAN_USER_ID;
+import { getUserSubscriptionData } from "@/lib/subscription";
 
 export async function GET(request: NextRequest) {
 	const token = request.cookies.get("auth-token")?.value;
@@ -25,154 +20,10 @@ export async function GET(request: NextRequest) {
 			return NextResponse.json({ error: "无效的令牌" }, { status: 401 });
 		}
 
-		// 通过邮箱查找用户
-		const user = await db_find(db_name, "users", { email: userEmail });
-		if (!user) {
-			return NextResponse.json({ error: "用户不存在" }, { status: 404 });
-		}
+		// 使用统一的函数获取用户订阅数据
+		const data = await getUserSubscriptionData(userEmail);
 
-		// 检查是否绑定了爱发电账号
-		if (!user.afdian_user_id) {
-			return NextResponse.json({
-				user: {
-					id: user._id,
-					username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
-					email: user.email,
-					avatar: user.avatar,
-					afdian_bound: false,
-				},
-				subscription: {
-					isSubscribed: false,
-					sponsorInfo: null,
-					totalAmount: 0,
-					currentPlan: null,
-					subscriptionStatus: "not_bound",
-				},
-			});
-		}
-
-		// 如果是通过订单号绑定的用户，直接使用存储的总捐赠额
-		if (user.afdian_bound_order_id && user.afdian_total_amount !== undefined) {
-			const totalAmount = user.afdian_total_amount || 0;
-			const isSubscribed = totalAmount > 0;
-
-			return NextResponse.json({
-				user: {
-					id: user._id,
-					username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
-					email: user.email,
-					avatar: user.avatar || user.afdian_avatar,
-					afdian_bound: true,
-					afdian_user_id: user.afdian_user_id,
-					afdian_username: user.afdian_username,
-				},
-				subscription: {
-					isSubscribed,
-					sponsorInfo: isSubscribed
-						? {
-								user_id: user.afdian_user_id,
-								all_sum_amount: totalAmount,
-								bound_order_id: user.afdian_bound_order_id,
-							}
-						: null,
-					totalAmount,
-					currentPlan: null,
-					subscriptionStatus: isSubscribed ? "active" : "inactive",
-				},
-			});
-		}
-
-		// 对于OAuth绑定的用户，使用原有的API查询逻辑
-		if (!user.afdian_access_token) {
-			return NextResponse.json({
-				user: {
-					id: user._id,
-					username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
-					email: user.email,
-					avatar: user.avatar,
-					afdian_bound: false,
-				},
-				subscription: {
-					isSubscribed: false,
-					sponsorInfo: null,
-					totalAmount: 0,
-					currentPlan: null,
-					subscriptionStatus: "not_bound",
-				},
-			});
-		}
-
-		// 使用爱发电API获取用户的订阅信息
-		const ts = Math.floor(Date.now() / 1000);
-		const params = JSON.stringify({
-			user_id: user.afdian_user_id,
-		});
-		const sign = md5(`${AFDIAN_API_TOKEN}params${params}ts${ts}user_id${AFDIAN_USER_ID}`);
-
-		const response = await fetch("https://afdian.com/api/open/query-sponsor", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"Authorization": `Bearer ${user.afdian_access_token}`,
-			},
-			body: JSON.stringify({
-				user_id: AFDIAN_USER_ID,
-				params,
-				ts,
-				sign,
-			}),
-		});
-
-		if (!response.ok) {
-			console.error("爱发电API调用失败:", await response.text());
-			// 如果API调用失败，返回基本用户信息
-			return NextResponse.json({
-				user: {
-					id: user._id,
-					username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
-					email: user.email,
-					avatar: user.avatar || user.afdian_avatar,
-					afdian_bound: true,
-					afdian_username: user.afdian_username,
-				},
-				subscription: {
-					isSubscribed: false,
-					sponsorInfo: null,
-					totalAmount: 0,
-					currentPlan: null,
-					subscriptionStatus: "api_error",
-				},
-			});
-		}
-
-		const data = await response.json();
-
-		// 检查用户是否有有效的订阅
-		const sponsorData = data.data?.list || [];
-		const userSponsor = sponsorData.find((sponsor: any) =>
-			sponsor.user?.user_id === user.afdian_user_id,
-		);
-
-		const subscriptionInfo = {
-			isSubscribed: !!userSponsor,
-			sponsorInfo: userSponsor || null,
-			totalAmount: userSponsor?.all_sum_amount || 0,
-			currentPlan: userSponsor?.current_plan || null,
-			subscriptionStatus: userSponsor?.status || "inactive",
-		};
-
-		return NextResponse.json({
-			user: {
-				id: user._id,
-				username: user.username || (user.email ? String(user.email).split("@")[0] : "用户"),
-				email: user.email,
-				avatar: user.avatar || user.afdian_avatar,
-				afdian_bound: true,
-				afdian_user_id: user.afdian_user_id,
-				afdian_username: user.afdian_username,
-			},
-			subscription: subscriptionInfo,
-		});
+		return NextResponse.json(data);
 	} catch (error) {
 		console.error("获取用户订阅信息失败:", error);
 		return NextResponse.json({ error: "获取订阅信息失败" }, { status: 500 });
