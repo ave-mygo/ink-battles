@@ -1,5 +1,6 @@
 "use client";
 
+import type { UserSubscriptionData } from "@/lib/subscription";
 import { CreditCard, Crown, ExternalLink, Link2, RefreshCw, Unlink, User } from "lucide-react";
 import React, { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -13,41 +14,18 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 
-interface UserInfo {
-	id: string;
-	username: string;
-	email: string;
-	avatar: string;
-	afdian_user_id?: string;
-	afdian_bound: boolean;
-	afdian_username?: string;
-}
-
-interface SubscriptionInfo {
-	isSubscribed: boolean;
-	sponsorInfo: any;
-	totalAmount: number;
-	currentPlan: any;
-	subscriptionStatus: string;
-}
-
-interface DashboardData {
-	user: UserInfo;
-	subscription: SubscriptionInfo;
-}
-
 interface OAuthConfig {
 	authUrl: string;
 	state: string;
 }
 
 interface DashboardClientProps {
-	initialData: DashboardData;
+	initialData: UserSubscriptionData;
 	oauthConfig: OAuthConfig;
 }
 
 export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientProps) => {
-	const [data, setData] = useState<DashboardData>(initialData);
+	const [data, setData] = useState<UserSubscriptionData>(initialData);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [bindLoading, setBindLoading] = useState(false);
@@ -211,21 +189,24 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 							{(() => {
 								const displayName = data.user.username || data.user.email || "用户";
 								const initial = (displayName[0] || "?").toUpperCase();
+								// 优先使用爱发电头像，其次使用用户头像
+								const avatarSrc = data.user.afdian_avatar || data.user.avatar;
 								return (
 									<>
 										<Avatar className="flex-shrink-0 h-16 w-16">
-											<AvatarImage src={data.user.avatar} alt={displayName} />
+											<AvatarImage src={avatarSrc} alt={displayName} />
 											<AvatarFallback className="text-lg">{initial}</AvatarFallback>
 										</Avatar>
 										<div className="flex-1 min-w-0">
 											<h3 className="text-xl font-semibold truncate">{displayName}</h3>
 											<p className="text-muted-foreground text-sm truncate">{data.user.email || "未设置邮箱"}</p>
-											{data.user.afdian_user_id && (
-												<p className="text-muted-foreground text-xs mt-1">
-													爱发电ID:
-													{" "}
-													{data.user.afdian_user_id}
-												</p>
+											{data.user.afdian_bound && data.user.afdian_username && (
+												<div className="flex items-center space-x-2 mt-1">
+													<div className="rounded-full bg-green-500 h-2 w-2"></div>
+													<p className="text-muted-foreground text-xs">
+														爱发电: @{data.user.afdian_username}
+													</p>
+												</div>
 											)}
 										</div>
 									</>
@@ -244,29 +225,33 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 
 							{data.user.afdian_bound
 								? (
-										<div className="p-3 border border-green-200 rounded-lg bg-green-50 flex items-center justify-between">
-											<div className="flex items-center space-x-3">
-												<div className="rounded-full bg-green-500 h-2 w-2"></div>
-												<div>
-													<p className="text-sm text-green-800 font-medium">已绑定爱发电账号</p>
-													{data.user.afdian_username && (
-														<p className="text-xs text-green-600">
-															@
-															{data.user.afdian_username}
-														</p>
-													)}
+										<div className="p-3 border border-green-200 rounded-lg bg-green-50">
+											<div className="flex items-center justify-between">
+												<div className="flex-1">
+													<div className="flex items-center space-x-2 mb-1">
+														<div className="rounded-full bg-green-500 h-2 w-2"></div>
+														<p className="text-sm text-green-800 font-medium">已绑定</p>
+													</div>
+													<div className="text-xs text-green-600 space-y-1">
+														{data.user.afdian_username && (
+															<p>用户名: @{data.user.afdian_username}</p>
+														)}
+														{data.user.afdian_user_id && (
+															<p>ID: {data.user.afdian_user_id}</p>
+														)}
+													</div>
 												</div>
+												<Button
+													size="sm"
+													variant="outline"
+													onClick={handleUnbindAfdian}
+													disabled={bindLoading}
+													className="ml-3 text-green-700 border-green-300 hover:bg-green-100"
+												>
+													<Unlink className="mr-1 h-3 w-3" />
+													解绑
+												</Button>
 											</div>
-											<Button
-												size="sm"
-												variant="outline"
-												onClick={handleUnbindAfdian}
-												disabled={bindLoading}
-												className="text-green-700 border-green-300 hover:bg-green-100"
-											>
-												<Unlink className="mr-1 h-3 w-3" />
-												解绑
-											</Button>
 										</div>
 									)
 								: (
@@ -374,24 +359,62 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 							{data.subscription.isSubscribed && (
 								<>
 									<Separator />
-									<div className="space-y-2">
-										<div className="flex justify-between">
-											<span className="text-sm">累计支持金额</span>
-											<span className="text-sm font-medium">
-												¥
-												{(data.subscription.totalAmount / 100).toFixed(2)}
-											</span>
-										</div>
+									{data.subscription.sponsorInfo && (
+										<div className="space-y-3">
+											<div className="space-y-3">
+												<div className="flex justify-between">
+													<span className="text-sm">累计支持金额</span>
+													<span className="text-sm text-green-600 font-bold">
+														¥
+														{(data.subscription.sponsorInfo?.all_sum_amount || data.subscription.totalAmount).toFixed(2)}
+													</span>
+												</div>
 
-										{data.subscription.currentPlan && (
-											<div className="flex justify-between">
-												<span className="text-sm">当前方案</span>
-												<span className="text-sm font-medium">
-													{data.subscription.currentPlan.name}
-												</span>
+												<div className="flex justify-between">
+													<span className="text-sm">绑定方式</span>
+													<span className="text-sm font-medium">
+														{data.subscription.sponsorInfo.binding_method === "oauth" ? "OAuth授权" : "订单号绑定"}
+													</span>
+												</div>
+
+												{data.subscription.sponsorInfo?.create_time && (
+													<div className="flex justify-between">
+														<span className="text-sm">首次赞助时间</span>
+														<span className="text-sm font-medium">
+															{new Date(data.subscription.sponsorInfo.create_time * 1000).toLocaleDateString()}
+														</span>
+													</div>
+												)}
+
+												{data.subscription.sponsorInfo?.last_pay_time && (
+													<div className="flex justify-between">
+														<span className="text-sm">最近赞助时间</span>
+														<span className="text-sm font-medium">
+															{new Date(data.subscription.sponsorInfo.last_pay_time * 1000).toLocaleDateString()}
+														</span>
+													</div>
+												)}
+
+												{data.subscription.sponsorInfo.bound_order_id && (
+													<div className="flex justify-between">
+														<span className="text-sm">绑定订单</span>
+														<span className="text-sm font-medium font-mono">
+															{data.subscription.sponsorInfo.bound_order_id}
+														</span>
+													</div>
+												)}
+
+												{data.subscription.currentPlan && (
+													<div className="flex justify-between">
+														<span className="text-sm">当前方案</span>
+														<span className="text-sm font-medium">
+															{data.subscription.currentPlan.name}
+														</span>
+													</div>
+												)}
 											</div>
-										)}
-									</div>
+										</div>
+									)}
 								</>
 							)}
 

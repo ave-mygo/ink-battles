@@ -12,12 +12,12 @@
 
 **字段结构：**
 
-| 字段名 | 类型 | 必填 | 描述 |
-|--------|------|------|------|
-| _id | object | 是 | _id (object) |
-| email | string | 是 | 用户邮箱地址 |
-| passwordHash | string | 是 | 加密后的密码 |
-| createdAt | date | 是 | 创建时间 |
+| 字段名       | 类型   | 必填 | 描述          |
+| ------------ | ------ | ---- | ------------- |
+| \_id         | object | 是   | \_id (object) |
+| email        | string | 是   | 用户邮箱地址  |
+| passwordHash | string | 是   | 加密后的密码  |
+| createdAt    | date   | 是   | 创建时间      |
 
 **示例文档：**
 
@@ -35,19 +35,19 @@
 
 **字段结构：**
 
-| 字段名 | 类型 | 必填 | 描述 |
-|--------|------|------|------|
-| _id | object | 是 | _id (object) |
-| articleText | string | 是 | 文章内容 |
-| session | string | 是 | 会话标识 |
-| result | string | 是 | 分析结果 |
-| ip | string | 是 | IP地址 |
-| usage | null | 是 | usage (null) |
-| mode | string | 是 | 分析模式 |
-| timestamp | string | 是 | timestamp (string) |
-| overallScore | number | 是 | 综合评分 |
-| orderNumber | null | string | 是 | 订单号 |
-| sha1 | string | 是 | 内容哈希值 |
+| 字段名       | 类型   | 必填   | 描述               |
+| ------------ | ------ | ------ | ------------------ | ------ |
+| \_id         | object | 是     | \_id (object)      |
+| articleText  | string | 是     | 文章内容           |
+| session      | string | 是     | 会话标识           |
+| result       | string | 是     | 分析结果           |
+| ip           | string | 是     | IP地址             |
+| usage        | null   | 是     | usage (null)       |
+| mode         | string | 是     | 分析模式           |
+| timestamp    | string | 是     | timestamp (string) |
+| overallScore | number | 是     | 综合评分           |
+| orderNumber  | null   | string | 是                 | 订单号 |
+| sha1         | string | 是     | 内容哈希值         |
 
 **示例文档：**
 
@@ -72,17 +72,17 @@
 
 **字段结构：**
 
-| 字段名 | 类型 | 必填 | 描述 |
-|--------|------|------|------|
-| _id | object | 是 | _id (object) |
-| orderNumber | string | 是 | 订单号 |
-| orderTime | date | 是 | 订单时间 |
-| firstIssuedTime | date | 是 | 首次签发时间 |
-| lastFingerprintUpdateTime | date | 是 | 最后指纹更新时间 |
-| userIp | string | 是 | 用户IP |
-| token | string | 是 | 访问令牌 |
-| browserFingerprint | string | 是 | 浏览器指纹 |
-| isActive | boolean | 是 | 是否激活 |
+| 字段名                    | 类型    | 必填 | 描述             |
+| ------------------------- | ------- | ---- | ---------------- |
+| \_id                      | object  | 是   | \_id (object)    |
+| orderNumber               | string  | 是   | 订单号           |
+| orderTime                 | date    | 是   | 订单时间         |
+| firstIssuedTime           | date    | 是   | 首次签发时间     |
+| lastFingerprintUpdateTime | date    | 是   | 最后指纹更新时间 |
+| userIp                    | string  | 是   | 用户IP           |
+| token                     | string  | 是   | 访问令牌         |
+| browserFingerprint        | string  | 是   | 浏览器指纹       |
+| isActive                  | boolean | 是   | 是否激活         |
 
 **示例文档：**
 
@@ -105,16 +105,16 @@
 
 **字段结构：**
 
-| 字段名 | 类型 | 必填 | 描述 |
-|--------|------|------|------|
-| _id | object | 是 | _id (object) |
-| email | string | 是 | 用户邮箱地址 |
-| type | string | 是 | 类型标识 |
-| codeHash | string | 是 | 验证码哈希 |
-| createdAt | date | 是 | 创建时间 |
-| expiresAt | date | 是 | 过期时间 |
-| used | boolean | 是 | 是否已使用 |
-| usedAt | date | 否 | usedAt (date) |
+| 字段名    | 类型    | 必填 | 描述          |
+| --------- | ------- | ---- | ------------- |
+| \_id      | object  | 是   | \_id (object) |
+| email     | string  | 是   | 用户邮箱地址  |
+| type      | string  | 是   | 类型标识      |
+| codeHash  | string  | 是   | 验证码哈希    |
+| createdAt | date    | 是   | 创建时间      |
+| expiresAt | date    | 是   | 过期时间      |
+| used      | boolean | 是   | 是否已使用    |
+| usedAt    | date    | 否   | usedAt (date) |
 
 **示例文档：**
 
@@ -135,10 +135,10 @@
 
 **字段结构：**
 
-| 字段名 | 类型 | 必填 | 描述 |
-|--------|------|------|------|
-| _id | object | 是 | _id (object) |
-| session | string | 是 | 会话标识 |
+| 字段名  | 类型   | 必填 | 描述          |
+| ------- | ------ | ---- | ------------- |
+| \_id    | object | 是   | \_id (object) |
+| session | string | 是   | 会话标识      |
 
 **示例文档：**
 
@@ -150,45 +150,52 @@
 
 ### daily_usage - 每日使用统计表
 
-*集合暂无数据*
+_集合暂无数据_
 
 ## 索引规范
 
 ### 必需索引
 
 1. **users.email** - 唯一索引
+
    ```javascript
-   { email: 1 }
+   { email: 1; }
    ```
 
 2. **analysis_requests.sha1_mode** - 复合索引（用于去重查询）
+
    ```javascript
    { sha1: 1, mode: 1 }
    ```
 
 3. **analysis_requests.timestamp** - 普通索引（用于时间排序）
+
    ```javascript
-   { timestamp: -1 }
+   { timestamp: -1; }
    ```
 
 4. **api_keys.orderNumber** - 唯一索引
+
    ```javascript
-   { orderNumber: 1 }
+   { orderNumber: 1; }
    ```
 
 5. **api_keys.token** - 唯一索引
+
    ```javascript
-   { token: 1 }
+   { token: 1; }
    ```
 
 6. **email_verification_codes.email_type_used** - 复合索引
+
    ```javascript
    { email: 1, type: 1, used: 1 }
    ```
 
 7. **sessions.session** - 唯一索引
+
    ```javascript
-   { session: 1 }
+   { session: 1; }
    ```
 
 8. **daily_usage.dayKey_type_key** - 复合唯一索引
@@ -203,4 +210,3 @@
 3. **错误处理**: 所有数据库操作都必须包含适当的错误处理
 4. **数据验证**: 在写入数据库前进行数据验证
 5. **安全性**: 敏感信息（如密码、验证码）必须加密存储
-

@@ -5,8 +5,7 @@ import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
-import { db_name } from "@/lib/constants";
-import { db_find } from "@/lib/db";
+import { getUserSubscriptionData, type UserSubscriptionData } from "@/lib/subscription";
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
@@ -15,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 	};
 }
 
-async function getDashboardData(token: string) {
+async function getDashboardData(token: string): Promise<UserSubscriptionData> {
 	try {
 		// 验证JWT token
 		const secret = process.env.JWT_SECRET || "dev_secret_change_me";
@@ -26,119 +25,8 @@ async function getDashboardData(token: string) {
 			throw new Error("无效的令牌");
 		}
 
-		const user = await db_find(db_name, "users", { email: userEmail });
-		if (!user) {
-			throw new Error("用户不存在");
-		}
-
-		// 检查是否绑定了爱发电账号
-		if (!user.afdian_user_id) {
-			const safeId = (user as any)._id?.toString ? (user as any)._id.toString() : String((user as any)._id ?? "");
-			const safeUsername = user.username || (user.email ? String(user.email).split("@")[0] : "用户");
-			const safeEmail = user.email || "";
-			const safeAvatar = user.avatar || "";
-			return {
-				user: {
-					id: safeId,
-					username: safeUsername,
-					email: safeEmail,
-					avatar: safeAvatar,
-					afdian_bound: false,
-				},
-				subscription: {
-					isSubscribed: false,
-					sponsorInfo: null,
-					totalAmount: 0,
-					currentPlan: null,
-					subscriptionStatus: "not_bound",
-				},
-			};
-		}
-
-		// 如果是通过订单号绑定的用户，直接使用存储的总捐赠额
-		if (user.afdian_bound_order_id && user.afdian_total_amount !== undefined) {
-			const totalAmount = user.afdian_total_amount || 0;
-			const isSubscribed = totalAmount > 0;
-			const safeId = (user as any)._id?.toString ? (user as any)._id.toString() : String((user as any)._id ?? "");
-			const safeUsername = user.username || (user.email ? String(user.email).split("@")[0] : "用户");
-			const safeEmail = user.email || "";
-			const safeAvatar = user.avatar || user.afdian_avatar || "";
-
-			return {
-				user: {
-					id: safeId,
-					username: safeUsername,
-					email: safeEmail,
-					avatar: safeAvatar,
-					afdian_bound: true,
-					afdian_user_id: user.afdian_user_id,
-					afdian_username: user.afdian_username,
-				},
-				subscription: {
-					isSubscribed,
-					sponsorInfo: isSubscribed
-						? {
-								user_id: user.afdian_user_id,
-								all_sum_amount: totalAmount,
-								bound_order_id: user.afdian_bound_order_id,
-							}
-						: null,
-					totalAmount,
-					currentPlan: null,
-					subscriptionStatus: isSubscribed ? "active" : "inactive",
-				},
-			};
-		}
-
-		// 对于OAuth绑定但没有access_token的用户
-		if (!user.afdian_access_token) {
-			const safeId = (user as any)._id?.toString ? (user as any)._id.toString() : String((user as any)._id ?? "");
-			const safeUsername = user.username || (user.email ? String(user.email).split("@")[0] : "用户");
-			const safeEmail = user.email || "";
-			const safeAvatar = user.avatar || user.afdian_avatar || "";
-			return {
-				user: {
-					id: safeId,
-					username: safeUsername,
-					email: safeEmail,
-					avatar: safeAvatar,
-					afdian_bound: true,
-					afdian_user_id: user.afdian_user_id,
-					afdian_username: user.afdian_username,
-				},
-				subscription: {
-					isSubscribed: false,
-					sponsorInfo: null,
-					totalAmount: 0,
-					currentPlan: null,
-					subscriptionStatus: "api_error",
-				},
-			};
-		}
-
-		// 对于OAuth绑定的用户，返回基本信息，订阅信息由前端API获取
-		const safeId = (user as any)._id?.toString ? (user as any)._id.toString() : String((user as any)._id ?? "");
-		const safeUsername = user.username || (user.email ? String(user.email).split("@")[0] : "用户");
-		const safeEmail = user.email || "";
-		const safeAvatar = user.avatar || user.afdian_avatar || "";
-		return {
-			user: {
-				id: safeId,
-				username: safeUsername,
-				email: safeEmail,
-				avatar: safeAvatar,
-				afdian_bound: true,
-				afdian_user_id: user.afdian_user_id,
-				afdian_username: user.afdian_username,
-			},
-			subscription: {
-				isSubscribed: false,
-				sponsorInfo: null,
-				totalAmount: 0,
-				currentPlan: null,
-				subscriptionStatus: "loading",
-			},
-		};
+		// 使用统一的函数获取用户订阅数据
+		return await getUserSubscriptionData(userEmail);
 	} catch (error) {
 		console.error("获取用户数据失败:", error);
 		throw error;

@@ -15,21 +15,27 @@ Ink Battles 是一个基于 Next.js 的 AI 驱动写作分析和对战场景的 
 - **AI 集成**: OpenAI API
 
 ## 代码风格规范
+
 详细规范请参考 `.ai/codeStyle.md`
 
 ## 架构指南
+
 详细规范请参考 `.ai/functionStyle.md`
 
 ## 数据库规范
+
 详细规范请参考 `.ai/database.md`
 
 ## UI 组件标准
+
 详细规范请参考 `.ai/uiStyle.md`
 
 ## Git 提交规范
+
 详细规范请参考 `.ai/commit.md`
 
 ## 文案规范
+
 拒绝使用emoji表情，拒绝使用不规范的标点符号
 
 ## 测试和质量

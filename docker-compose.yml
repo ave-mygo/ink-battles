@@ -10,7 +10,7 @@ services:
       - TZ=Asia/Shanghai
     init: true
     healthcheck:
-      test: ["CMD-SHELL", "curl http://localhost:3000"]
+      test: [CMD-SHELL, "curl http://localhost:3000"]
       interval: 5s
       timeout: 5s
       retries: 5
