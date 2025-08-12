@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import type { UserSubscriptionData } from "@/lib/subscription";
 import { webcrypto } from "node:crypto";
 import process from "node:process";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
-import { getUserSubscriptionData, type UserSubscriptionData } from "@/lib/subscription";
+import { getUserSubscriptionData } from "@/lib/subscription";
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
@@ -64,12 +65,16 @@ export default async function DashboardPage() {
 	}
 
 	try {
-		const data = await getDashboardData(token);
-		const oauthConfig = await generateOAuthUrl();
+		// 并行获取数据以提升性能
+		const [data, oauthConfig] = await Promise.all([
+			getDashboardData(token),
+			generateOAuthUrl(),
+		]);
 
 		return <DashboardClient initialData={data} oauthConfig={oauthConfig} />;
-	} catch {
-		// 如果获取数据失败，重定向到登录页
+	} catch (error) {
+		// 记录错误以便调试
+		console.error("Dashboard页面数据获取失败:", error);
 		redirect("/signin");
 	}
 }
