@@ -1,7 +1,8 @@
 "use client";
 
+import type { UserType } from "@/lib/constants";
 import type { UserSubscriptionData } from "@/lib/subscription";
-import { CreditCard, Crown, ExternalLink, Link2, RefreshCw, Unlink, User } from "lucide-react";
+import { CreditCard, Crown, Link2, RefreshCw, Unlink, User, Zap } from "lucide-react";
 import React, { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,6 +14,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+// Removed UserTierInfo card; limits moved into subscription card
+import { calculateAdvancedModelCalls, MEMBERSHIP_TIERS } from "@/lib/constants";
+
+interface UsageStats {
+	userType: UserType;
+	totalAnalysis: number;
+	monthlyAnalysis: number;
+	todayAnalysis: number;
+	totalTextLength: number;
+	monthlyTextLength: number;
+	todayTextLength: number;
+	advancedModelStats?: {
+		dailyLimit: number;
+		todayUsed: number;
+		remaining: number;
+	};
+	limits: {
+		perRequest: number | null;
+		dailyLimit: number | null;
+	};
+}
 
 interface OAuthConfig {
 	authUrl: string;
@@ -25,8 +47,11 @@ interface DashboardClientProps {
 }
 
 export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientProps) => {
+	// 批量初始化状态
 	const [data, setData] = useState<UserSubscriptionData>(initialData);
+	const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
 	const [loading, setLoading] = useState(false);
+	const [statsLoading, setStatsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [bindLoading, setBindLoading] = useState(false);
 	const [orderIdDialogOpen, setOrderIdDialogOpen] = useState(false);
@@ -36,29 +61,69 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 	const refreshData = async () => {
 		try {
 			setLoading(true);
+			setError(null);
 
 			const response = await fetch("/api/user/subscription");
 
 			if (!response.ok) {
-				throw new Error("获取数据失败");
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || "获取数据失败");
 			}
 
 			const result = await response.json();
 			setData(result);
-			setError(null);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "未知错误");
+			const errorMessage = err instanceof Error ? err.message : "未知错误";
+			setError(errorMessage);
+			console.error("刷新订阅数据失败:", err);
 		} finally {
 			setLoading(false);
 		}
 	};
 
+	const refreshUsageStats = async () => {
+		try {
+			setStatsLoading(true);
+
+			const response = await fetch("/api/user/usage-stats");
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || "获取使用统计失败");
+			}
+
+			const result = await response.json();
+			setUsageStats(result);
+		} catch (err) {
+			console.error("刷新使用统计失败:", err);
+		} finally {
+			setStatsLoading(false);
+		}
+	};
+
 	// 如果初始数据的订阅状态是loading，自动刷新获取最新数据
 	React.useEffect(() => {
+		// 加载使用统计数据
+		refreshUsageStats();
+
 		if (initialData.subscription.subscriptionStatus === "loading") {
 			refreshData();
 		}
 	}, []);
+
+	// 并行获取数据以提升性能
+	const handleRefreshAll = async () => {
+		setLoading(true);
+		setStatsLoading(true);
+
+		try {
+			await Promise.all([refreshData(), refreshUsageStats()]);
+		} catch (err) {
+			console.error("批量刷新数据失败:", err);
+		} finally {
+			// 由于各个函数内部会设置对应的loading状态，这里不需要额外设置
+		}
+	};
 
 	const handleAfdianAuth = () => {
 		// 将服务端生成的 state 存储到 sessionStorage 以便回调时验证
@@ -168,11 +233,13 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 		<div className="mx-auto p-6 container max-w-4xl">
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="text-3xl font-bold">用户控制台</h1>
-				<Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
-					<RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+				<Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={loading || statsLoading}>
+					<RefreshCw className={`mr-2 h-4 w-4 ${(loading || statsLoading) ? "animate-spin" : ""}`} />
 					刷新
 				</Button>
 			</div>
+
+			{/* 用户分级信息卡片已移除，信息整合至订阅状态卡片 */}
 
 			<div className="gap-6 grid md:grid-cols-2">
 				<Card>
@@ -420,9 +487,59 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 													</div>
 												)}
 											</div>
+											{(data.subscription.totalAmount || 0) > 0 && (() => {
+												const donation = Number(data.subscription.totalAmount || 0);
+												const nextTier = MEMBERSHIP_TIERS.find(t => t.minAmount > donation);
+
+												return nextTier && nextTier.maxAmount !== Infinity && (
+													<div className="pt-2 border-t space-y-2">
+														<div className="space-y-1">
+															<div className="text-muted-foreground text-xs flex justify-between">
+																<span>
+																	下一档位 (¥
+																	{nextTier.minAmount}
+																	)
+																</span>
+																<span>
+																	{calculateAdvancedModelCalls(nextTier.minAmount)}
+																	{" "}
+																	次/日
+																</span>
+															</div>
+															<Progress value={(donation / nextTier.minAmount) * 100} className="h-1.5" />
+														</div>
+													</div>
+												);
+											})()}
 										</div>
 									)}
 								</>
+							)}
+
+							{usageStats?.limits && (
+								<div className="pt-2 border-t">
+									<h4 className="text-sm font-medium mb-2">当前限制</h4>
+									<div className="text-muted-foreground text-xs space-y-1">
+										<div className="flex justify-between">
+											<span>单次分析上限:</span>
+											<span>{usageStats.limits.perRequest ? `${usageStats.limits.perRequest.toLocaleString()} 字` : "无限制"}</span>
+										</div>
+										<div className="flex justify-between">
+											<span>每日累计上限:</span>
+											<span>{usageStats.limits.dailyLimit ? `${usageStats.limits.dailyLimit.toLocaleString()} 字` : "无限制"}</span>
+										</div>
+										{usageStats.advancedModelStats && (
+											<div className="flex justify-between">
+												<span>每日高级模型额度:</span>
+												<span>
+													{usageStats.advancedModelStats.dailyLimit.toLocaleString()}
+													{" "}
+													次/日
+												</span>
+											</div>
+										)}
+									</div>
+								</div>
 							)}
 
 							{!data.subscription.isSubscribed && data.user.afdian_bound && (
@@ -435,7 +552,6 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 										className="bg-orange-500 hover:bg-orange-600"
 										onClick={() => window.open("https://afdian.com", "_blank")}
 									>
-										<ExternalLink className="mr-2 h-4 w-4" />
 										前往爱发电
 									</Button>
 								</div>
@@ -452,7 +568,7 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 					</CardContent>
 				</Card>
 
-				<Card className="mt-6">
+				<Card className="md:col-span-2">
 					<CardHeader>
 						<CardTitle className="flex items-center">
 							<CreditCard className="mr-2 h-5 w-5" />
@@ -461,32 +577,107 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 						<CardDescription>您的服务使用情况</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<div className="space-y-4">
-							<div className="space-y-2">
-								<div className="flex justify-between">
-									<span className="text-sm">AI 分析次数</span>
-									<span className="text-muted-foreground text-sm">本月已使用</span>
-								</div>
-								<Progress value={65} className="h-2" />
-								<div className="text-muted-foreground text-xs flex justify-between">
-									<span>65/100</span>
-									<span>剩余 35 次</span>
-								</div>
-							</div>
+						{statsLoading
+							? (
+									<div className="space-y-4">
+										<div className="space-y-2">
+											<div className="rounded bg-gray-200 h-4 w-3/4 animate-pulse"></div>
+											<div className="rounded bg-gray-200 h-2 w-full animate-pulse"></div>
+											<div className="rounded bg-gray-200 h-3 w-1/2 animate-pulse"></div>
+										</div>
+										<div className="gap-4 grid grid-cols-2">
+											<div className="p-3 rounded-lg bg-gray-200 h-16 animate-pulse"></div>
+											<div className="p-3 rounded-lg bg-gray-200 h-16 animate-pulse"></div>
+										</div>
+									</div>
+								)
+							: usageStats
+								? (
+										<div className="space-y-4">
+											{/* 高级模型使用情况 */}
+											{usageStats.advancedModelStats && (
+												<>
+													<div className="space-y-2">
+														<div className="flex justify-between">
+															<span className="text-sm flex gap-1 items-center">
+																<Zap className="h-3 w-3" />
+																高级模型调用
+															</span>
+															<span className="text-muted-foreground text-sm">今日已使用</span>
+														</div>
+														<Progress
+															value={usageStats.advancedModelStats.dailyLimit > 0
+																? (usageStats.advancedModelStats.todayUsed / usageStats.advancedModelStats.dailyLimit) * 100
+																: 0}
+															className="h-2"
+														/>
+														<div className="text-muted-foreground text-xs flex justify-between">
+															<span>
+																{usageStats.advancedModelStats.todayUsed}
+																/
+																{usageStats.advancedModelStats.dailyLimit}
+															</span>
+															<span>
+																剩余
+																{usageStats.advancedModelStats.remaining}
+																{" "}
+																次
+															</span>
+														</div>
+													</div>
+													<Separator />
+												</>
+											)}
 
-							<Separator />
+											{/* 基础统计 */}
+											<div className="text-sm gap-4 grid grid-cols-3">
+												<div className="bg-muted p-3 text-center rounded-lg">
+													<div className="text-lg font-semibold">{usageStats.totalAnalysis.toLocaleString()}</div>
+													<div className="text-muted-foreground">历史总分析</div>
+												</div>
+												<div className="bg-muted p-3 text-center rounded-lg">
+													<div className="text-lg font-semibold">{usageStats.monthlyAnalysis.toLocaleString()}</div>
+													<div className="text-muted-foreground">本月分析</div>
+												</div>
+												<div className="bg-muted p-3 text-center rounded-lg">
+													<div className="text-lg font-semibold">{usageStats.todayAnalysis.toLocaleString()}</div>
+													<div className="text-muted-foreground">今日分析</div>
+												</div>
+											</div>
 
-							<div className="text-sm gap-4 grid grid-cols-2">
-								<div className="bg-muted p-3 text-center rounded-lg">
-									<div className="text-lg font-semibold">156</div>
-									<div className="text-muted-foreground">历史总分析</div>
-								</div>
-								<div className="bg-muted p-3 text-center rounded-lg">
-									<div className="text-lg font-semibold">28</div>
-									<div className="text-muted-foreground">本月分析</div>
-								</div>
-							</div>
-						</div>
+											<Separator />
+
+											{/* 文本长度统计 */}
+											<div className="text-sm gap-4 grid grid-cols-3">
+												<div className="bg-muted/50 p-3 text-center rounded-lg">
+													<div className="text-lg font-semibold">
+														{(usageStats.totalTextLength / 1000).toFixed(1)}
+														k
+													</div>
+													<div className="text-muted-foreground">历史总字数</div>
+												</div>
+												<div className="bg-muted/50 p-3 text-center rounded-lg">
+													<div className="text-lg font-semibold">
+														{(usageStats.monthlyTextLength / 1000).toFixed(1)}
+														k
+													</div>
+													<div className="text-muted-foreground">本月字数</div>
+												</div>
+												<div className="bg-muted/50 p-3 text-center rounded-lg">
+													<div className="text-lg font-semibold">
+														{(usageStats.todayTextLength / 1000).toFixed(1)}
+														k
+													</div>
+													<div className="text-muted-foreground">今日字数</div>
+												</div>
+											</div>
+										</div>
+									)
+								: (
+										<div className="text-muted-foreground py-8 text-center">
+											<p>暂无使用数据</p>
+										</div>
+									)}
 					</CardContent>
 				</Card>
 			</div>

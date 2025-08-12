@@ -17,6 +17,7 @@ export default function WriterAnalysisHeader() {
 			<p className="text-lg text-slate-600 mx-auto mb-6 max-w-2xl">
 				基于AI技术的专业文本分析工具，为您的创作提供深度洞察
 			</p>
+
 			{/* 导航链接区 - 优化移动端布局 */}
 			<div className="mb-6 flex flex-col gap-4 items-center">
 				<Link
