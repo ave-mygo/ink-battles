@@ -8,7 +8,8 @@
 		"dev": "next dev --turbopack",
 		"build": "next build",
 		"start": "next start",
-		"lint": "next lint"
+		"lint": "next lint",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@fingerprintjs/fingerprintjs": "^4.6.2",
