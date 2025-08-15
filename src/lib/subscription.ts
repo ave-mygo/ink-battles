@@ -15,6 +15,8 @@ export interface UserInfo {
 	afdian_bound: boolean;
 	afdian_username?: string;
 	afdian_avatar?: string;
+	qqOpenid?: string;
+	loginMethod?: "email" | "qq";
 }
 
 export interface SponsorInfo {
@@ -66,6 +68,8 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 				email: safeEmail,
 				avatar: user.avatar || "",
 				afdian_bound: false,
+				qqOpenid: user.qqOpenid,
+				loginMethod: user.loginMethod,
 			},
 			subscription: {
 				isSubscribed: false,
@@ -152,6 +156,8 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 				afdian_user_id: user.afdian_user_id,
 				afdian_username: afdianUserInfo.name,
 				afdian_avatar: afdianUserInfo.avatar,
+				qqOpenid: user.qqOpenid,
+				loginMethod: user.loginMethod,
 			},
 			subscription: {
 				isSubscribed,
@@ -184,6 +190,8 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 				afdian_user_id: user.afdian_user_id,
 				afdian_username: user.afdian_username,
 				afdian_avatar: user.afdian_avatar,
+				qqOpenid: user.qqOpenid,
+				loginMethod: user.loginMethod,
 			},
 			subscription: {
 				isSubscribed: false,
@@ -230,6 +238,8 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 					afdian_user_id: user.afdian_user_id,
 					afdian_username: user.afdian_username,
 					afdian_avatar: user.afdian_avatar,
+					qqOpenid: user.qqOpenid,
+					loginMethod: user.loginMethod,
 				},
 				subscription: {
 					isSubscribed: false,
@@ -277,6 +287,8 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 				afdian_user_id: user.afdian_user_id,
 				afdian_username: (userSponsor?.user?.name) || user.afdian_username,
 				afdian_avatar: (userSponsor?.user?.avatar) || user.afdian_avatar,
+				qqOpenid: user.qqOpenid,
+				loginMethod: user.loginMethod,
 			},
 			subscription: subscriptionInfo,
 		};

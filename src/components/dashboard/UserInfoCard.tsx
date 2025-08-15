@@ -38,7 +38,8 @@ export const UserInfoCard = ({
 }: UserInfoCardProps) => {
 	const displayName = data.user.username || data.user.email || "用户";
 	const initial = (displayName[0] || "?").toUpperCase();
-	const avatarSrc = data.user.afdian_avatar || data.user.avatar;
+	// 头像优先级：QQ > 爱发电 > 默认
+	const avatarSrc = data.user.avatar || data.user.afdian_avatar;
 
 	return (
 		<Card>

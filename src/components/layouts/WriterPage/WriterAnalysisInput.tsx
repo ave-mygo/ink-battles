@@ -4,6 +4,7 @@ import { Crown, FileText, Gift, Users, Zap } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { generateBrowserFingerprint } from "@/lib/browser-fingerprint";
 import { calculateAdvancedModelCalls, getUserType, USER_LIMITS, UserType } from "@/lib/constants";
@@ -241,87 +242,101 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 				<CardDescription>请粘贴您要分析的完整作品内容，支持小说、散文、诗歌等各类文体</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col h-full">
-				{/* 用户分级信息 */}
-				<div className="mb-4 p-4 border rounded-lg">
-					<div className="space-y-3">
-						{/* 用户等级展示 */}
-						<div className="flex items-center justify-between">
-							<div className="flex gap-2 items-center">
-								{tierData.icon}
-								<span className="text-sm font-semibold">{tierData.displayName}</span>
+				{/* 用户分级信息（现代化设计） */}
+				<div className="mb-4 p-4 rounded-xl ring-1 ring-slate-200 from-indigo-50/60 to-white bg-gradient-to-r">
+					<div className="flex items-start justify-between">
+						<div className="flex gap-2 items-center">
+							{tierData.icon}
+							<div className="flex flex-col">
+								<div className="text-sm leading-none font-semibold">{tierData.displayName}</div>
 								{tierData.email && (
-									<span className="text-muted-foreground text-xs">
-										(
-										{tierData.email}
-										)
-									</span>
+									<div className="text-muted-foreground text-[11px] mt-1">{tierData.email}</div>
 								)}
 							</div>
-							<Badge className={tierData.badgeColor}>
-								{tierData.userType === UserType.MEMBER && tierData.donationAmount
-									? `已捐赠 ¥${tierData.donationAmount}`
-									: tierData.displayName}
-							</Badge>
 						</div>
-
-						{/* 权益信息 */}
-						<div className="text-xs space-y-1">
-							<div className="flex justify-between">
-								<span className="text-muted-foreground">单次分析上限:</span>
-								<span className="font-medium">
-									{tierData.limits.perRequest ? `${tierData.limits.perRequest.toLocaleString()} 字` : "无限制"}
-								</span>
-							</div>
-							<div className="flex justify-between">
-								<span className="text-muted-foreground">每日累计上限:</span>
-								<span className="font-medium">
-									{tierData.limits.dailyLimit ? `${tierData.limits.dailyLimit.toLocaleString()} 字` : "无限制"}
-								</span>
-							</div>
-							{tierData.advancedModelCalls && (
-								<div className="flex justify-between">
-									<span className="text-muted-foreground flex gap-1 items-center">
-										<Zap className="h-3 w-3" />
-										高级模型调用:
-									</span>
-									<span className="font-medium">
-										{tierData.advancedModelCalls.toLocaleString()}
-										{" "}
-										次/日
-									</span>
-								</div>
-							)}
-						</div>
-
-						{/* 升级提示 */}
-						{tierData.userType === UserType.GUEST && (
-							<div className="pt-2 text-center border-t">
-								<p className="text-muted-foreground text-xs mb-2">
-									注册登录获得更高字数限制
-								</p>
-								<div className="flex gap-2 justify-center">
-									<a href="/signin" className="text-xs text-blue-600 underline hover:text-blue-700">
-										登录
-									</a>
-									<span className="text-muted-foreground text-xs">或</span>
-									<a href="/signup" className="text-xs text-blue-600 underline hover:text-blue-700">
-										注册
-									</a>
-								</div>
-							</div>
-						)}
-
-						{tierData.userType === UserType.REGULAR && (
-							<div className="pt-2 text-center border-t">
-								<p className="text-muted-foreground text-xs mb-2">
-									成为会员解锁无限分析和高级模型
-								</p>
-								<a href="/sponsors" className="text-xs text-orange-600 underline hover:text-orange-700">
-									了解会员权益
-								</a>
-							</div>
-						)}
+						<Badge className={tierData.badgeColor}>
+							{tierData.userType === UserType.MEMBER && tierData.donationAmount ? `已捐赠 ¥${tierData.donationAmount}` : tierData.displayName}
+						</Badge>
 					</div>
+
+					{/* 使用进度 */}
+					<div className="mt-3">
+						{tierData.limits.perRequest
+							? (
+									<>
+										<div className="text-[12px] text-slate-600 mb-1 flex justify-between">
+											<span>本次输入进度</span>
+											<span>
+												{articleText.length.toLocaleString()}
+												{" "}
+												/
+												{tierData.limits.perRequest.toLocaleString()}
+												{" "}
+												字
+											</span>
+										</div>
+										<Progress value={Math.min(100, Math.round((articleText.length / tierData.limits.perRequest) * 100))} className="h-2" />
+									</>
+								)
+							: (
+									<div className="text-[12px] text-slate-600">本次输入：无限制</div>
+								)}
+					</div>
+
+					{/* 权益速览 */}
+					<div className="text-[12px] mt-3 gap-2 grid grid-cols-3">
+						<div className="px-2 py-1.5 border border-slate-200 rounded-md bg-white/70 flex items-center justify-between">
+							<span className="text-slate-500">单次上限</span>
+							<span className="font-medium">{tierData.limits.perRequest ? `${tierData.limits.perRequest.toLocaleString()} 字` : "无限制"}</span>
+						</div>
+						<div className="px-2 py-1.5 border border-slate-200 rounded-md bg-white/70 flex items-center justify-between">
+							<span className="text-slate-500">每日上限</span>
+							<span className="font-medium">{tierData.limits.dailyLimit ? `${tierData.limits.dailyLimit.toLocaleString()} 字` : "无限制"}</span>
+						</div>
+						{tierData.advancedModelCalls
+							? (
+									<div className="px-2 py-1.5 border border-slate-200 rounded-md bg-white/70 flex items-center justify-between">
+										<span className="text-slate-500 flex gap-1 items-center">
+											<Zap className="h-3 w-3" />
+											高级模型
+										</span>
+										<span className="font-medium">
+											{tierData.advancedModelCalls.toLocaleString()}
+											{" "}
+											次/日
+										</span>
+									</div>
+								)
+							: (
+									<div className="text-slate-400 px-2 py-1.5 border border-slate-200 rounded-md border-dashed bg-white/40 flex items-center justify-center">暂无高级模型额度</div>
+								)}
+					</div>
+
+					{/* 行动按钮 */}
+					{tierData.userType === UserType.GUEST && (
+						<div className="mt-3 pt-3 border-t flex items-center justify-between">
+							<div className="text-muted-foreground text-[12px]">登录可获得更高字数限制</div>
+							<div className="flex gap-2">
+								<a href="/signin" className="text-xs text-blue-600 font-medium hover:text-blue-700">登录</a>
+								<a href="/signup" className="text-xs text-blue-600 font-medium hover:text-blue-700">注册</a>
+							</div>
+						</div>
+					)}
+					{tierData.userType === UserType.REGULAR && (
+						<div className="mt-3 pt-3 border-t flex items-center justify-between">
+							<div className="text-muted-foreground text-[12px]">升级会员解锁无限分析与高级模型</div>
+							<a href="/sponsors" className="text-xs text-orange-600 font-medium hover:text-orange-700">了解会员</a>
+						</div>
+					)}
+					{tierData.userType === UserType.MEMBER && tierData.donationAmount !== undefined && (
+						<div className="text-[12px] text-slate-600 mt-3 pt-3 border-t flex items-center justify-between">
+							<span>
+								感谢支持！当前累计赞助：¥
+								{tierData.donationAmount?.toLocaleString?.() || tierData.donationAmount}
+							</span>
+							<a href="/sponsors" className="text-xs text-slate-500 hover:text-slate-700">管理赞助</a>
+						</div>
+					)}
 				</div>
 
 				<Textarea
