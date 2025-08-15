@@ -4,22 +4,32 @@ import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { calculateAdvancedModelCalls, getUserType, USER_LIMITS, UserType } from "@/lib/constants";
+import { calculateAdvancedModelCalls, db_name, getUserType, USER_LIMITS, UserType } from "@/lib/constants";
 import { db_find, db_insert, db_read, db_update } from "@/lib/db";
 import { getUserSubscriptionData } from "@/lib/subscription";
 import "server-only";
 
-const DB_NAME = "ink_battles";
+export interface UserInfo {
+	email?: string | null;
+	nickname?: string | null;
+	avatar?: string | null;
+	qqOpenid?: string | null;
+	loginMethod?: "email" | "qq";
+	passwordHash?: string;
+	createdAt: Date;
+	updatedAt?: Date;
+	isActive?: boolean;
+}
 
 export const db_insert_session = async (): Promise<string> => {
 	const session = Math.random().toString(36).substring(2, 36) + Math.random().toString(36).substring(2, 36);
-	await db_insert(DB_NAME, "sessions", { session });
+	await db_insert(db_name, "sessions", { session });
 	return session;
 };
 
 export async function getScorePercentile(currentScore: number) {
 	try {
-		const scores = await db_read(DB_NAME, "analysis_requests", {}, { sort: { overallScore: -1 } });
+		const scores = await db_read(db_name, "analysis_requests", {}, { sort: { overallScore: -1 } });
 		const totalScores = scores.length;
 		if (totalScores === 0)
 			return null;
@@ -34,10 +44,10 @@ export async function getScorePercentile(currentScore: number) {
 }
 export async function verifyTokenSSR(token: string): Promise<boolean> {
 	try {
-		const found = await db_find(DB_NAME, "apikeys", { token });
+		const found = await db_find(db_name, "apikeys", { token });
 		if (found) {
 			if (!found.used) {
-				await db_update(DB_NAME, "apikeys", { token }, { used: true });
+				await db_update(db_name, "apikeys", { token }, { used: true });
 			}
 			return true;
 		}
@@ -59,14 +69,14 @@ export async function registerUser(email: string, password: string): Promise<{ s
 		return { success: false, message: "邮箱和密码不能为空" };
 	}
 	// 检查邮箱是否已注册
-	const existing = await db_find(DB_NAME, "users", { email });
+	const existing = await db_find(db_name, "users", { email });
 	if (existing) {
 		return { success: false, message: "该邮箱已注册" };
 	}
 	// 密码加密
 	const passwordHash = await bcrypt.hash(password, 10);
 	const createdAt = new Date();
-	const ok = await db_insert(DB_NAME, "users", { email, passwordHash, createdAt });
+	const ok = await db_insert(db_name, "users", { email, passwordHash, createdAt });
 	if (!ok) {
 		return { success: false, message: "注册失败，请重试" };
 	}
@@ -83,7 +93,7 @@ export async function LoginUser(email: string, password: string): Promise<{ succ
 	if (!email || !password) {
 		return { success: false, message: "邮箱和密码不能为空" };
 	}
-	const user = await db_find(DB_NAME, "users", { email });
+	const user = await db_find(db_name, "users", { email });
 	if (!user) {
 		return { success: false, message: "用户不存在" };
 	}
@@ -132,11 +142,11 @@ export const SendVerificationEmail = async (
 	const expiresAt = new Date(createdAt.getTime() + 10 * 60 * 1000);
 
 	// 持久化验证码（同邮箱同类型，仅保留一条有效未使用的记录）
-	const existed = await db_find(DB_NAME, "email_verification_codes", { email, type, used: false });
+	const existed = await db_find(db_name, "email_verification_codes", { email, type, used: false });
 	if (existed) {
-		await db_update(DB_NAME, "email_verification_codes", { _id: existed._id }, { codeHash, createdAt, expiresAt });
+		await db_update(db_name, "email_verification_codes", { _id: existed._id }, { codeHash, createdAt, expiresAt });
 	} else {
-		await db_insert(DB_NAME, "email_verification_codes", { email, type, codeHash, createdAt, expiresAt, used: false });
+		await db_insert(db_name, "email_verification_codes", { email, type, codeHash, createdAt, expiresAt, used: false });
 	}
 
 	// 使用 SMTP 库发送邮件
@@ -165,7 +175,7 @@ export const VerifyEmailCode = async (
 		return { success: false, message: "邮箱和验证码不能为空" };
 	}
 
-	const record = await db_find(DB_NAME, "email_verification_codes", { email, type, used: false });
+	const record = await db_find(db_name, "email_verification_codes", { email, type, used: false });
 	if (!record) {
 		return { success: false, message: "验证码不存在，请重新发送" };
 	}
@@ -176,7 +186,7 @@ export const VerifyEmailCode = async (
 	if (!ok) {
 		return { success: false, message: "验证码错误" };
 	}
-	await db_update(DB_NAME, "email_verification_codes", { _id: record._id }, { used: true, usedAt: new Date() });
+	await db_update(db_name, "email_verification_codes", { _id: record._id }, { used: true, usedAt: new Date() });
 	return { success: true, message: "验证码校验通过" };
 };
 
@@ -197,7 +207,7 @@ export const RegisterUser = async (
 		return { success: false, message: "密码不符合要求。密码必须：至少8位字符、包含小写字母、数字和特殊字符" };
 	}
 
-	const existing = await db_find(DB_NAME, "users", { email });
+	const existing = await db_find(db_name, "users", { email });
 	if (existing) {
 		return { success: false, message: "该邮箱已注册" };
 	}
@@ -209,7 +219,7 @@ export const RegisterUser = async (
 
 	const passwordHash = await bcrypt.hash(password, 10);
 	const createdAt = new Date();
-	const ok = await db_insert(DB_NAME, "users", { email, passwordHash, createdAt });
+	const ok = await db_insert(db_name, "users", { email, passwordHash, createdAt });
 	if (!ok) {
 		return { success: false, message: "注册失败，请重试" };
 	}
@@ -217,8 +227,187 @@ export const RegisterUser = async (
 };
 
 /**
- * 获取当前登录用户邮箱（基于 Cookie `auth-token`）
+ * QQ登录：使用临时代码获取用户信息并创建/更新用户
+ * @param tempCode 临时授权码
+ * @returns 登录结果
  */
+export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean; message: string; userInfo?: UserInfo }> => {
+	if (!tempCode) {
+		return { success: false, message: "授权码不能为空" };
+	}
+
+	try {
+		// 调用第三方API获取用户信息
+		const response = await fetch(`https://api-space.tnxg.top/user/info?code=${tempCode}`);
+		const data = await response.json();
+
+		if (data.status !== "success") {
+			return { success: false, message: data.message || "获取用户信息失败" };
+		}
+
+		const qqUserInfo = data.data;
+		const { qq_openid, nickname, avatar } = qqUserInfo;
+
+		if (!qq_openid) {
+			return { success: false, message: "QQ用户信息不完整" };
+		}
+
+		// 查找是否已存在该QQ用户
+		let user = await db_find(db_name, "users", { qqOpenid: qq_openid });
+		const now = new Date();
+
+		if (user) {
+			// 更新已存在用户的信息
+			await db_update(db_name, "users", { qqOpenid: qq_openid }, {
+				nickname,
+				avatar,
+				updatedAt: now,
+				isActive: true,
+			});
+			user = { ...user, nickname, avatar, updatedAt: now };
+		} else {
+			// 创建新用户
+			const newUser: UserInfo = {
+				qqOpenid: qq_openid,
+				nickname,
+				avatar,
+				loginMethod: "qq",
+				createdAt: now,
+				updatedAt: now,
+				isActive: true,
+			};
+
+			const insertResult = await db_insert(db_name, "users", newUser);
+			if (!insertResult) {
+				return { success: false, message: "创建用户失败" };
+			}
+			user = newUser;
+		}
+
+		// 生成JWT令牌
+		const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+		const tokenPayload = {
+			qqOpenid: qq_openid,
+			email: user.email || null,
+			loginMethod: "qq",
+		};
+		const token = jwt.sign(tokenPayload, secret, { expiresIn: "7d" });
+
+		// 设置Cookie
+		const cookieStore = await cookies();
+		cookieStore.set("auth-token", token, {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === "production",
+			sameSite: "lax",
+			path: "/",
+			maxAge: 24 * 60 * 60 * 7,
+		});
+
+		return {
+			success: true,
+			message: "QQ登录成功",
+			userInfo: user,
+		};
+	} catch (error) {
+		console.error("QQ登录错误:", error);
+		return { success: false, message: "登录失败，请重试" };
+	}
+};
+
+/**
+ * 绑定QQ到现有邮箱账户
+ * @param email 邮箱
+ * @param tempCode QQ授权临时码
+ */
+export const BindQQToEmail = async (email: string, tempCode: string): Promise<{ success: boolean; message: string }> => {
+	if (!email || !tempCode) {
+		return { success: false, message: "邮箱和授权码不能为空" };
+	}
+
+	try {
+		// 获取QQ用户信息
+		const response = await fetch(`https://api-space.tnxg.top/user/info?code=${tempCode}`);
+		const data = await response.json();
+
+		if (data.status !== "success") {
+			return { success: false, message: "获取QQ用户信息失败" };
+		}
+
+		const { qq_openid, nickname, avatar } = data.data;
+
+		// 检查邮箱用户是否存在
+		const emailUser = await db_find(db_name, "users", { email });
+		if (!emailUser) {
+			return { success: false, message: "邮箱用户不存在" };
+		}
+
+		// 检查QQ是否已绑定其他用户
+		const qqUser = await db_find(db_name, "users", { qqOpenid: qq_openid });
+		if (qqUser && qqUser._id.toString() !== emailUser._id.toString()) {
+			return { success: false, message: "该QQ已绑定其他用户" };
+		}
+
+		// 绑定QQ信息到邮箱用户
+		await db_update(db_name, "users", { email }, {
+			qqOpenid: qq_openid,
+			nickname: nickname || emailUser.nickname,
+			avatar: avatar || emailUser.avatar,
+			updatedAt: new Date(),
+		});
+
+		return { success: true, message: "QQ绑定成功" };
+	} catch (error) {
+		console.error("QQ绑定错误:", error);
+		return { success: false, message: "绑定失败，请重试" };
+	}
+};
+
+/**
+ * 绑定邮箱到QQ账户
+ * @param qqOpenid QQ OpenID
+ * @param email 邮箱
+ * @param password 密码
+ */
+export const BindEmailToQQ = async (qqOpenid: string, email: string, password: string): Promise<{ success: boolean; message: string }> => {
+	if (!qqOpenid || !email || !password) {
+		return { success: false, message: "QQ信息、邮箱和密码不能为空" };
+	}
+
+	try {
+		// 检查邮箱是否已被其他用户使用
+		const emailUser = await db_find(db_name, "users", { email });
+		if (emailUser && emailUser.qqOpenid !== qqOpenid) {
+			return { success: false, message: "该邮箱已被其他用户使用" };
+		}
+
+		// 验证密码强度
+		const { isPasswordValid } = await import("./password-strength");
+		if (!isPasswordValid(password)) {
+			return { success: false, message: "密码不符合要求。密码必须：至少8位字符、包含小写字母、数字和特殊字符" };
+		}
+
+		// 查找QQ用户
+		const qqUser = await db_find(db_name, "users", { qqOpenid });
+		if (!qqUser) {
+			return { success: false, message: "QQ用户不存在" };
+		}
+
+		// 加密密码
+		const passwordHash = await bcrypt.hash(password, 10);
+
+		// 绑定邮箱到QQ用户
+		await db_update(db_name, "users", { qqOpenid }, {
+			email,
+			passwordHash,
+			updatedAt: new Date(),
+		});
+
+		return { success: true, message: "邮箱绑定成功" };
+	} catch (error) {
+		console.error("邮箱绑定错误:", error);
+		return { success: false, message: "绑定失败，请重试" };
+	}
+};
 export const getCurrentUserEmail = async (): Promise<string | null> => {
 	const cookieStore = await cookies();
 	const token = cookieStore.get("auth-token")?.value;
@@ -228,6 +417,38 @@ export const getCurrentUserEmail = async (): Promise<string | null> => {
 		const secret = process.env.JWT_SECRET || "dev_secret_change_me";
 		const payload = jwt.verify(token, secret) as { email?: string };
 		return payload.email ?? null;
+	} catch {
+		return null;
+	}
+};
+
+/**
+ * 获取当前登录用户的完整信息
+ * @returns 用户信息或null
+ */
+export const getCurrentUserInfo = async (): Promise<UserInfo | null> => {
+	const cookieStore = await cookies();
+	const token = cookieStore.get("auth-token")?.value;
+	if (!token)
+		return null;
+
+	try {
+		const secret = process.env.JWT_SECRET || "dev_secret_change_me";
+		const payload = jwt.verify(token, secret) as {
+			email?: string;
+			qqOpenid?: string;
+			loginMethod?: "email" | "qq";
+		};
+
+		let user: UserInfo | null = null;
+
+		if (payload.email) {
+			user = await db_find(db_name, "users", { email: payload.email });
+		} else if (payload.qqOpenid) {
+			user = await db_find(db_name, "users", { qqOpenid: payload.qqOpenid });
+		}
+
+		return user;
 	} catch {
 		return null;
 	}
@@ -299,7 +520,7 @@ export const checkAndConsumeUsage = async (
 			const dayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 			const usageKey = { dayKey, type: "advanced_model", key: userEmail };
 
-			const usageDoc = await db_find(DB_NAME, "daily_usage", usageKey);
+			const usageDoc = await db_find(db_name, "daily_usage", usageKey);
 			const currentUsage = usageDoc?.used ?? 0;
 
 			if (currentUsage >= maxCalls) {
@@ -314,12 +535,12 @@ export const checkAndConsumeUsage = async (
 
 			// 消耗一次高级模型调用次数
 			if (usageDoc) {
-				await db_update(DB_NAME, "daily_usage", usageKey, {
+				await db_update(db_name, "daily_usage", usageKey, {
 					used: currentUsage + 1,
 					updatedAt: new Date(),
 				});
 			} else {
-				await db_insert(DB_NAME, "daily_usage", {
+				await db_insert(db_name, "daily_usage", {
 					...usageKey,
 					used: 1,
 					createdAt: new Date(),
@@ -344,7 +565,7 @@ export const checkAndConsumeUsage = async (
 		const readCounter = async (key: { dayKey: string; type: string; key: string } | null): Promise<number> => {
 			if (!key)
 				return 0;
-			const doc = await db_find(DB_NAME, "daily_usage", key);
+			const doc = await db_find(db_name, "daily_usage", key);
 			return doc?.used ?? 0;
 		};
 
@@ -363,14 +584,14 @@ export const checkAndConsumeUsage = async (
 		const incCounter = async (key: { dayKey: string; type: string; key: string } | null, delta: number) => {
 			if (!key)
 				return;
-			const doc = await db_find(DB_NAME, "daily_usage", key);
+			const doc = await db_find(db_name, "daily_usage", key);
 			if (doc) {
-				await db_update(DB_NAME, "daily_usage", key, {
+				await db_update(db_name, "daily_usage", key, {
 					used: (doc.used ?? 0) + delta,
 					updatedAt: new Date(),
 				});
 			} else {
-				await db_insert(DB_NAME, "daily_usage", {
+				await db_insert(db_name, "daily_usage", {
 					...key,
 					used: delta,
 					createdAt: new Date(),

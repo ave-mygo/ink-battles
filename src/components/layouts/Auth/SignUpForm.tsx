@@ -1,14 +1,16 @@
 "use client";
 
+import { Icon } from "@iconify/react";
 import { ArrowRight, Lock, Mail, ShieldCheck, Timer, UserPlus } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PasswordStrengthIndicator, PasswordStrengthMeter } from "@/components/ui/password-strength";
 import { isPasswordValid } from "@/lib/password-strength";
+import { cleanupOAuthParams, initiateQQLogin, isQQOAuthCallback, parseQQCallback } from "@/utils/qq-oauth";
 
 /**
  * 注册表单组件（含邮箱验证码）
@@ -21,9 +23,59 @@ const SignUpForm = () => {
 	const [code, setCode] = useState("");
 	const [sending, setSending] = useState(false);
 	const [countdown, setCountdown] = useState(0);
+	const [qqLoading, setQQLoading] = useState(false);
 	const timerRef = useRef<NodeJS.Timeout | null>(null);
 
 	const canSend = useMemo(() => countdown <= 0 && !!email, [countdown, email]);
+
+	const handleQQLogin = async (code: string) => {
+		try {
+			setQQLoading(true);
+			const res = await fetch("/api/auth/qq-login", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ code }),
+			});
+
+			const data = await res.json();
+
+			if (data.success) {
+				toast.success("QQ登录成功");
+				cleanupOAuthParams();
+				window.location.href = "/dashboard";
+			} else {
+				toast.error(data.message || "QQ登录失败");
+				cleanupOAuthParams();
+			}
+		} catch (error) {
+			console.error(error);
+			toast.error("QQ登录失败，请稍后再试");
+			cleanupOAuthParams();
+		} finally {
+			setQQLoading(false);
+		}
+	};
+
+	// 处理QQ OAuth回调
+	useEffect(() => {
+		if (isQQOAuthCallback()) {
+			const { code, error, errorDescription } = parseQQCallback();
+
+			if (error) {
+				toast.error(`QQ登录失败: ${errorDescription || error}`);
+				cleanupOAuthParams();
+				return;
+			}
+
+			if (code) {
+				handleQQLogin(code);
+			}
+		}
+	}, []);
+
+	const handleQQLoginClick = () => {
+		initiateQQLogin(window.location.href, `qq_login_${Date.now()}`);
+	};
 
 	useEffect(() => {
 		if (countdown > 0) {
@@ -168,6 +220,26 @@ const SignUpForm = () => {
 								<ArrowRight className="h-4 w-4" />
 							</span>
 						</Button>
+
+						<div className="space-y-2">
+							<div className="text-muted-foreground text-xs text-center">或</div>
+							<Button
+								disabled={qqLoading}
+								onClick={handleQQLoginClick}
+								variant="outline"
+								className="text-[#12B7F5] border-[#12B7F5] w-full hover:text-white hover:bg-[#12B7F5]"
+							>
+								{qqLoading
+									? "QQ登录中..."
+									: (
+											<span className="flex gap-2 items-center justify-center">
+												<Icon icon="mingcute:qq-fill" className="h-4 w-4" />
+												QQ登录
+											</span>
+										)}
+							</Button>
+						</div>
+
 						<div className="text-muted-foreground text-sm text-center">
 							已有账号？
 							{" "}
