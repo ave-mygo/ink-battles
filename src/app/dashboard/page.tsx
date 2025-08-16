@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { AnalysisHistoryItem } from "@/lib/analysis-history";
 import type { UserSubscriptionData } from "@/lib/subscription";
 import { webcrypto } from "node:crypto";
 import process from "node:process";
@@ -6,6 +7,7 @@ import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DashboardClient } from "@/components/dashboard/DashboardClient";
+import { getRecentAnalysisHistory } from "@/lib/analysis-history";
 import { getUserSubscriptionData } from "@/lib/subscription";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -15,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 	};
 }
 
-async function getDashboardData(token: string): Promise<UserSubscriptionData> {
+async function getDashboardData(token: string): Promise<{ userData: UserSubscriptionData; historyData: AnalysisHistoryItem[] }> {
 	try {
 		// 验证JWT token
 		const secret = process.env.JWT_SECRET || "dev_secret_change_me";
@@ -26,8 +28,13 @@ async function getDashboardData(token: string): Promise<UserSubscriptionData> {
 			throw new Error("无效的令牌");
 		}
 
-		// 使用统一的函数获取用户订阅数据
-		return await getUserSubscriptionData(userEmail);
+		// 并行获取用户订阅数据和历史记录
+		const [userData, historyData] = await Promise.all([
+			getUserSubscriptionData(userEmail),
+			getRecentAnalysisHistory(token),
+		]);
+
+		return { userData, historyData };
 	} catch (error) {
 		console.error("获取用户数据失败:", error);
 		throw error;
@@ -66,12 +73,12 @@ export default async function DashboardPage() {
 
 	try {
 		// 并行获取数据以提升性能
-		const [data, oauthConfig] = await Promise.all([
+		const [dashboardData, oauthConfig] = await Promise.all([
 			getDashboardData(token),
 			generateOAuthUrl(),
 		]);
 
-		return <DashboardClient initialData={data} oauthConfig={oauthConfig} />;
+		return <DashboardClient initialData={dashboardData.userData} oauthConfig={oauthConfig} initialHistoryData={dashboardData.historyData} />;
 	} catch (error) {
 		// 记录错误以便调试
 		console.error("Dashboard页面数据获取失败:", error);
