@@ -1,5 +1,6 @@
 "use client";
 
+import type { AnalysisHistoryItem } from "@/lib/analysis-history";
 import type { UserSubscriptionData } from "@/lib/subscription";
 import { RefreshCw } from "lucide-react";
 import React, { useEffect } from "react";
@@ -8,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cleanupOAuthParams, isQQOAuthCallback, parseQQCallback } from "@/utils/qq-oauth";
 import { AccountBinding } from "./AccountBinding";
+import { HistoryCard } from "./HistoryCard";
 import { useUsageStats } from "./hooks/useUsageStats";
 import { useUserData } from "./hooks/useUserData";
 import { SubscriptionCard } from "./SubscriptionCard";
@@ -22,9 +24,10 @@ interface OAuthConfig {
 interface DashboardClientProps {
 	initialData: UserSubscriptionData;
 	oauthConfig: OAuthConfig;
+	initialHistoryData: AnalysisHistoryItem[];
 }
 
-export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientProps) => {
+export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }: DashboardClientProps) => {
 	const { usageStats, statsLoading, refreshUsageStats } = useUsageStats();
 	const {
 		data,
@@ -159,6 +162,8 @@ export const DashboardClient = ({ initialData, oauthConfig }: DashboardClientPro
 					}}
 					onUpdate={refreshData}
 				/>
+
+				<HistoryCard initialData={initialHistoryData} />
 
 				<UsageStatsCard usageStats={usageStats} statsLoading={statsLoading} />
 			</div>

@@ -1,7 +1,7 @@
+import process from "node:process";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import process from "node:process";
 import { BindEmailToQQ } from "@/lib/utils-server";
 
 export async function POST(req: Request) {
