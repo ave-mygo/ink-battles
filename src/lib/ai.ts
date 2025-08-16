@@ -45,21 +45,19 @@ export const verifyArticleValue = async (articleText: string, mode: string = "de
 					content:
 						`你是一个专业的文章质量评估助手。请对给定的内容进行详细分析，判断其是否适合进行文学分析。
 评估标准：
-1. 内容完整性：是否具备明确的主体、情节、观点或论述
-2. 逻辑连贯性：是否有清晰的逻辑结构或发展脉络
-3. 语言规范性：是否使用正常的语言表达，而非乱码或无意义字符
-4. 内容实质性：是否包含有意义的正文内容，而非简单的符号堆砌
-
+逻辑连贯性：内容内部是否存在可识别的结构、模式或关联性，使其不显得杂乱无章。
+语言规范性：内容是否由可识别的字符、符号或编码组成，而非随机的、无法解析的乱码。
+内容实质性：内容是否包含某种信息、意图或可解读的模式，而非纯粹的空白或无意义的重复。
 如果内容符合以上标准，返回：\`\`\`json
 {
-	"success": true
+"success": true
 }
 \`\`\`
 
 如果内容不符合标准，请详细分析原因并返回：\`\`\`json
 {
-	"success": false,
-	"message": "具体原因"
+"success": false,
+"message": "具体原因"
 }
 \`\`\`
 
@@ -114,6 +112,7 @@ export interface AnalysisResult {
 	ratingTag: string;
 	overallAssessment: string;
 	summary: string;
+	tags: string[];
 	dimensions: Dimension[];
 	strengths: string[];
 	improvements: string[];
@@ -492,6 +491,7 @@ ${modeInstruction}
   "title": "",
   "ratingTag": "",
   "summary": "",
+  "tags": ["", "", ""],
   "dimensions": [
     { "name": "🎭 人物塑造力", "score": 0, "description": "" },
     { "name": "🧠 结构复杂度", "score": 0, "description": "" },
@@ -525,10 +525,11 @@ ${modeInstruction}
 - **overallAssessment**: 一个字符串，总结作品的总体水平和发展前景 (string)。
 - **title**: 根据最终战力值赋予的称号 (string)。
 - **ratingTag**: 根据经典性权重与新锐性权重乘积赋予的快速评分标签 (string)。
+- **summary**: 一个字符串，提供作品的概述，包括主要情节、主题、风格等 (string)。如果文本内容过于冗长，请精炼总结，突出重点。
+- **tags**: 请为以下文本生成一个字符串数组形式的标签列表。标签应包含3-8个精准描述文章内容、主题、风格特点的关键词。特别地，如果文章内容与特定动漫、游戏、小说系列等作品有强关联，请优先考虑使用该作品的名称或其核心元素作为标签。 标签应简洁明了，能够帮助读者快速了解文章的核心特征，例如："青春"、"科幻"、"职场"、"现实主义"、"BangDream"、"MyGO"、"治愈"、"性转"等。
 - **dimensions**: 必须是一个包含全部16个维度的数组。每个对象必须包含\`name\`(维度名称), \`score\`(该维度的得分或权重值), \`description\`(一句精炼的、基于文本内容的评分理由)。
 - **strengths**: 一个字符串数组，总结作品的3-5个主要优点。
 - **improvements**: 一个字符串数组，提出3-5条具体的改进建议。
-- **summary**: 一个字符串，提供作品的概述，包括主要情节、主题、风格等 (string)。如果文本内容过于冗长，请精炼总结，突出重点。
 ---
 现在，请严格遵循以上所有规则，分析以下用户提供的文章，并只返回一个格式完全正确的JSON对象。无论在什么情况下都必须返回JSON对象，包括无法评分的情况。
 `;

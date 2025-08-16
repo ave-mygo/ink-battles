@@ -351,6 +351,30 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 												{formatDate(item.timestamp)}
 											</span>
 										</div>
+
+										{/* Tags */}
+										{item.tags && item.tags.length > 0 && (
+											<div className="mt-2 flex flex-wrap gap-1">
+												{item.tags.slice(0, 4).map((tag, index) => (
+													<Badge
+														key={index}
+														variant="outline"
+														className="text-xs text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100"
+													>
+														{tag}
+													</Badge>
+												))}
+												{item.tags.length > 4 && (
+													<Badge
+														variant="outline"
+														className="text-xs text-gray-600 border-gray-200 bg-gray-50"
+													>
+														+
+														{item.tags.length - 4}
+													</Badge>
+												)}
+											</div>
+										)}
 									</div>
 
 									{/* Action Button */}

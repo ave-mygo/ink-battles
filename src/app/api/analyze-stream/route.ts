@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
 						}
 
 						const overallScore = parsedResult.overallScore || 0;
+						const tags = parsedResult.tags || [];
 
 						await db_insert(
 							db_name,
@@ -145,6 +146,7 @@ export async function POST(request: NextRequest) {
 								mode: mode || "default",
 								timestamp: new Date().toISOString(),
 								overallScore,
+								tags,
 								sha1,
 							},
 						);

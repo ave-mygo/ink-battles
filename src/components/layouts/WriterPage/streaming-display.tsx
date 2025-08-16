@@ -1,40 +1,194 @@
 "use client";
 
-import { X, Zap } from "lucide-react";
+import { AlertCircle, CheckCircle2, X, Zap } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface StreamingDisplayProps {
 	streamContent: string;
 	isVisible: boolean;
 	onClose: () => void;
+	isError?: boolean;
+	isCompleted?: boolean;
+	progress?: number;
+	onRetry?: () => void;
 }
 
-export default function StreamingDisplay({ streamContent, isVisible, onClose }: StreamingDisplayProps) {
+export default function StreamingDisplay({
+	streamContent,
+	isVisible,
+	onClose,
+	isError = false,
+	isCompleted = false,
+	progress = 0,
+	onRetry: _onRetry,
+}: StreamingDisplayProps) {
+	const [isMinimized, setIsMinimized] = useState(false);
+	const scrollRef = useRef<HTMLDivElement>(null);
+	const [isMobile, setIsMobile] = useState(false);
+
+	useEffect(() => {
+		// 检测移动设备
+		const checkMobile = () => {
+			const isMobileDevice = window.innerWidth < 768;
+			setIsMobile(isMobileDevice);
+		};
+
+		checkMobile();
+		window.addEventListener("resize", checkMobile);
+		return () => window.removeEventListener("resize", checkMobile);
+	}, []);
+
+	useEffect(() => {
+		// 自动滚动到底部
+		if (scrollRef.current) {
+			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+		}
+	}, [streamContent]);
+
 	if (!isVisible)
 		return null;
 
+	const getIcon = () => {
+		if (isError)
+			return <AlertCircle className="text-red-600 h-5 w-5" />;
+		if (isCompleted)
+			return <CheckCircle2 className="text-green-600 h-5 w-5" />;
+		return <Zap className="text-blue-600 h-5 w-5 animate-pulse" />;
+	};
+
+	const getTitle = () => {
+		if (isError)
+			return "分析遇到错误";
+		if (isCompleted)
+			return "分析完成";
+		return "AI 正在分析中...";
+	};
+
+	if (isMinimized) {
+		return (
+			<div className="bottom-4 right-4 fixed z-50">
+				<Card className="border-0 bg-white w-80 shadow-lg">
+					<CardContent className="p-4">
+						<div className="mb-2 flex items-center justify-between">
+							<div className="flex gap-2 items-center">
+								{getIcon()}
+								<span className="text-sm font-medium">{getTitle()}</span>
+							</div>
+							<div className="flex gap-1">
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => setIsMinimized(false)}
+									className="h-6 w-6"
+								>
+									<span className="text-xs">展开</span>
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={onClose}
+									className="h-6 w-6"
+								>
+									<X className="h-3 w-3" />
+								</Button>
+							</div>
+						</div>
+						{!isCompleted && !isError && (
+							<Progress value={progress} className="h-2" />
+						)}
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
+
 	return (
 		<div className="p-4 bg-black/50 flex items-center inset-0 justify-center fixed z-50 backdrop-blur-sm">
-			<Card className="bg-white max-h-[80vh] max-w-4xl w-full shadow-2xl">
+			<Card className={`border-0 bg-white w-full shadow-2xl ${
+				isMobile
+					? "max-w-full max-h-[90vh]"
+					: "max-w-4xl max-h-[80vh]"
+			}`}
+			>
 				<CardHeader className="pb-4 flex flex-row items-center justify-between space-y-0">
 					<CardTitle className="flex gap-2 items-center">
-						<Zap className="text-blue-600 h-5 w-5 animate-pulse" />
-						AI 正在分析中...
+						{getIcon()}
+						{getTitle()}
 					</CardTitle>
-					<Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
-						<X className="h-4 w-4" />
-					</Button>
+					<div className="flex gap-1">
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={() => setIsMinimized(true)}
+							className="h-8 w-8"
+							title="最小化"
+						>
+							<span className="text-xs">—</span>
+						</Button>
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={onClose}
+							className="h-8 w-8"
+							title="关闭"
+						>
+							<X className="h-4 w-4" />
+						</Button>
+					</div>
 				</CardHeader>
 				<CardContent>
-					<ScrollArea className="h-[60vh] w-full">
-						<div className="space-y-2">
-							<div className="text-sm text-slate-600 mb-4">实时输出流：</div>
-							<div className="text-sm font-mono p-4 rounded-lg bg-slate-50 whitespace-pre-wrap">
-								{streamContent}
-								<span className="ml-1 bg-blue-600 h-4 w-2 inline-block animate-pulse" />
+					{!isCompleted && !isError && (
+						<div className="mb-4">
+							<div className="text-sm text-gray-600 mb-2 flex justify-between">
+								<span>分析进度</span>
+								<span>
+									{Math.round(progress)}
+									%
+								</span>
 							</div>
+							<Progress value={progress} className="h-2" />
+						</div>
+					)}
+
+					<ScrollArea className={`w-full ${
+						isMobile ? "h-[50vh]" : "h-[60vh]"
+					}`}
+					>
+						<div className="space-y-2">
+							<div className="text-sm text-slate-600 mb-4">
+								{isError ? "错误日志：" : "实时输出流："}
+							</div>
+							<div
+								ref={scrollRef}
+								className={`text-sm font-mono p-4 rounded-lg whitespace-pre-wrap break-words ${
+									isError
+										? "bg-red-50 border border-red-200 text-red-800"
+										: "bg-slate-50"
+								}`}
+							>
+								{streamContent}
+								{!isCompleted && !isError && (
+									<span className="ml-1 bg-blue-600 h-4 w-2 inline-block animate-pulse" />
+								)}
+							</div>
+
+							{isError && (
+								<div className="mt-4 p-3 border border-yellow-200 rounded-lg bg-yellow-50">
+									<p className="text-sm text-yellow-800">
+										如果问题持续出现，请尝试：
+									</p>
+									<ul className="text-sm text-yellow-700 mt-2 space-y-1">
+										<li>• 检查网络连接</li>
+										<li>• 减少文本长度</li>
+										<li>• 刷新页面重试</li>
+										<li>• 切换到WiFi网络（移动端）</li>
+									</ul>
+								</div>
+							)}
 						</div>
 					</ScrollArea>
 				</CardContent>
