@@ -216,7 +216,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 										setModeFilter("all");
 										setSortBy("time_desc");
 									}}
-									className="h-9 w-full border-2 bg-white hover:bg-gray-50"
+									className="border-2 bg-white h-9 w-full hover:bg-gray-50"
 								>
 									重置筛选
 								</Button>
@@ -354,7 +354,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 									</div>
 
 									{/* Action Button */}
-									<Button asChild variant="default" size="sm" className="shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground">
+									<Button asChild variant="default" size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0">
 										<Link href={`/history/${item._id}`}>
 											查看详情
 										</Link>
@@ -398,8 +398,8 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 										variant={pageNum === currentPage ? "default" : "outline"}
 										size="sm"
 										onClick={() => setCurrentPage(pageNum)}
-										className={`p-0 h-8 w-8 ${pageNum === currentPage 
-											? "bg-primary hover:bg-primary/90 text-primary-foreground" 
+										className={`p-0 h-8 w-8 ${pageNum === currentPage
+											? "bg-primary hover:bg-primary/90 text-primary-foreground"
 											: "border-2 bg-white hover:bg-gray-50"
 										}`}
 									>

@@ -2,7 +2,8 @@
 
 import type { UsageStats } from "./types";
 import type { UserSubscriptionData } from "@/lib/subscription";
-import { Crown } from "lucide-react";
+import { CheckCircle, Copy, Crown, Eye, EyeOff } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +17,19 @@ interface SubscriptionCardProps {
 }
 
 export const SubscriptionCard = ({ data, usageStats }: SubscriptionCardProps) => {
+	const [orderRevealed, setOrderRevealed] = useState(false);
+	const [copySuccess, setCopySuccess] = useState(false);
+
+	const handleCopyOrder = async (orderId: string) => {
+		try {
+			await navigator.clipboard.writeText(orderId);
+			setCopySuccess(true);
+			setTimeout(() => setCopySuccess(false), 2000);
+		} catch (err) {
+			console.error("复制失败:", err);
+		}
+	};
+
 	const getSubscriptionStatusBadge = (status: string, isSubscribed: boolean) => {
 		if (status === "loading") {
 			return <Badge variant="secondary">加载中...</Badge>;
@@ -100,11 +114,61 @@ export const SubscriptionCard = ({ data, usageStats }: SubscriptionCardProps) =>
 										)}
 
 										{data.subscription.sponsorInfo.bound_order_id && (
-											<div className="flex justify-between">
+											<div className="flex items-center justify-between">
 												<span className="text-sm">绑定订单</span>
-												<span className="text-sm font-medium font-mono">
-													{data.subscription.sponsorInfo.bound_order_id}
-												</span>
+												<div className="flex gap-2 items-center">
+													<div className="relative">
+														<span
+															className={`text-sm font-medium font-mono transition-all duration-300 ${
+																orderRevealed ? "" : "blur-sm select-none"
+															}`}
+														>
+															{data.subscription.sponsorInfo.bound_order_id}
+														</span>
+														{!orderRevealed && (
+															<div className="flex items-center inset-0 justify-center absolute">
+																<span className="text-muted-foreground bg-background text-xs px-1.5 py-0.5 border rounded">
+																	已隐藏
+																</span>
+															</div>
+														)}
+													</div>
+													<div className="flex gap-1">
+														<Button
+															variant="ghost"
+															size="sm"
+															className="p-0 h-6 w-6"
+															onClick={() => setOrderRevealed(!orderRevealed)}
+															title={orderRevealed ? "隐藏订单号" : "显示订单号"}
+														>
+															{orderRevealed
+																? (
+																		<EyeOff className="h-3.5 w-3.5" />
+																	)
+																: (
+																		<Eye className="h-3.5 w-3.5" />
+																	)}
+														</Button>
+														{orderRevealed && (
+															<Button
+																variant="ghost"
+																size="sm"
+																className="p-0 h-6 w-6"
+																onClick={() => handleCopyOrder(data.subscription.sponsorInfo?.bound_order_id || "")}
+																title={copySuccess ? "复制成功" : "复制订单号"}
+																disabled={copySuccess}
+															>
+																{copySuccess
+																	? (
+																			<CheckCircle className="text-green-600 h-3.5 w-3.5" />
+																		)
+																	: (
+																			<Copy className="h-3.5 w-3.5" />
+																		)}
+															</Button>
+														)}
+													</div>
+												</div>
 											</div>
 										)}
 

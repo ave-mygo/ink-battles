@@ -63,6 +63,7 @@ export const AfdianBinding = ({
 										{data.user.afdian_user_id && (
 											<p>
 												ID:
+												{" "}
 												{data.user.afdian_user_id}
 											</p>
 										)}
