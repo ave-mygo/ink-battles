@@ -79,7 +79,7 @@ export function HistoryCard({ initialData }: HistoryCardProps) {
 		<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
 			<CardHeader>
 				<CardTitle className="flex gap-2 items-center">
-					<Calendar className="h-5 w-5 text-blue-600" />
+					<Calendar className="text-blue-600 h-5 w-5" />
 					最近分析
 				</CardTitle>
 			</CardHeader>
@@ -108,39 +108,40 @@ export function HistoryCard({ initialData }: HistoryCardProps) {
 						: (
 								<div className="space-y-3">
 									{historyData?.data.map(item => (
-										<Link 
-											key={item._id} 
+										<Link
+											key={item._id}
 											href={`/history/${item._id}`}
 											className="block"
 										>
-											<div className="hover:bg-muted/50 p-2 rounded-lg flex gap-3 transition-colors items-center group">
+											<div className="hover:bg-muted/50 group p-2 rounded-lg flex gap-3 transition-colors items-center">
 												<div className="bg-primary/10 rounded-full flex shrink-0 h-10 w-10 items-center justify-center">
 													<Star className={`h-4 w-4 ${getScoreColor(item.overallScore)}`} />
 												</div>
 												<div className="flex-1 min-w-0">
-													<p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{item.title}</p>
+													<p className="group-hover:text-primary text-sm font-medium truncate transition-colors">{item.title}</p>
 													<div className="flex gap-2 items-center">
 														<span className={`text-xs font-medium ${getScoreColor(item.overallScore)}`}>
-															{item.overallScore}分
+															{item.overallScore}
+															分
 														</span>
 														<span className="text-muted-foreground text-xs">
 															{formatDate(item.timestamp)}
 														</span>
 														{item.mode && (
-															<span className="text-xs bg-secondary px-1.5 py-0.5 rounded-full">
+															<span className="bg-secondary text-xs px-1.5 py-0.5 rounded-full">
 																{item.mode.split(",")[0]}
 															</span>
 														)}
 													</div>
 												</div>
-												<ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+												<ChevronRight className="text-muted-foreground group-hover:text-primary h-4 w-4 transition-colors" />
 											</div>
 										</Link>
 									))}
 								</div>
 							)}
 				<div className="mt-4 pt-3 border-t">
-					<Button asChild variant="outline" size="sm" className="w-full border-2 bg-white hover:bg-gray-50">
+					<Button asChild variant="outline" size="sm" className="border-2 bg-white w-full hover:bg-gray-50">
 						<Link href="/history" className="flex gap-2 items-center">
 							查看全部历史
 							<ChevronRight className="h-4 w-4" />

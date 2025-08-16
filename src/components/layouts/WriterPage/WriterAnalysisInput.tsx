@@ -1,7 +1,7 @@
 "use client";
 
 import { Crown, FileText, Gift, Users, Zap } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -83,6 +83,84 @@ function LimitModal({ open, onClose, tierData }: {
 	);
 }
 
+// 独立的进度组件，使用 memo 优化
+const UsageProgress = React.memo(({ articleLength, perRequestLimit }: {
+	articleLength: number;
+	perRequestLimit: number | null;
+}) => {
+	const progressValue = useMemo(() => {
+		if (!perRequestLimit)
+			return 0;
+		return Math.min(100, Math.round((articleLength / perRequestLimit) * 100));
+	}, [articleLength, perRequestLimit]);
+
+	return (
+		<div className="mt-3">
+			{perRequestLimit
+				? (
+						<>
+							<div className="text-[12px] text-slate-600 mb-1 flex justify-between">
+								<span>本次输入进度</span>
+								<span>
+									{articleLength.toLocaleString()}
+									{" "}
+									/
+									{perRequestLimit.toLocaleString()}
+									{" "}
+									字
+								</span>
+							</div>
+							<Progress value={progressValue} className="h-2" />
+						</>
+					)
+				: (
+						<div className="text-[12px] text-slate-600">本次输入：无限制</div>
+					)}
+		</div>
+	);
+});
+UsageProgress.displayName = "UsageProgress";
+
+// 独立的字数统计组件，使用 memo 优化
+const WordCounter = React.memo(({ articleLength, currentLimit, userType }: {
+	articleLength: number;
+	currentLimit: number;
+	userType: UserType;
+}) => {
+	const isNearLimit = useMemo(() => {
+		return currentLimit !== Number.MAX_SAFE_INTEGER && articleLength > currentLimit * 0.8;
+	}, [currentLimit, articleLength]);
+
+	const limitDisplay = useMemo(() => {
+		return currentLimit === Number.MAX_SAFE_INTEGER ? "无限制" : currentLimit.toLocaleString();
+	}, [currentLimit]);
+
+	return (
+		<div className="text-sm text-slate-500 mt-2 flex items-center justify-between">
+			<span>
+				字数统计:
+				{" "}
+				{articleLength}
+				{" "}
+				/
+				{" "}
+				{limitDisplay}
+				{" "}
+				字
+			</span>
+			{isNearLimit && (
+				<span className="text-xs text-amber-600">
+					接近限额，建议
+					{userType === UserType.GUEST && "登录或"}
+					{userType === UserType.REGULAR && "升级会员或"}
+					分段提交
+				</span>
+			)}
+		</div>
+	);
+});
+WordCounter.displayName = "WordCounter";
+
 export default function WriterAnalysisInput({ articleText, setArticleText }: { articleText: string; setArticleText: (text: string) => void }) {
 	const [showLimitModal, setShowLimitModal] = useState(false);
 	const [_browserFingerprint, setBrowserFingerprint] = useState<string>("");
@@ -95,6 +173,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 	});
 	const [loading, setLoading] = useState(true);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 	const fetchUserTierData = async () => {
 		let userType = UserType.GUEST;
@@ -191,11 +270,11 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 		initializeData();
 	}, []);
 
-	const getCurrentLimit = () => {
+	const getCurrentLimit = useCallback(() => {
 		return tierData.limits.perRequest || Number.MAX_SAFE_INTEGER;
-	};
+	}, [tierData.limits.perRequest]);
 
-	const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+	const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
 		const val = e.target.value;
 		const currentLimit = getCurrentLimit();
 
@@ -208,8 +287,15 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 			}
 			return;
 		}
+
+		// 清除之前的防抖定时器
+		if (debounceTimerRef.current) {
+			clearTimeout(debounceTimerRef.current);
+		}
+
+		// 立即更新本地状态以保证输入响应性
 		setArticleText(val);
-	};
+	}, [getCurrentLimit, setArticleText]);
 
 	if (loading) {
 		return (
@@ -260,28 +346,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 					</div>
 
 					{/* 使用进度 */}
-					<div className="mt-3">
-						{tierData.limits.perRequest
-							? (
-									<>
-										<div className="text-[12px] text-slate-600 mb-1 flex justify-between">
-											<span>本次输入进度</span>
-											<span>
-												{articleText.length.toLocaleString()}
-												{" "}
-												/
-												{tierData.limits.perRequest.toLocaleString()}
-												{" "}
-												字
-											</span>
-										</div>
-										<Progress value={Math.min(100, Math.round((articleText.length / tierData.limits.perRequest) * 100))} className="h-2" />
-									</>
-								)
-							: (
-									<div className="text-[12px] text-slate-600">本次输入：无限制</div>
-								)}
-					</div>
+					<UsageProgress articleLength={articleText.length} perRequestLimit={tierData.limits.perRequest} />
 
 					{/* 权益速览 */}
 					<div className="text-[12px] mt-3 gap-2 grid grid-cols-3">
@@ -346,27 +411,11 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 					onChange={handleTextChange}
 					className="text-base leading-relaxed border-slate-200 flex-1 min-h-[200px] w-full resize-none overflow-auto focus:border-blue-500 focus:ring-blue-500/20"
 				/>
-				<div className="text-sm text-slate-500 mt-2 flex items-center justify-between">
-					<span>
-						字数统计:
-						{" "}
-						{articleText.length}
-						{" "}
-						/
-						{" "}
-						{getCurrentLimit() === Number.MAX_SAFE_INTEGER ? "无限制" : getCurrentLimit().toLocaleString()}
-						{" "}
-						字
-					</span>
-					{getCurrentLimit() !== Number.MAX_SAFE_INTEGER && articleText.length > getCurrentLimit() * 0.8 && (
-						<span className="text-xs text-amber-600">
-							接近限额，建议
-							{tierData.userType === UserType.GUEST && "登录或"}
-							{tierData.userType === UserType.REGULAR && "升级会员或"}
-							分段提交
-						</span>
-					)}
-				</div>
+				<WordCounter
+					articleLength={articleText.length}
+					currentLimit={getCurrentLimit()}
+					userType={tierData.userType}
+				/>
 				<LimitModal
 					open={showLimitModal}
 					onClose={() => setShowLimitModal(false)}

@@ -73,7 +73,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 	};
 
 	return (
-		<Card>
+		<Card className="w-full min-w-0">
 			<CardHeader>
 				<CardTitle className="flex items-center">
 					<Shield className="mr-2 h-5 w-5" />
@@ -83,7 +83,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 			</CardHeader>
 			<CardContent className="space-y-4">
 				{/* QQ绑定状态 */}
-				<div className="p-3 border rounded-lg flex items-center justify-between">
+				<div className="p-3 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
 					<div className="flex items-center space-x-3">
 						<Icon icon="mingcute:qq-fill" className="text-[#12B7F5] h-6 w-6" />
 						<div>
@@ -106,7 +106,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 									disabled={_bindingQQ}
 									variant="outline"
 									size="sm"
-									className="text-[#12B7F5] border-[#12B7F5] hover:text-white hover:bg-[#12B7F5]"
+									className="text-[#12B7F5] border-[#12B7F5] hover:text-white hover:bg-[#12B7F5] self-start sm:self-auto"
 								>
 									{_bindingQQ ? "绑定中..." : "绑定QQ"}
 								</Button>
@@ -116,7 +116,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 				<Separator />
 
 				{/* 邮箱绑定状态 */}
-				<div className="p-3 border rounded-lg flex items-center justify-between">
+				<div className="p-3 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
 					<div className="flex items-center space-x-3">
 						<Mail className="text-blue-600 h-6 w-6" />
 						<div>
@@ -138,7 +138,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 									onClick={() => setEmailBindOpen(true)}
 									variant="outline"
 									size="sm"
-									className="text-blue-600 border-blue-600 hover:text-white hover:bg-blue-600"
+									className="text-blue-600 border-blue-600 hover:text-white hover:bg-blue-600 self-start sm:self-auto"
 								>
 									绑定邮箱
 								</Button>

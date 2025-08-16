@@ -156,3 +156,45 @@
 		transition: all 0.2s ease-in-out;
 	}
 }
+
+@utility blur-sensitive {
+	filter: blur(6px);
+	transition: filter 0.2s ease-in-out;
+	user-select: none;
+
+	&:hover,
+	&.revealed {
+		filter: blur(0px);
+		user-select: auto;
+	}
+}
+
+@utility btn-mygo-rainbow {
+	@apply text-white font-medium rounded-lg px-8 py-3 transition-all duration-150 shadow-md;
+
+	background-image: linear-gradient(270deg, #77bbdd, #7777aa, #ff8899, #ffdd88, #77dd77, #77bbdd);
+	background-size: 600% 600%;
+	animation: gradient-flow 12s ease infinite;
+
+	/* hover 效果 */
+	&:hover {
+		@apply opacity-95 shadow-lg;
+	}
+
+	/* disabled 效果 */
+	&:disabled {
+		@apply opacity-70 cursor-not-allowed shadow-none;
+	}
+}
+
+@keyframes gradient-flow {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
+}

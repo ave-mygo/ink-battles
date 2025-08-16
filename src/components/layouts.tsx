@@ -291,7 +291,7 @@ export default function WriterAnalysisSystem() {
 						onClick={handleAnalyze}
 						disabled={isAnalyzing || !articleText.trim()}
 						size="lg"
-						className="text-base text-white font-medium px-8 py-3 rounded-lg bg-blue-600 w-full shadow-md transition-all duration-150 disabled:bg-gray-300 hover:bg-blue-700 sm:w-auto disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500/20 disabled:shadow-none hover:shadow-lg"
+						className="btn-mygo-rainbow text-base text-white font-medium px-8 py-3 rounded-lg w-full shadow-md transition-all duration-150 sm:w-auto focus:ring-2 hover:shadow-lg"
 					>
 						{isAnalyzing
 							? (

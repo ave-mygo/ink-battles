@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 					{ status: 400 },
 				);
 			}
-		} catch (_jwtError) {
+		} catch {
 			return NextResponse.json(
 				{ success: false, message: "无效的登录状态" },
 				{ status: 401 },
