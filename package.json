@@ -35,7 +35,6 @@
 		"crypto-js": "^4.2.0",
 		"date-fns": "^4.1.0",
 		"dotenv": "^17.2.1",
-		"html2canvas": "^1.4.1",
 		"jsonwebtoken": "^9.0.2",
 		"lucide-react": "^0.525.0",
 		"md5": "^2.3.0",

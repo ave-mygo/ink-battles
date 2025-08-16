@@ -13,6 +13,7 @@ export interface AnalysisHistoryItem {
 	summary: string;
 	articleText: string;
 	mode: string;
+	tags?: string[];
 }
 
 export interface AnalysisHistoryResponse {
@@ -35,6 +36,7 @@ export interface AnalysisFullResult {
 	title: string;
 	ratingTag: string;
 	summary: string;
+	tags?: string[];
 	dimensions: AnalysisFullResultDimension[];
 	strengths: string[];
 	improvements: string[];
@@ -99,6 +101,7 @@ export async function getAnalysisHistory(
 				summary: parsedResult.summary || "暂无概述",
 				articleText: item.articleText || "",
 				mode: item.mode || "default",
+				tags: item.tags || parsedResult.tags || [],
 			};
 		});
 
@@ -159,12 +162,14 @@ export async function getAnalysisById(token: string, id: string): Promise<Analys
 			summary: parsedResult.summary || "暂无概述",
 			articleText: doc.articleText || "",
 			mode: doc.mode || "default",
+			tags: doc.tags || parsedResult.tags || [],
 			analysisResult: {
 				overallScore: doc.overallScore || parsedResult.overallScore || 0,
 				overallAssessment: parsedResult.overallAssessment || "",
 				title: parsedResult.title || "未知标题",
 				ratingTag: parsedResult.ratingTag || "未知标签",
 				summary: parsedResult.summary || "暂无概述",
+				tags: doc.tags || parsedResult.tags || [],
 				dimensions: parsedResult.dimensions || [],
 				strengths: parsedResult.strengths || [],
 				improvements: parsedResult.improvements || [],

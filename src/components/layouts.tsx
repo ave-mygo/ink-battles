@@ -107,6 +107,11 @@ export default function WriterAnalysisSystem() {
 	const [selectedModeName, setSelectedModeName] = useState<string[]>([]);
 	const [streamContent, setStreamContent] = useState("");
 	const [showStreamingDisplay, setShowStreamingDisplay] = useState(false);
+	const [isError, setIsError] = useState(false);
+	const [isCompleted, setIsCompleted] = useState(false);
+	const [progress, setProgress] = useState(0);
+	const [retryCount, setRetryCount] = useState(0);
+	const [abortController, setAbortController] = useState<AbortController | null>(null);
 
 	const handleModeChange = (modeId: string, checked: boolean, modeName: string) => {
 		if (modeId === "fragment" || modeId === "ai-detection") {
@@ -134,13 +139,30 @@ export default function WriterAnalysisSystem() {
 	};
 
 	const handleClear = () => {
+		// 取消正在进行的请求
+		if (abortController) {
+			abortController.abort();
+			setAbortController(null);
+		}
+
 		setArticleText("");
 		setSelectedMode([]);
 		setSelectedModeName([]);
 		setAnalysisResult(null);
 		setStreamContent("");
 		setShowStreamingDisplay(false);
+		setIsError(false);
+		setIsCompleted(false);
+		setProgress(0);
+		setRetryCount(0);
 		toast.success("已清除所有内容");
+	};
+
+	const resetAnalysisState = () => {
+		setIsError(false);
+		setIsCompleted(false);
+		setProgress(0);
+		setStreamContent("");
 	};
 
 	const parseStreamedResult = (content: string): AnalysisResult | null => {
@@ -160,34 +182,54 @@ export default function WriterAnalysisSystem() {
 		}
 	};
 
-	const handleAnalyze = async () => {
-		if (!articleText.trim()) {
-			toast.error("请先输入要分析的作品内容");
-			return;
+	const simulateProgress = (startTime: number) => {
+		const interval = setInterval(() => {
+			const elapsed = Date.now() - startTime;
+			const expectedDuration = 60000; // 预计60秒完成
+			const progressValue = Math.min(90, (elapsed / expectedDuration) * 100);
+			setProgress(progressValue);
+
+			if (progressValue >= 90) {
+				clearInterval(interval);
+			}
+		}, 1000);
+
+		return interval;
+	};
+
+	const performAnalysis = async (isRetry = false): Promise<void> => {
+		const controller = new AbortController();
+		setAbortController(controller);
+
+		if (!isRetry) {
+			resetAnalysisState();
 		}
 
-		setIsAnalyzing(true);
-		setShowStreamingDisplay(true);
-		setStreamContent(prev => `${prev}正在校验文章内容...\n`);
-
-		// 验证文章内容
-		const verifyResult = await verifyArticleValue(articleText);
-
-		if (!verifyResult.success) {
-			const errorMessage = verifyResult.error || "文章内容不符合分析标准";
-			setStreamContent(prev => `${prev}校验未通过，无法进行分析。\n原因：${errorMessage}\n`);
-			toast.error(errorMessage);
-			setIsAnalyzing(false);
-			return;
-		}
-
-		setStreamContent(prev => `${prev}校验通过，正在分析，分析过程可能需要几分钟...\n`);
-
-		// 生成浏览器指纹用于未登录限额统计
-		const fingerprint = await generateBrowserFingerprint();
+		const startTime = Date.now();
+		const progressInterval = simulateProgress(startTime);
 
 		try {
-			// 使用简化的流式实现
+			setStreamContent(prev => `${prev}${isRetry ? "重试" : "开始"}分析，校验文章内容...\n`);
+
+			// 验证文章内容
+			const verifyResult = await verifyArticleValue(articleText);
+
+			if (!verifyResult.success) {
+				const errorMessage = verifyResult.error || "文章内容不符合分析标准";
+				throw new Error(`校验失败: ${errorMessage}`);
+			}
+
+			setStreamContent(prev => `${prev}校验通过，正在分析中...\n`);
+			setProgress(10);
+
+			// 生成浏览器指纹
+			const fingerprint = await generateBrowserFingerprint();
+
+			// 创建请求超时
+			const timeoutId = setTimeout(() => {
+				controller.abort();
+			}, 120000); // 2分钟超时
+
 			const response = await fetch("/api/analyze-stream", {
 				method: "POST",
 				headers: {
@@ -198,47 +240,119 @@ export default function WriterAnalysisSystem() {
 					articleText,
 					mode: selectedModeName.join(","),
 				}),
+				signal: controller.signal,
 			});
 
+			clearTimeout(timeoutId);
+
 			if (!response.ok) {
-				throw new Error("分析请求失败");
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
 			}
 
-			const reader = response.body?.getReader();
+			if (!response.body) {
+				throw new Error("响应体为空");
+			}
+
+			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let fullContent = "";
 
-			if (reader) {
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done)
-						break;
+			setProgress(20);
 
-					const chunk = decoder.decode(value, { stream: true });
-					fullContent += chunk;
-					setStreamContent(prev => `${prev}${chunk}`);
-				}
+			while (true) {
+				const readPromise = reader.read();
+				const timeoutPromise = new Promise<never>((_, reject) => {
+					setTimeout(() => reject(new Error("读取超时")), 30000); // 30秒读取超时
+				});
+
+				const { done, value } = await Promise.race([readPromise, timeoutPromise]);
+
+				if (done)
+					break;
+
+				const chunk = decoder.decode(value, { stream: true });
+				fullContent += chunk;
+				setStreamContent(prev => `${prev}${chunk}`);
+
+				// 动态更新进度
+				const progressValue = Math.min(80, 20 + (fullContent.length / 1000) * 2);
+				setProgress(progressValue);
 			}
 
-			// 流式完成后，尝试解析结果
+			clearInterval(progressInterval);
+			setProgress(95);
+
+			// 解析结果
 			const parsedResult = parseStreamedResult(fullContent);
 
 			if (parsedResult) {
 				setAnalysisResult(parsedResult);
-				setStreamContent(prev => `${prev}\n分析完成。`);
+				setProgress(100);
+				setIsCompleted(true);
+				setStreamContent(prev => `${prev}\n✅ 分析完成！`);
 				toast.success("分析完成");
+
 				setTimeout(() => {
 					setShowStreamingDisplay(false);
 					setStreamContent("");
-				}, 5000);
+					setProgress(0);
+				}, 3000);
 			} else {
-				setStreamContent(prev => `${prev}\n解析JSON失败，请重试。`);
-				toast.error("解析分析结果失败，请重试");
+				throw new Error("无法解析分析结果");
 			}
+		} catch (error: any) {
+			clearInterval(progressInterval);
+			setIsError(true);
+			setProgress(0);
+
+			let errorMessage = "分析过程中发生错误";
+
+			if (error.name === "AbortError") {
+				errorMessage = "请求被取消或超时";
+			} else if (error.message.includes("Failed to fetch")) {
+				errorMessage = "网络连接失败，请检查网络状态";
+			} else if (error.message.includes("校验失败")) {
+				errorMessage = error.message;
+			} else {
+				errorMessage = error.message || errorMessage;
+			}
+
+			setStreamContent(prev => `${prev}\n❌ ${errorMessage}\n`);
+
+			// 移动端网络环境更不稳定，提供重试选项
+			const isMobile = window.innerWidth < 768;
+			if (retryCount < (isMobile ? 3 : 2) && !error.message.includes("校验失败")) {
+				const nextRetryCount = retryCount + 1;
+				setRetryCount(nextRetryCount);
+				setStreamContent(prev => `${prev}准备第 ${nextRetryCount} 次重试...\n`);
+
+				setTimeout(() => {
+					performAnalysis(true);
+				}, 2000);
+			} else {
+				toast.error(errorMessage);
+				console.error("分析失败:", error);
+			}
+		} finally {
+			setAbortController(null);
+		}
+	};
+
+	const handleAnalyze = async () => {
+		if (!articleText.trim()) {
+			toast.error("请先输入要分析的作品内容");
+			return;
+		}
+
+		setIsAnalyzing(true);
+		setShowStreamingDisplay(true);
+		setRetryCount(0);
+
+		try {
+			await performAnalysis();
 		} catch (error) {
-			console.error("分析过程中出错:", error);
-			setStreamContent(prev => `${prev}\n分析文章时出错，请截图保留以下日志并联系开发者。\n${error}`);
-			toast.error("分析文章时出错");
+			console.error("启动分析失败:", error);
 		} finally {
 			setIsAnalyzing(false);
 		}
@@ -337,7 +451,16 @@ export default function WriterAnalysisSystem() {
 				<StreamingDisplay
 					streamContent={streamContent}
 					isVisible={showStreamingDisplay}
-					onClose={() => setShowStreamingDisplay(false)}
+					onClose={() => {
+						if (abortController) {
+							abortController.abort();
+						}
+						setShowStreamingDisplay(false);
+						setIsAnalyzing(false);
+					}}
+					isError={isError}
+					isCompleted={isCompleted}
+					progress={progress}
 				/>
 			</div>
 		</div>

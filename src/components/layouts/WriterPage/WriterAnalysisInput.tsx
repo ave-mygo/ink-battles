@@ -409,7 +409,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 					placeholder="请在此处粘贴要分析的作品全文..."
 					value={articleText}
 					onChange={handleTextChange}
-					className="text-base leading-relaxed border-slate-200 flex-1 min-h-[200px] w-full resize-none overflow-auto focus:border-blue-500 focus:ring-blue-500/20"
+					className="text-base leading-relaxed border-slate-200 flex-1 max-h-[400px] min-h-[200px] w-full resize-none overflow-auto focus:border-blue-500 focus:ring-blue-500/20"
 				/>
 				<WordCounter
 					articleLength={articleText.length}
