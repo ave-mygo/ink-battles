@@ -24,6 +24,7 @@ interface WriterAnalysisResultProps {
 		title: string;
 		ratingTag: string;
 		summary: string;
+		tags?: string[];
 		dimensions: Dimension[];
 		strengths: string[];
 		improvements: string[];
@@ -265,6 +266,30 @@ export default function WriterAnalysisResult({
 						</h4>
 						<p className="text-sm text-slate-600 leading-relaxed">{analysisResult.summary}</p>
 					</div>
+
+					{/* Tags */}
+					{analysisResult.tags && analysisResult.tags.length > 0 && (
+						<>
+							<Separator />
+							<div>
+								<h4 className="text-purple-700 font-medium mb-2 flex gap-2 items-center">
+									<BadgeCheck className="h-4 w-4" />
+									文章标签
+								</h4>
+								<div className="flex flex-wrap gap-2">
+									{analysisResult.tags.map((tag, index) => (
+										<span
+											key={index}
+											className="text-xs text-blue-700 px-2 py-1 border border-blue-200 rounded-md bg-blue-50 transition-colors hover:bg-blue-100"
+										>
+											{tag}
+										</span>
+									))}
+								</div>
+							</div>
+						</>
+					)}
+
 					<Separator />
 					<div>
 						<h4 className="text-green-700 font-medium mb-2 flex gap-2 items-center">
