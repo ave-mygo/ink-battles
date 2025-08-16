@@ -120,3 +120,39 @@
 		@apply bg-background text-foreground;
 	}
 }
+
+@layer utilities {
+	/* Text clamping utilities for consistent content overflow handling */
+	.line-clamp-2 {
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+	}
+
+	.line-clamp-3 {
+		overflow: hidden;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 3;
+	}
+
+	/* Enhanced glass effect for cards */
+	.glass-card {
+		backdrop-filter: blur(20px);
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		background: rgba(255, 255, 255, 0.9);
+	}
+
+	/* Smooth focus styles */
+	.focus-enhanced:focus-within {
+		@apply ring-2 ring-primary/20 border-primary/50;
+		transition: all 0.2s ease-in-out;
+	}
+
+	/* Better hover states */
+	.hover-lift:hover {
+		transform: translateY(-2px);
+		transition: all 0.2s ease-in-out;
+	}
+}

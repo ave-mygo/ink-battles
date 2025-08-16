@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import type { UsageStats } from "../types";
+import { useCallback, useEffect, useState } from "react";
 
 export const useUsageStats = () => {
 	const [usageStats, setUsageStats] = useState<UsageStats | null>(null);

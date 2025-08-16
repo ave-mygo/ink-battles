@@ -334,7 +334,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 								感谢支持！当前累计赞助：¥
 								{tierData.donationAmount?.toLocaleString?.() || tierData.donationAmount}
 							</span>
-							<a href="/sponsors" className="text-xs text-slate-500 hover:text-slate-700">管理赞助</a>
+							<a href="/dashboard" className="text-xs text-slate-500 hover:text-slate-700">管理赞助</a>
 						</div>
 					)}
 				</div>
