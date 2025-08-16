@@ -42,7 +42,7 @@ export const UserInfoCard = ({
 	const avatarSrc = data.user.avatar || data.user.afdian_avatar;
 
 	return (
-		<Card>
+		<Card className="w-full min-w-0">
 			<CardHeader>
 				<CardTitle className="flex items-center">
 					<User className="mr-2 h-5 w-5" />
@@ -50,14 +50,14 @@ export const UserInfoCard = ({
 				</CardTitle>
 				<CardDescription>您的账户基本信息</CardDescription>
 			</CardHeader>
-			<CardContent className="space-y-6">
-				<div className="flex items-start space-x-4">
-					<Avatar className="flex-shrink-0 h-16 w-16">
+			<CardContent className="space-y-4 sm:space-y-6">
+				<div className="flex items-start space-x-3 sm:space-x-4">
+					<Avatar className="flex-shrink-0 h-12 w-12 sm:h-16 sm:w-16">
 						<AvatarImage src={avatarSrc} alt={displayName} />
-						<AvatarFallback className="text-lg">{initial}</AvatarFallback>
+						<AvatarFallback className="text-sm sm:text-lg">{initial}</AvatarFallback>
 					</Avatar>
 					<div className="flex-1 min-w-0">
-						<h3 className="text-xl font-semibold truncate">{displayName}</h3>
+						<h3 className="text-lg sm:text-xl font-semibold truncate">{displayName}</h3>
 						<p className="text-muted-foreground text-sm truncate">{data.user.email || "未设置邮箱"}</p>
 						{data.user.afdian_bound && data.user.afdian_username && (
 							<div className="mt-1 flex items-center space-x-2">

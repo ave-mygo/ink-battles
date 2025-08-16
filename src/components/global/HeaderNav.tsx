@@ -27,60 +27,60 @@ export const HeaderNav = () => {
 		buttonVariants({ size: "sm", variant });
 
 	return (
-		<nav className="flex gap-4 items-center">
+		<nav className="flex gap-2 items-center sm:gap-4">
 			{/* 左侧：主要导航 */}
-			<div className="flex gap-1.5 items-center">
-				<Button asChild size="sm" variant="ghost" className={cn(baseBtn("ghost"), "px-3 rounded-full", pathname === "/" && "bg-secondary")}>
-					<Link href="/" className="flex gap-2 items-center">
+			<div className="flex gap-1 items-center sm:gap-1.5">
+				<Button asChild size="sm" variant="ghost" className={cn(baseBtn("ghost"), "px-2 sm:px-3 rounded-full", pathname === "/" && "bg-secondary")}>
+					<Link href="/" className="flex gap-1 items-center sm:gap-2">
 						<Home className="h-4 w-4" />
-						<span>首页</span>
+						<span className="hidden sm:inline">首页</span>
 					</Link>
 				</Button>
 
-				<Button asChild size="sm" variant="outline" className={cn(baseBtn("outline"), "px-3 rounded-full border-pink-300 text-pink-700 hover:bg-pink-50", pathname === "/sponsors" && "bg-secondary")}>
-					<Link href="/sponsors" className="flex gap-2 items-center">
+				<Button asChild size="sm" variant="outline" className={cn(baseBtn("outline"), "px-2 sm:px-3 rounded-full border-pink-300 text-pink-700 hover:bg-pink-50", pathname === "/sponsors" && "bg-secondary")}>
+					<Link href="/sponsors" className="flex gap-1 items-center sm:gap-2">
 						<Heart className="h-4 w-4" />
-						<span>赞助</span>
+						<span className="hidden sm:inline">赞助</span>
 					</Link>
 				</Button>
 			</div>
 
 			{/* 分隔线 */}
-			<div className="bg-border mx-1 h-6 w-px" />
+			<div className="bg-border mx-0.5 h-6 w-px sm:mx-1" />
 
 			{/* 右侧：账户与入口 */}
-			<div className="flex gap-1.5 items-center">
+			<div className="flex gap-1 items-center sm:gap-1.5">
 				{loading
 					? (
-							<div className="text-muted-foreground text-xs px-3">加载中…</div>
+							<div className="text-muted-foreground text-xs px-2 sm:px-3">加载中…</div>
 						)
 					: user?.isLoggedIn
 						? (
 								<>
-									<Button asChild size="sm" className={cn(baseBtn("default"), "px-3 rounded-full shadow-sm", pathname === "/dashboard" && "bg-primary/90")}>
-										<Link href="/dashboard" className="flex gap-2 items-center">
+									<Button asChild size="sm" className={cn(baseBtn("default"), "px-2 sm:px-3 rounded-full shadow-sm", pathname === "/dashboard" && "bg-primary/90")}>
+										<Link href="/dashboard" className="flex gap-1 items-center sm:gap-2">
 											<LayoutDashboard className="h-4 w-4" />
-											<span>仪表盘</span>
+											<span className="hidden sm:inline">仪表盘</span>
 										</Link>
 									</Button>
-									<Button size="sm" variant="outline" className="text-red-600 px-3 border-red-200 rounded-full hover:bg-red-50" onClick={logout}>
-										<LogOut className="mr-1 h-4 w-4" />
-										退出
+									<Button size="sm" variant="outline" className="text-red-600 px-2 border-red-200 rounded-full sm:px-3 hover:bg-red-50" onClick={logout}>
+										<LogOut className="h-4 w-4 sm:mr-1" />
+										<span className="hidden sm:inline">退出</span>
 									</Button>
 								</>
 							)
 						: (
 								<>
-									<Button asChild size="sm" variant="ghost" className={cn(baseBtn("ghost"), "px-3 rounded-full", pathname === "/signin" && "bg-secondary")}>
-										<Link href="/signin" className="flex gap-2 items-center">
+									<Button asChild size="sm" variant="ghost" className={cn(baseBtn("ghost"), "px-2 sm:px-3 rounded-full", pathname === "/signin" && "bg-secondary")}>
+										<Link href="/signin" className="flex gap-1 items-center sm:gap-2">
 											<LogIn className="h-4 w-4" />
-											<span>登录</span>
+											<span className="hidden sm:inline">登录</span>
 										</Link>
 									</Button>
-									<Button asChild size="sm" className={cn(baseBtn("default"), "px-3 rounded-full shadow-sm", pathname === "/signup" && "bg-secondary")}>
-										<Link href="/signup" className="flex gap-2 items-center">
+									<Button asChild size="sm" className={cn(baseBtn("default"), "px-2 sm:px-3 rounded-full shadow-sm", pathname === "/signup" && "bg-secondary")}>
+										<Link href="/signup" className="flex gap-1 items-center sm:gap-2">
 											<UserPlus className="h-4 w-4" />
-											<span>注册</span>
+											<span className="hidden sm:inline">注册</span>
 										</Link>
 									</Button>
 								</>

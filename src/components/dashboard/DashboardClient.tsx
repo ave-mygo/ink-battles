@@ -113,7 +113,7 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 
 	if (error) {
 		return (
-			<div className="mx-auto p-6 container max-w-4xl">
+			<div className="mx-auto p-4 container max-w-4xl sm:p-6">
 				<Alert variant="destructive">
 					<AlertDescription>{error}</AlertDescription>
 				</Alert>
@@ -125,47 +125,58 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 	}
 
 	return (
-		<div className="mx-auto p-6 container max-w-4xl">
-			<div className="mb-6 flex items-center justify-between">
-				<h1 className="text-3xl font-bold">用户控制台</h1>
-				<Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={loading || statsLoading}>
+		<div className="mx-auto p-4 container max-w-4xl sm:p-6 min-w-0 w-full">
+			<div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+				<h1 className="text-2xl font-bold sm:text-3xl">用户控制台</h1>
+				<Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={loading || statsLoading} className="self-start sm:self-auto">
 					<RefreshCw className={`mr-2 h-4 w-4 ${(loading || statsLoading) ? "animate-spin" : ""}`} />
 					刷新
 				</Button>
 			</div>
 
-			<div className="gap-6 grid md:grid-cols-2">
-				<UserInfoCard
-					data={data}
-					bindLoading={bindLoading}
-					orderIdDialogOpen={orderIdDialogOpen}
-					orderId={orderId}
-					orderBindLoading={orderBindLoading}
-					error={error}
-					onUnbindAfdian={handleUnbindAfdian}
-					onAfdianAuth={handleAfdianAuth}
-					onOrderIdDialogOpenChange={setOrderIdDialogOpen}
-					onOrderIdChange={setOrderId}
-					onOrderIdBind={handleOrderIdBind}
-					onErrorClear={clearError}
-				/>
+			<div className="gap-4 grid sm:gap-6 lg:grid-cols-2 w-full">
+				{/* 添加 min-w-0 给每个卡片防止溢出 */}
+				<div className="min-w-0">
+					<UserInfoCard
+						data={data}
+						bindLoading={bindLoading}
+						orderIdDialogOpen={orderIdDialogOpen}
+						orderId={orderId}
+						orderBindLoading={orderBindLoading}
+						error={error}
+						onUnbindAfdian={handleUnbindAfdian}
+						onAfdianAuth={handleAfdianAuth}
+						onOrderIdDialogOpenChange={setOrderIdDialogOpen}
+						onOrderIdChange={setOrderId}
+						onOrderIdBind={handleOrderIdBind}
+						onErrorClear={clearError}
+					/>
+				</div>
 
-				<SubscriptionCard data={data} usageStats={usageStats} />
+				<div className="min-w-0">
+					<SubscriptionCard data={data} usageStats={usageStats} />
+				</div>
 
-				<AccountBinding
-					userInfo={{
-						email: data.user.email,
-						qqOpenid: data.user.qqOpenid,
-						nickname: data.user.username,
-						avatar: data.user.avatar,
-						loginMethod: data.user.loginMethod,
-					}}
-					onUpdate={refreshData}
-				/>
+				<div className="min-w-0">
+					<AccountBinding
+						userInfo={{
+							email: data.user.email,
+							qqOpenid: data.user.qqOpenid,
+							nickname: data.user.username,
+							avatar: data.user.avatar,
+							loginMethod: data.user.loginMethod,
+						}}
+						onUpdate={refreshData}
+					/>
+				</div>
 
-				<HistoryCard initialData={initialHistoryData} />
+				<div className="min-w-0">
+					<HistoryCard initialData={initialHistoryData} />
+				</div>
 
-				<UsageStatsCard usageStats={usageStats} statsLoading={statsLoading} />
+				<div className="min-w-0">
+					<UsageStatsCard usageStats={usageStats} statsLoading={statsLoading} />
+				</div>
 			</div>
 		</div>
 	);
