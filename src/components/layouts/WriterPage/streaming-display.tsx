@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, X, Zap } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -30,23 +30,44 @@ export default function StreamingDisplay({
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const [isMobile, setIsMobile] = useState(false);
 
-	useEffect(() => {
-		// 检测移动设备
-		const checkMobile = () => {
-			const isMobileDevice = window.innerWidth < 768;
-			setIsMobile(isMobileDevice);
-		};
-
-		checkMobile();
-		window.addEventListener("resize", checkMobile);
-		return () => window.removeEventListener("resize", checkMobile);
+	const checkMobile = useCallback(() => {
+		setIsMobile(window.innerWidth < 768);
 	}, []);
 
 	useEffect(() => {
-		// 自动滚动到底部
-		if (scrollRef.current) {
-			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+		checkMobile();
+		window.addEventListener("resize", checkMobile);
+		return () => window.removeEventListener("resize", checkMobile);
+	}, [checkMobile]);
+
+	useEffect(() => {
+		// 使用节流来减少频繁的 DOM 操作
+		let timeoutId: NodeJS.Timeout | undefined;
+
+		const scrollToBottom = () => {
+			if (scrollRef.current) {
+				scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+			}
+		};
+
+		// 清除之前的定时器
+		if (timeoutId) {
+			clearTimeout(timeoutId);
 		}
+
+		// 延迟执行滚动，避免过度频繁的 DOM 操作
+		// 只在内容变化且非空时才滚动
+		if (streamContent) {
+			timeoutId = setTimeout(() => {
+				requestAnimationFrame(scrollToBottom);
+			}, 150); // 增加延迟以减少CPU占用
+		}
+
+		return () => {
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+		};
 	}, [streamContent]);
 
 	if (!isVisible)

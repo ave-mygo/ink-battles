@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { LoginWithQQ } from "@/lib/utils-server";
+import { LoginWithQQ } from "@/utils/qq-login-server";
 
 export async function POST(req: Request) {
 	try {
