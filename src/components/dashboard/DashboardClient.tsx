@@ -3,7 +3,7 @@
 import type { AnalysisHistoryItem } from "@/lib/analysis-history";
 import type { UserSubscriptionData } from "@/lib/subscription";
 import { RefreshCw } from "lucide-react";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,9 @@ interface DashboardClientProps {
 }
 
 export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }: DashboardClientProps) => {
-	const { usageStats, statsLoading, refreshUsageStats } = useUsageStats();
+	const [initialLoading, setInitialLoading] = useState(true);
+	
+	const { usageStats, refreshUsageStats } = useUsageStats(false); // 不自动加载
 	const {
 		data,
 		loading,
@@ -44,6 +46,26 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 		setOrderId,
 		clearError,
 	} = useUserData(initialData);
+
+	// 统一的初始数据加载
+	useEffect(() => {
+		const loadAllData = async () => {
+			try {
+				// 并行加载所有需要的数据
+				await Promise.all([
+					refreshUsageStats(),
+					// 如果需要刷新用户数据，取消注释下一行
+					// refreshData(),
+				]);
+			} catch (error) {
+				console.error("初始数据加载失败:", error);
+			} finally {
+				setInitialLoading(false);
+			}
+		};
+
+		loadAllData();
+	}, [refreshUsageStats]);
 
 	const handleQQBind = async (code: string) => {
 		try {
@@ -124,17 +146,52 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 		);
 	}
 
+	// 统一的初始加载状态
+	if (initialLoading) {
+		return (
+			<div className="mx-auto p-4 container max-w-4xl min-w-0 w-full sm:p-6">
+				<div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+					<h1 className="text-2xl font-bold sm:text-3xl">用户控制台</h1>
+					<Button variant="outline" size="sm" disabled className="self-start sm:self-auto">
+						<RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+						加载中
+					</Button>
+				</div>
+
+				<div className="gap-4 grid w-full sm:gap-6 lg:grid-cols-2">
+					{/* 统一的加载骨架 */}
+					{[...Array(5)].map((_, index) => (
+						<div key={index} className="min-w-0">
+							<div className="border rounded-lg bg-card text-card-foreground shadow-sm">
+								<div className="p-6 space-y-4">
+									<div className="space-y-2">
+										<div className="rounded bg-gray-200 h-4 w-1/2 animate-pulse"></div>
+										<div className="rounded bg-gray-200 h-3 w-3/4 animate-pulse"></div>
+									</div>
+									<div className="space-y-2">
+										<div className="rounded bg-gray-200 h-3 w-2/3 animate-pulse"></div>
+										<div className="rounded bg-gray-200 h-3 w-1/2 animate-pulse"></div>
+									</div>
+								</div>
+							</div>
+						</div>
+					))}
+				</div>
+			</div>
+		);
+	}
+
 	return (
-		<div className="mx-auto p-4 container max-w-4xl sm:p-6 min-w-0 w-full">
+		<div className="mx-auto p-4 container max-w-4xl min-w-0 w-full sm:p-6">
 			<div className="mb-4 flex flex-col gap-2 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
 				<h1 className="text-2xl font-bold sm:text-3xl">用户控制台</h1>
-				<Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={loading || statsLoading} className="self-start sm:self-auto">
-					<RefreshCw className={`mr-2 h-4 w-4 ${(loading || statsLoading) ? "animate-spin" : ""}`} />
+				<Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={loading} className="self-start sm:self-auto">
+					<RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
 					刷新
 				</Button>
 			</div>
 
-			<div className="gap-4 grid sm:gap-6 lg:grid-cols-2 w-full">
+			<div className="gap-4 grid w-full sm:gap-6 lg:grid-cols-2">
 				{/* 添加 min-w-0 给每个卡片防止溢出 */}
 				<div className="min-w-0">
 					<UserInfoCard
@@ -175,7 +232,7 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 				</div>
 
 				<div className="min-w-0">
-					<UsageStatsCard usageStats={usageStats} statsLoading={statsLoading} />
+					<UsageStatsCard usageStats={usageStats} statsLoading={false} />
 				</div>
 			</div>
 		</div>

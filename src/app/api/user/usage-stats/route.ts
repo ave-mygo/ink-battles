@@ -2,8 +2,9 @@ import type { NextRequest } from "next/server";
 import process from "node:process";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
-import { calculateAdvancedModelCalls, db_name, getUserType, UserType } from "@/lib/constants";
-import { db_find, db_read } from "@/lib/db";
+import { getUserBilling } from "@/lib/billing";
+import { db_name, getUserType, UserType } from "@/lib/constants";
+import { db_read } from "@/lib/db";
 import { getUserSubscriptionData } from "@/lib/subscription";
 
 interface UsageStats {
@@ -15,9 +16,9 @@ interface UsageStats {
 	monthlyTextLength: number;
 	todayTextLength: number;
 	advancedModelStats?: {
-		dailyLimit: number;
+		grantCallsRemaining: number;
+		paidCallsRemaining: number;
 		todayUsed: number;
-		remaining: number;
 	};
 	limits: {
 		perRequest: number | null;
@@ -109,22 +110,21 @@ export async function GET(_request: NextRequest) {
 
 		// 如果是会员用户，获取高级模型使用统计
 		if (userType === UserType.MEMBER && donationAmount > 0) {
-			const dailyLimit = calculateAdvancedModelCalls(donationAmount);
-			const dayKey = today.toISOString().slice(0, 10);
+			try {
+				const billing = await getUserBilling(userEmail);
+				
+				// 计算本月已使用次数：基础次数 - 当前余额
+				const initialGrantCalls = 10; // 保底次数，应该从当月grant记录获取，这里先用常量
+				const monthlyUsed = Math.max(0, initialGrantCalls - billing.grantCallsRemaining);
 
-			const todayAdvancedUsage = await db_find(db_name, "daily_usage", {
-				dayKey,
-				type: "advanced_model",
-				key: userEmail,
-			});
-
-			const todayUsed = todayAdvancedUsage?.used || 0;
-
-			stats.advancedModelStats = {
-				dailyLimit,
-				todayUsed,
-				remaining: Math.max(0, dailyLimit - todayUsed),
-			};
+				stats.advancedModelStats = {
+					grantCallsRemaining: billing.grantCallsRemaining,
+					paidCallsRemaining: billing.paidCallsRemaining,
+					todayUsed: monthlyUsed, // 实际是本月使用量，但保持字段名兼容
+				};
+			} catch (error) {
+				console.warn("获取计费信息失败:", error);
+			}
 		}
 
 		return Response.json(stats);

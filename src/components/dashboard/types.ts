@@ -9,9 +9,9 @@ export interface UsageStats {
 	monthlyTextLength: number;
 	todayTextLength: number;
 	advancedModelStats?: {
-		dailyLimit: number;
+		grantCallsRemaining: number;
+		paidCallsRemaining: number;
 		todayUsed: number;
-		remaining: number;
 	};
 	limits: {
 		perRequest: number | null;
