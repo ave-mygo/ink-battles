@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { calculateAdvancedModelCalls, MEMBERSHIP_TIERS } from "@/lib/constants";
+import { MEMBERSHIP_TIERS } from "@/lib/constants";
 
 interface SubscriptionCardProps {
 	data: UserSubscriptionData;
@@ -183,7 +183,8 @@ export const SubscriptionCard = ({ data, usageStats }: SubscriptionCardProps) =>
 									</div>
 									{(data.subscription.totalAmount || 0) > 0 && (() => {
 										const donation = Number(data.subscription.totalAmount || 0);
-										const nextTier = MEMBERSHIP_TIERS.find(t => t.minAmount > donation);
+										const tierValues = Object.values(MEMBERSHIP_TIERS);
+										const nextTier = tierValues.find((t: any) => t.minAmount > donation);
 
 										return nextTier && nextTier.maxAmount !== Infinity && (
 											<div className="pt-2 border-t space-y-2">
@@ -195,9 +196,8 @@ export const SubscriptionCard = ({ data, usageStats }: SubscriptionCardProps) =>
 															)
 														</span>
 														<span>
-															{calculateAdvancedModelCalls(nextTier.minAmount)}
-															{" "}
-															次/日
+															{(nextTier.discount * 100).toFixed(0)}
+															%折扣
 														</span>
 													</div>
 													<Progress value={(donation / nextTier.minAmount) * 100} className="h-1.5" />
@@ -224,11 +224,13 @@ export const SubscriptionCard = ({ data, usageStats }: SubscriptionCardProps) =>
 								</div>
 								{usageStats.advancedModelStats && (
 									<div className="flex justify-between">
-										<span>每日高级模型额度:</span>
+										<span>高级模型余额:</span>
 										<span>
-											{usageStats.advancedModelStats.dailyLimit.toLocaleString()}
-											{" "}
-											次/日
+											赠送
+											{usageStats.advancedModelStats.grantCallsRemaining || 0}
+											次 + 付费
+											{usageStats.advancedModelStats.paidCallsRemaining || 0}
+											次
 										</span>
 									</div>
 								)}

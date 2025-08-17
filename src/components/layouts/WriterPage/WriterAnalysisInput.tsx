@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { generateBrowserFingerprint } from "@/lib/browser-fingerprint";
-import { calculateAdvancedModelCalls, getUserType, USER_LIMITS, UserType } from "@/lib/constants";
+import { getUserType, USER_LIMITS, UserType } from "@/lib/constants";
 
 interface UserTierData {
 	userType: UserType;
@@ -234,8 +234,9 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 			}
 		}
 
+	// 新的计费系统不再显示每日次数，而是显示实际余额
 		const advancedModelCalls = userType === UserType.MEMBER && donationAmount > 0
-			? calculateAdvancedModelCalls(donationAmount)
+			? 1 // 仅用于标识有高级权限，具体次数在后台查看
 			: undefined;
 
 		setTierData({
@@ -366,9 +367,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 											高级模型
 										</span>
 										<span className="font-medium">
-											{tierData.advancedModelCalls.toLocaleString()}
-											{" "}
-											次/日
+											已开通
 										</span>
 									</div>
 								)

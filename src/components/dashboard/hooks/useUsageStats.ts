@@ -3,9 +3,9 @@
 import type { UsageStats } from "../types";
 import { useCallback, useEffect, useState } from "react";
 
-export const useUsageStats = () => {
+export const useUsageStats = (autoLoad = true) => {
 	const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
-	const [statsLoading, setStatsLoading] = useState(false);
+	const [statsLoading, setStatsLoading] = useState(autoLoad); // 如果自动加载，初始状态为loading
 
 	const refreshUsageStats = useCallback(async () => {
 		try {
@@ -28,8 +28,10 @@ export const useUsageStats = () => {
 	}, []);
 
 	useEffect(() => {
-		refreshUsageStats();
-	}, [refreshUsageStats]);
+		if (autoLoad) {
+			refreshUsageStats();
+		}
+	}, [refreshUsageStats, autoLoad]);
 
 	return {
 		usageStats,

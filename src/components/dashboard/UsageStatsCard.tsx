@@ -3,7 +3,6 @@
 import type { UsageStats } from "./types";
 import { CreditCard, Zap } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 
 interface UsageStatsCardProps {
@@ -45,28 +44,23 @@ export const UsageStatsCard = ({ usageStats, statsLoading }: UsageStatsCardProps
 												<div className="flex justify-between">
 													<span className="text-sm flex gap-1 items-center">
 														<Zap className="h-3 w-3" />
-														高级模型调用
+														高级模型余额
 													</span>
-													<span className="text-muted-foreground text-sm">今日已使用</span>
-												</div>
-												<Progress
-													value={usageStats.advancedModelStats.dailyLimit > 0
-														? (usageStats.advancedModelStats.todayUsed / usageStats.advancedModelStats.dailyLimit) * 100
-														: 0}
-													className="h-2"
-												/>
-												<div className="text-muted-foreground text-xs flex justify-between">
-													<span>
+													<span className="text-muted-foreground text-sm">
+														本月已使用
 														{usageStats.advancedModelStats.todayUsed}
-														/
-														{usageStats.advancedModelStats.dailyLimit}
-													</span>
-													<span>
-														剩余
-														{usageStats.advancedModelStats.remaining}
-														{" "}
 														次
 													</span>
+												</div>
+												<div className="gap-2 grid grid-cols-2">
+													<div className="p-3 text-center border border-green-200 rounded-lg bg-green-50">
+														<div className="text-lg text-green-700 font-semibold">{usageStats.advancedModelStats.grantCallsRemaining}</div>
+														<div className="text-xs text-green-600">赠送余额</div>
+													</div>
+													<div className="p-3 text-center border border-blue-200 rounded-lg bg-blue-50">
+														<div className="text-lg text-blue-700 font-semibold">{usageStats.advancedModelStats.paidCallsRemaining}</div>
+														<div className="text-xs text-blue-600">付费余额</div>
+													</div>
 												</div>
 											</div>
 											<Separator />
