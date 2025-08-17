@@ -1,6 +1,7 @@
 "use server";
 
-import { calculateAdvancedModelCalls, db_name, getUserType, USER_LIMITS, UserType } from "@/lib/constants";
+import { consumeCall, getUserBilling } from "@/lib/billing";
+import { db_name, getUserType, USER_LIMITS, UserType } from "@/lib/constants";
 import { db_find, db_insert, db_update } from "@/lib/db";
 import { getUserSubscriptionData } from "@/lib/subscription";
 import "server-only";
@@ -24,8 +25,9 @@ export const checkAndConsumeUsage = async (
 	allowed: boolean;
 	message?: string;
 	userType?: UserType;
-	dailyAdvancedModelCalls?: number;
-	remainingAdvancedModelCalls?: number;
+	grantCallsRemaining?: number;
+	paidCallsRemaining?: number;
+	usedCallType?: "grant" | "paid";
 }> => {
 	const { userEmail, ip, fingerprint, textLength, isAdvancedModel = false } = params;
 	const isLoggedIn = Boolean(userEmail);
@@ -62,42 +64,36 @@ export const checkAndConsumeUsage = async (
 			};
 		}
 
-		if (userType === UserType.MEMBER && donationAmount > 0) {
-			const maxCalls = calculateAdvancedModelCalls(donationAmount);
-			const dayKey = new Date().toISOString().slice(0, 10);
-			const usageKey = { dayKey, type: "advanced_model", key: userEmail };
+		if (userType === UserType.MEMBER && donationAmount > 0 && userEmail) {
+			const billing = await getUserBilling(userEmail);
+			const totalCalls = billing.grantCallsRemaining + billing.paidCallsRemaining;
 
-			const usageDoc = await db_find(db_name, "daily_usage", usageKey);
-			const currentUsage = usageDoc?.used ?? 0;
-
-			if (currentUsage >= maxCalls) {
+			if (totalCalls <= 0) {
 				return {
 					allowed: false,
-					message: `今日高级模型调用次数已用完（${maxCalls}次），请明日再试或增加捐赠`,
+					message: "高级模型调用次数已用完，请购买更多次数或等待下月赠送",
 					userType,
-					dailyAdvancedModelCalls: maxCalls,
-					remainingAdvancedModelCalls: 0,
+					grantCallsRemaining: 0,
+					paidCallsRemaining: 0,
 				};
 			}
 
-			if (usageDoc) {
-				await db_update(db_name, "daily_usage", usageKey, {
-					used: currentUsage + 1,
-					updatedAt: new Date(),
-				});
-			} else {
-				await db_insert(db_name, "daily_usage", {
-					...usageKey,
-					used: 1,
-					createdAt: new Date(),
-				});
+			const consumeResult = await consumeCall(userEmail);
+			if (!consumeResult.success) {
+				return {
+					allowed: false,
+					message: "调用次数消耗失败，请重试",
+					userType,
+				};
 			}
 
+			const updatedBilling = await getUserBilling(userEmail);
 			return {
 				allowed: true,
 				userType,
-				dailyAdvancedModelCalls: maxCalls,
-				remainingAdvancedModelCalls: maxCalls - currentUsage - 1,
+				grantCallsRemaining: updatedBilling.grantCallsRemaining,
+				paidCallsRemaining: updatedBilling.paidCallsRemaining,
+				usedCallType: consumeResult.callType === "none" ? undefined : consumeResult.callType,
 			};
 		}
 	}
@@ -151,9 +147,9 @@ export const checkAndConsumeUsage = async (
 	return {
 		allowed: true,
 		userType,
-		...(userType === UserType.MEMBER && donationAmount > 0 && {
-			dailyAdvancedModelCalls: calculateAdvancedModelCalls(donationAmount),
-			remainingAdvancedModelCalls: calculateAdvancedModelCalls(donationAmount) - 0,
+		...(userType === UserType.MEMBER && donationAmount > 0 && isAdvancedModel && {
+			grantCallsRemaining: 0,
+			paidCallsRemaining: 0,
 		}),
 	};
 };

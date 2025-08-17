@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-	calculateAdvancedModelCalls,
 	getUserType,
 	MEMBERSHIP_TIERS,
 	USER_LIMITS,
@@ -95,22 +94,23 @@ export default function UserTierInfo({ className }: UserTierInfoProps) {
 			const perRequest = limits.perRequest ? `${limits.perRequest.toLocaleString()} 字` : "无限制";
 			const dailyLimit = limits.dailyLimit ? `${limits.dailyLimit.toLocaleString()} 字` : "无限制";
 
-			let advancedModelCalls = "0 次";
+			let advancedModelCalls = "需绑定查看";
 			if (userType === UserType.MEMBER && donationAmount > 0) {
-				const calls = calculateAdvancedModelCalls(donationAmount);
-				advancedModelCalls = `${calls.toLocaleString()} 次`;
+				// 新的计费系统不再显示每日次数，而是显示实际余额
+				advancedModelCalls = "查看使用统计";
 			}
 
-			// 计算下一档位信息
+			// 计算下一档位信息 - 基于折扣等级而非调用次数
 			let nextTierInfo: UserTierData["nextTierInfo"];
 			if (userType === UserType.MEMBER && donationAmount > 0) {
-				const nextTier = MEMBERSHIP_TIERS.find(tier => tier.minAmount > donationAmount);
+				const tierValues = Object.values(MEMBERSHIP_TIERS);
+				const nextTier = tierValues.find((tier: any) => tier.minAmount > donationAmount);
 
 				if (nextTier && nextTier.maxAmount !== Number.POSITIVE_INFINITY) {
-					const nextTierCalls = calculateAdvancedModelCalls(nextTier.minAmount);
+					// 下一档位的优惠信息
 					nextTierInfo = {
 						amount: nextTier.minAmount,
-						calls: nextTierCalls,
+						calls: nextTier.discount * 100, // 用折扣百分比代替调用次数
 					};
 				}
 			}

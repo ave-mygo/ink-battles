@@ -1,5 +1,6 @@
 import process from "node:process";
 import md5 from "md5";
+import { updateMonthlyGrantByTotalAmount } from "@/lib/billing";
 import { db_name } from "@/lib/constants";
 import { db_find, db_update } from "@/lib/db";
 
@@ -137,6 +138,9 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 								},
 							},
 						);
+
+						// 根据累计总额更新月度赠送调用次数
+						await updateMonthlyGrantByTotalAmount(user.email, totalAmount);
 					}
 				}
 			}

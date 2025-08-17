@@ -19,7 +19,7 @@ let connectionPromise: Promise<MongoClient> | null = null;
  * 创建并返回一个复用的 MongoDB 客户端实例。
  * @returns {Promise<MongoClient>} MongoDB 客户端实例
  */
-async function mongoClient(): Promise<MongoClient> {
+export async function mongoClient(): Promise<MongoClient> {
 	// 检查缓存的客户端是否仍然有效
 	if (cachedClient) {
 		try {
