@@ -4,7 +4,7 @@ import type { AnalysisHistoryResponse } from "@/lib/analysis-history";
 import type { UserSubscriptionData } from "@/lib/subscription";
 import { CalendarDays, ChevronLeft, ChevronRight, FileText, LayoutGrid, List, Star, TrendingUp } from "lucide-react";
 import Link from "next/link";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +40,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 	const [modeFilter, setModeFilter] = useState<string>("all");
 	const [sortBy, setSortBy] = useState<"time_desc" | "time_asc" | "score_desc" | "score_asc">("time_desc");
 
-	const fetchHistory = async (page: number, limit: number) => {
+	const fetchHistory = useCallback(async (page: number, limit: number) => {
 		try {
 			setLoading(true);
 			setError(null);
@@ -60,13 +60,13 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		fetchHistory(currentPage, pageSize);
-	}, [currentPage, pageSize]);
+	}, [fetchHistory, currentPage, pageSize]);
 
-	const formatDate = (timestamp: string) => {
+	const formatDate = useCallback((timestamp: string) => {
 		return new Date(timestamp).toLocaleString("zh-CN", {
 			year: "numeric",
 			month: "2-digit",
@@ -74,9 +74,9 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 			hour: "2-digit",
 			minute: "2-digit",
 		});
-	};
+	}, []);
 
-	const getScoreBg = (score: number) => {
+	const getScoreBg = useCallback((score: number) => {
 		if (score >= 80)
 			return "bg-green-100";
 		if (score >= 60)
@@ -84,9 +84,9 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 		if (score >= 40)
 			return "bg-orange-100";
 		return "bg-red-100";
-	};
+	}, []);
 
-	const getScoreText = (score: number) => {
+	const getScoreText = useCallback((score: number) => {
 		if (score >= 80)
 			return "text-green-800";
 		if (score >= 60)
@@ -94,19 +94,26 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 		if (score >= 40)
 			return "text-orange-800";
 		return "text-red-800";
-	};
+	}, []);
 
-	// client-side filter & sort within current page
+	// client-side filter & sort within current page - 使用useMemo优化性能
 	const displayedItems = useMemo(() => {
 		const items = historyData?.data ?? [];
+		
+		// 避免重复计算
+		const queryLower = query.trim().toLowerCase();
+		const hasQuery = queryLower.length > 0;
+		
 		const filtered = items.filter((it) => {
-			const hitQuery = query.trim()
-				? [it.title, it.ratingTag, it.summary].some(t => t?.toLowerCase().includes(query.trim().toLowerCase()))
+			const hitQuery = hasQuery
+				? [it.title, it.ratingTag, it.summary, ...(it.tags || [])].some(t => 
+					t && typeof t === 'string' && t.toLowerCase().includes(queryLower))
 				: true;
 			const hitMode = modeFilter === "all" ? true : (it.mode || "默认模式").split(",").some(mode => mode.trim() === modeFilter);
 			return hitQuery && hitMode;
 		});
 
+		// 优化排序，减少不必要的Date对象创建
 		const sorted = [...filtered].sort((a, b) => {
 			switch (sortBy) {
 				case "time_asc":
@@ -122,7 +129,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 		});
 
 		return sorted;
-	}, [historyData, query, modeFilter, sortBy]);
+	}, [historyData?.data, query, modeFilter, sortBy]); // 更精确的依赖项
 
 	if (error) {
 		return (

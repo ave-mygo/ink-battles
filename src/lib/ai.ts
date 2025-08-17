@@ -31,9 +31,10 @@ export const verifyArticleValue = async (articleText: string, mode: string = "de
 	// 读取模型名，优先使用环境变量，否则用默认值
 	const model: string = process.env.OPENAI_MODEL_1 || "gemini-2.5-flash";
 
-	// 拦截一下文章长度，仅让3000字进入查询
+	// 限制文章长度，防止内存过度使用
+	let truncatedText = articleText;
 	if (articleText.length > 3000) {
-		articleText = articleText.slice(0, 3000);
+		truncatedText = articleText.slice(0, 3000);
 	}
 
 	try {
@@ -65,7 +66,7 @@ export const verifyArticleValue = async (articleText: string, mode: string = "de
 				},
 				{
 					role: "user",
-					content: articleText,
+					content: truncatedText,
 				},
 			],
 			response_format: { type: "json_object" },
@@ -76,22 +77,22 @@ export const verifyArticleValue = async (articleText: string, mode: string = "de
 			return { success: false, error: "AI返回内容为空" };
 		}
 
+		let parsedResult;
 		try {
-			// 合规化
-			const data = result.replace(/```json/g, "").replace(/```/g, "");
-			// 解析JSON响应
-			const parsedResult = JSON.parse(data);
-
-			if (parsedResult.success === true) {
-				return { success: true };
-			} else if (parsedResult.success === false) {
-				return { success: false, error: parsedResult.message || "内容不符合分析标准" };
-			} else {
-				return { success: false, error: `AI返回格式异常: 缺少success字段` };
-			}
+			// 合规化并解析JSON响应，立即释放原始字符串
+			const cleanedData = result.replace(/```json/g, "").replace(/```/g, "");
+			parsedResult = JSON.parse(cleanedData);
 		} catch (parseError) {
 			console.error("解析AI响应JSON失败:", parseError);
-			return { success: false, error: `AI返回格式异常: ${result}` };
+			return { success: false, error: `AI返回格式异常: ${result.slice(0, 100)}...` };
+		}
+
+		if (parsedResult.success === true) {
+			return { success: true };
+		} else if (parsedResult.success === false) {
+			return { success: false, error: parsedResult.message || "内容不符合分析标准" };
+		} else {
+			return { success: false, error: `AI返回格式异常: 缺少success字段` };
 		}
 	} catch (error: any) {
 		console.error("Failed to verify article value", error);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserEmail } from "@/lib/utils-server";
+import { getCurrentUserEmail } from "@/utils/auth-server";
 
 /**
  * GET /api/auth/me
