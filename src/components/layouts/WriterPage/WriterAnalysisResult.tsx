@@ -9,7 +9,7 @@ import { ShareImageGenerator } from "@/components/ShareImageGenerator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { getScorePercentile } from "@/lib/utils-server";
+import { getScorePercentile } from "@/utils/analytics-server";
 
 interface Dimension {
 	name: string;

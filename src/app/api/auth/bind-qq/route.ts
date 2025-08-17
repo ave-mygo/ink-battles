@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { BindQQToEmail, getCurrentUserEmail } from "@/lib/utils-server";
+import { BindQQToEmail } from "@/utils/qq-login-server";
+import { getCurrentUserEmail } from "@/utils/auth-server";
 
 export async function POST(req: Request) {
 	try {
