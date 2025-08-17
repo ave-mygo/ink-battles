@@ -5,10 +5,11 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { db_name } from "@/lib/constants";
-import { db_find, db_insert } from "@/lib/db";
+import { db_find, db_insert, db_read } from "@/lib/db";
 import "server-only";
 
 export interface UserInfo {
+	uid: number;
 	email?: string | null;
 	nickname?: string | null;
 	avatar?: string | null;
@@ -18,6 +19,25 @@ export interface UserInfo {
 	createdAt: Date;
 	updatedAt?: Date;
 	isActive?: boolean;
+}
+
+/**
+ * 生成下一个用户UID
+ * @returns 新的用户UID
+ */
+async function generateNextUID(): Promise<number> {
+	try {
+		// 查询最大的UID
+		const users = await db_read(db_name, "users", {}, { sort: { uid: -1 }, limit: 1 });
+		if (users.length === 0) {
+			return 1; // 第一个用户从1开始
+		}
+		return (users[0].uid || 0) + 1;
+	} catch (error) {
+		console.error("生成UID失败:", error);
+		// 如果查询失败，使用时间戳作为备用方案
+		return Date.now() % 1000000;
+	}
 }
 
 /**
@@ -34,9 +54,10 @@ export async function registerUser(email: string, password: string): Promise<{ s
 	if (existing) {
 		return { success: false, message: "该邮箱已注册" };
 	}
+	const uid = await generateNextUID();
 	const passwordHash = await bcrypt.hash(password, 10);
 	const createdAt = new Date();
-	const ok = await db_insert(db_name, "users", { email, passwordHash, createdAt });
+	const ok = await db_insert(db_name, "users", { uid, email, passwordHash, createdAt });
 	if (!ok) {
 		return { success: false, message: "注册失败，请重试" };
 	}
@@ -62,7 +83,7 @@ export async function LoginUser(email: string, password: string): Promise<{ succ
 		return { success: false, message: "密码错误" };
 	}
 	const secret = process.env.JWT_SECRET || "dev_secret_change_me";
-	const token = jwt.sign({ email }, secret, { expiresIn: "7d" });
+	const token = jwt.sign({ uid: user.uid, email, loginMethod: "email" }, secret, { expiresIn: "7d" });
 	const cookieStore = await cookies();
 	cookieStore.set("auth-token", token, {
 		httpOnly: true,
@@ -81,7 +102,12 @@ export const getCurrentUserEmail = async (): Promise<string | null> => {
 		return null;
 	try {
 		const secret = process.env.JWT_SECRET || "dev_secret_change_me";
-		const payload = jwt.verify(token, secret) as { email?: string };
+		const payload = jwt.verify(token, secret) as { uid?: number; email?: string };
+		if (payload.uid) {
+			// 优先使用UID查询用户，然后返回email
+			const user = await db_find(db_name, "users", { uid: payload.uid });
+			return user?.email ?? null;
+		}
 		return payload.email ?? null;
 	} catch {
 		return null;
@@ -101,6 +127,7 @@ export const getCurrentUserInfo = async (): Promise<UserInfo | null> => {
 	try {
 		const secret = process.env.JWT_SECRET || "dev_secret_change_me";
 		const payload = jwt.verify(token, secret) as {
+			uid?: number;
 			email?: string;
 			qqOpenid?: string;
 			loginMethod?: "email" | "qq";
@@ -108,9 +135,14 @@ export const getCurrentUserInfo = async (): Promise<UserInfo | null> => {
 
 		let user: UserInfo | null = null;
 
-		if (payload.email) {
+		// 优先使用UID查询
+		if (payload.uid) {
+			user = await db_find(db_name, "users", { uid: payload.uid });
+		} else if (payload.email) {
+			// 向后兼容：如果没有UID，使用email查询
 			user = await db_find(db_name, "users", { email: payload.email });
 		} else if (payload.qqOpenid) {
+			// 向后兼容：如果没有UID，使用qqOpenid查询
 			user = await db_find(db_name, "users", { qqOpenid: payload.qqOpenid });
 		}
 

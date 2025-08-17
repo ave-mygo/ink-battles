@@ -42,7 +42,7 @@ export const UserInfoCard = ({
 	const avatarSrc = data.user.avatar || data.user.afdian_avatar;
 
 	return (
-		<Card className="w-full min-w-0">
+		<Card className="min-w-0 w-full">
 			<CardHeader>
 				<CardTitle className="flex items-center">
 					<User className="mr-2 h-5 w-5" />
@@ -57,7 +57,7 @@ export const UserInfoCard = ({
 						<AvatarFallback className="text-sm sm:text-lg">{initial}</AvatarFallback>
 					</Avatar>
 					<div className="flex-1 min-w-0">
-						<h3 className="text-lg sm:text-xl font-semibold truncate">{displayName}</h3>
+						<h3 className="text-lg font-semibold truncate sm:text-xl">{displayName}</h3>
 						<p className="text-muted-foreground text-sm truncate">{data.user.email || "未设置邮箱"}</p>
 						{data.user.afdian_bound && data.user.afdian_username && (
 							<div className="mt-1 flex items-center space-x-2">

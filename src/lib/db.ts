@@ -20,8 +20,16 @@ let connectionPromise: Promise<MongoClient> | null = null;
  * @returns {Promise<MongoClient>} MongoDB 客户端实例
  */
 async function mongoClient(): Promise<MongoClient> {
-	if (cachedClient && cachedClient.topology && cachedClient.topology.isConnected()) {
-		return cachedClient;
+	// 检查缓存的客户端是否仍然有效
+	if (cachedClient) {
+		try {
+			// 使用 ping 命令检查连接状态，而不是已弃用的 topology 属性
+			await cachedClient.db().admin().ping();
+			return cachedClient;
+		} catch {
+			// 连接失效，清理缓存
+			cachedClient = null;
+		}
 	}
 
 	// 如果正在连接中，返回同一个Promise避免重复连接
@@ -54,13 +62,13 @@ async function mongoClient(): Promise<MongoClient> {
 		try {
 			await connectWithTimeout(client);
 			cachedClient = client;
-			
+
 			// 监听连接事件，自动清理失效连接
-			client.on('close', () => {
+			client.on("close", () => {
 				cachedClient = null;
 				connectionPromise = null;
 			});
-			
+
 			return client;
 		} catch (error) {
 			connectionPromise = null;
