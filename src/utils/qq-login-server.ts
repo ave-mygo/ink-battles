@@ -1,13 +1,30 @@
 "use server";
 
+import type { UserInfo } from "./auth-server";
 import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { db_name } from "@/lib/constants";
-import { db_find, db_insert, db_update } from "@/lib/db";
-import { UserInfo } from "./auth-server";
+import { db_find, db_insert, db_read, db_update } from "@/lib/db";
 import "server-only";
+
+/**
+ * 生成下一个用户UID
+ * @returns 新的用户UID
+ */
+async function generateNextUID(): Promise<number> {
+	try {
+		const users = await db_read(db_name, "users", {}, { sort: { uid: -1 }, limit: 1 });
+		if (users.length === 0) {
+			return 1;
+		}
+		return (users[0].uid || 0) + 1;
+	} catch (error) {
+		console.error("生成UID失败:", error);
+		return Date.now() % 1000000;
+	}
+}
 
 /**
  * QQ登录：使用临时代码获取用户信息并创建/更新用户
@@ -46,7 +63,9 @@ export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean;
 			});
 			user = { ...user, nickname, avatar, updatedAt: now };
 		} else {
+			const uid = await generateNextUID();
 			const newUser: UserInfo = {
+				uid,
 				qqOpenid: qq_openid,
 				nickname,
 				avatar,
@@ -65,6 +84,7 @@ export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean;
 
 		const secret = process.env.JWT_SECRET || "dev_secret_change_me";
 		const tokenPayload = {
+			uid: user.uid,
 			qqOpenid: qq_openid,
 			email: user.email || null,
 			loginMethod: "qq",
@@ -116,12 +136,14 @@ export const BindQQToEmail = async (email: string, tempCode: string): Promise<{ 
 			return { success: false, message: "邮箱用户不存在" };
 		}
 
+		// 检查QQ是否已绑定其他用户（使用UID进行更准确的比较）
 		const qqUser = await db_find(db_name, "users", { qqOpenid: qq_openid });
-		if (qqUser && qqUser._id.toString() !== emailUser._id.toString()) {
+		if (qqUser && qqUser.uid !== emailUser.uid) {
 			return { success: false, message: "该QQ已绑定其他用户" };
 		}
 
-		await db_update(db_name, "users", { email }, {
+		// 使用UID更新用户信息
+		await db_update(db_name, "users", { uid: emailUser.uid }, {
 			qqOpenid: qq_openid,
 			nickname: nickname || emailUser.nickname,
 			avatar: avatar || emailUser.avatar,
@@ -147,8 +169,15 @@ export const BindEmailToQQ = async (qqOpenid: string, email: string, password: s
 	}
 
 	try {
+		// 检查邮箱是否已被其他用户使用（使用UID进行比较）
 		const emailUser = await db_find(db_name, "users", { email });
-		if (emailUser && emailUser.qqOpenid !== qqOpenid) {
+		const qqUser = await db_find(db_name, "users", { qqOpenid });
+
+		if (!qqUser) {
+			return { success: false, message: "QQ用户不存在" };
+		}
+
+		if (emailUser && emailUser.uid !== qqUser.uid) {
 			return { success: false, message: "该邮箱已被其他用户使用" };
 		}
 
@@ -157,14 +186,10 @@ export const BindEmailToQQ = async (qqOpenid: string, email: string, password: s
 			return { success: false, message: "密码不符合要求。密码必须：至少8位字符、包含小写字母、数字和特殊字符" };
 		}
 
-		const qqUser = await db_find(db_name, "users", { qqOpenid });
-		if (!qqUser) {
-			return { success: false, message: "QQ用户不存在" };
-		}
-
 		const passwordHash = await bcrypt.hash(password, 10);
 
-		await db_update(db_name, "users", { qqOpenid }, {
+		// 使用UID更新用户信息
+		await db_update(db_name, "users", { uid: qqUser.uid }, {
 			email,
 			passwordHash,
 			updatedAt: new Date(),

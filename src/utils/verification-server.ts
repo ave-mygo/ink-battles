@@ -2,16 +2,33 @@
 
 import bcrypt from "bcryptjs";
 import { db_name } from "@/lib/constants";
-import { db_find, db_insert, db_update } from "@/lib/db";
+import { db_find, db_insert, db_read, db_update } from "@/lib/db";
 import "server-only";
 
 type VerificationType = "register" | "login";
 
 /**
+ * 生成下一个用户UID
+ * @returns 新的用户UID
+ */
+async function generateNextUID(): Promise<number> {
+	try {
+		const users = await db_read(db_name, "users", {}, { sort: { uid: -1 }, limit: 1 });
+		if (users.length === 0) {
+			return 1;
+		}
+		return (users[0].uid || 0) + 1;
+	} catch (error) {
+		console.error("生成UID失败:", error);
+		return Date.now() % 1000000;
+	}
+}
+
+/**
  * 发送邮箱验证码（SMTP）
  * @param email 邮箱地址
  * @param type 验证类型：register/login
- * @returns { success, message }
+ * @returns { success, message } 发送结果
  */
 export const SendVerificationEmail = async (
 	email: string,
@@ -44,7 +61,7 @@ export const SendVerificationEmail = async (
  * @param email 邮箱
  * @param code 验证码
  * @param type 验证类型
- * @returns { success, message }
+ * @returns { success, message } 校验结果
  */
 export const VerifyEmailCode = async (
 	email: string,
@@ -96,9 +113,10 @@ export const RegisterUser = async (
 		return verify;
 	}
 
+	const uid = await generateNextUID();
 	const passwordHash = await bcrypt.hash(password, 10);
 	const createdAt = new Date();
-	const ok = await db_insert(db_name, "users", { email, passwordHash, createdAt });
+	const ok = await db_insert(db_name, "users", { uid, email, passwordHash, createdAt });
 	if (!ok) {
 		return { success: false, message: "注册失败，请重试" };
 	}

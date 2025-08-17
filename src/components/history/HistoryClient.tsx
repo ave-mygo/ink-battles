@@ -99,15 +99,15 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 	// client-side filter & sort within current page - 使用useMemo优化性能
 	const displayedItems = useMemo(() => {
 		const items = historyData?.data ?? [];
-		
+
 		// 避免重复计算
 		const queryLower = query.trim().toLowerCase();
 		const hasQuery = queryLower.length > 0;
-		
+
 		const filtered = items.filter((it) => {
 			const hitQuery = hasQuery
-				? [it.title, it.ratingTag, it.summary, ...(it.tags || [])].some(t => 
-					t && typeof t === 'string' && t.toLowerCase().includes(queryLower))
+				? [it.title, it.ratingTag, it.summary, ...(it.tags || [])].some(t =>
+						t && typeof t === "string" && t.toLowerCase().includes(queryLower))
 				: true;
 			const hitMode = modeFilter === "all" ? true : (it.mode || "默认模式").split(",").some(mode => mode.trim() === modeFilter);
 			return hitQuery && hitMode;

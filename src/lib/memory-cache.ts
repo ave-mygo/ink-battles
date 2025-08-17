@@ -1,9 +1,11 @@
+import process from "node:process";
+
 interface CacheItem<T> {
 	value: T;
 	expireTime: number;
 	size: number;
 	accessCount: number; // 访问计数
-	lastAccess: number;  // 最后访问时间
+	lastAccess: number; // 最后访问时间
 }
 
 interface CacheOptions {
@@ -33,7 +35,7 @@ export class MemoryCache<T> {
 	private readonly maxItems: number;
 	private readonly defaultTTL: number;
 	private readonly enableStats: boolean;
-	
+
 	// 统计信息
 	private totalHits = 0;
 	private totalMisses = 0;
@@ -44,15 +46,15 @@ export class MemoryCache<T> {
 		this.maxItems = options.maxItems || 1000;
 		this.defaultTTL = options.defaultTTL || 30 * 60 * 1000; // 30分钟
 		this.enableStats = options.enableStats !== false;
-		
+
 		// 启动定期清理
 		this.startPeriodicCleanup();
-		
+
 		// 进程退出时清理定时器
-		if (typeof process !== 'undefined') {
-			process.on('exit', () => this.destroy());
-			process.on('SIGINT', () => this.destroy());
-			process.on('SIGTERM', () => this.destroy());
+		if (typeof process !== "undefined") {
+			process.on("exit", () => this.destroy());
+			process.on("SIGINT", () => this.destroy());
+			process.on("SIGTERM", () => this.destroy());
 		}
 	}
 
@@ -76,18 +78,18 @@ export class MemoryCache<T> {
 
 		// 确保有足够空间
 		while (
-			(this.currentSize + size > this.maxSize || this.cache.size >= this.maxItems) &&
-			this.cache.size > 0
+			(this.currentSize + size > this.maxSize || this.cache.size >= this.maxItems)
+			&& this.cache.size > 0
 		) {
 			this.evictLRU();
 		}
 
-		this.cache.set(key, { 
-			value, 
-			expireTime, 
+		this.cache.set(key, {
+			value,
+			expireTime,
 			size,
 			accessCount: 0,
-			lastAccess: Date.now()
+			lastAccess: Date.now(),
 		});
 		this.currentSize += size;
 		this.updateAccessOrder(key);
@@ -96,13 +98,15 @@ export class MemoryCache<T> {
 	get(key: string): T | undefined {
 		const item = this.cache.get(key);
 		if (!item) {
-			if (this.enableStats) this.totalMisses++;
+			if (this.enableStats)
+				this.totalMisses++;
 			return undefined;
 		}
 
 		if (Date.now() > item.expireTime) {
 			this.delete(key);
-			if (this.enableStats) this.totalMisses++;
+			if (this.enableStats)
+				this.totalMisses++;
 			return undefined;
 		}
 
@@ -110,14 +114,16 @@ export class MemoryCache<T> {
 		item.accessCount++;
 		item.lastAccess = Date.now();
 		this.updateAccessOrder(key);
-		
-		if (this.enableStats) this.totalHits++;
+
+		if (this.enableStats)
+			this.totalHits++;
 		return item.value;
 	}
 
 	delete(key: string): boolean {
 		const item = this.cache.get(key);
-		if (!item) return false;
+		if (!item)
+			return false;
 
 		this.cache.delete(key);
 		this.currentSize -= item.size;
@@ -144,7 +150,7 @@ export class MemoryCache<T> {
 			if (now > item.expireTime) {
 				expiredKeys.push(key);
 				processedCount++;
-				
+
 				// 避免一次性删除过多项目，可能导致卡顿
 				if (processedCount >= maxExpiredToProcess) {
 					break;
@@ -157,12 +163,13 @@ export class MemoryCache<T> {
 
 	// 改进的LRU淘汰策略，结合访问频率
 	private evictLRU(): void {
-		if (this.accessOrder.length === 0) return;
-		
+		if (this.accessOrder.length === 0)
+			return;
+
 		// 找到最少使用的项目（结合最后访问时间和访问次数）
 		let lruKey = this.accessOrder[0];
 		let minScore = Number.MAX_VALUE;
-		
+
 		// 检查前几个最旧的项目，选择评分最低的
 		const candidateCount = Math.min(5, this.accessOrder.length);
 		for (let i = 0; i < candidateCount; i++) {
@@ -178,7 +185,7 @@ export class MemoryCache<T> {
 				}
 			}
 		}
-		
+
 		this.delete(lruKey);
 	}
 
@@ -195,20 +202,20 @@ export class MemoryCache<T> {
 
 	// 优化的大小估算
 	private estimateSize(value: T): number {
-		if (typeof value === 'string') {
+		if (typeof value === "string") {
 			return value.length * 2; // UTF-16
 		}
-		if (typeof value === 'object' && value !== null) {
+		if (typeof value === "object" && value !== null) {
 			try {
 				return JSON.stringify(value).length * 2;
 			} catch {
 				return 1024; // 默认大小，如果无法序列化
 			}
 		}
-		if (typeof value === 'number') {
+		if (typeof value === "number") {
 			return 8;
 		}
-		if (typeof value === 'boolean') {
+		if (typeof value === "boolean") {
 			return 4;
 		}
 		return 64; // 默认大小
@@ -248,17 +255,17 @@ export class MemoryCache<T> {
 	}
 
 	// 获取热点数据统计
-	getHotKeys(limit: number = 10): Array<{key: string, accessCount: number, lastAccess: Date}> {
-		const items: Array<{key: string, accessCount: number, lastAccess: Date}> = [];
-		
+	getHotKeys(limit: number = 10): Array<{ key: string; accessCount: number; lastAccess: Date }> {
+		const items: Array<{ key: string; accessCount: number; lastAccess: Date }> = [];
+
 		for (const [key, item] of this.cache) {
 			items.push({
 				key: key.slice(0, 50), // 截断长key以便显示
 				accessCount: item.accessCount,
-				lastAccess: new Date(item.lastAccess)
+				lastAccess: new Date(item.lastAccess),
 			});
 		}
-		
+
 		return items
 			.sort((a, b) => b.accessCount - a.accessCount)
 			.slice(0, limit);
@@ -273,7 +280,7 @@ export const aiResultCache = new MemoryCache<any>({
 });
 
 export const userSessionCache = new MemoryCache<any>({
-	maxSize: 10 * 1024 * 1024, // 10MB  
+	maxSize: 10 * 1024 * 1024, // 10MB
 	maxItems: 1000,
 	defaultTTL: 30 * 60 * 1000, // 30分钟
 });
