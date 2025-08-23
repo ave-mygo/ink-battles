@@ -10,9 +10,6 @@ import {
 
 import "server-only";
 
-// 导出类型，保持向后兼容
-export type { BillingService } from "@/types/services/billing";
-
 class BillingServiceImpl implements BillingService {
 	async getUserBillingInfo(userEmail: string) {
 		return await getUserBillingDetails(userEmail);

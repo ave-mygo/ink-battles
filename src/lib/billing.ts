@@ -14,13 +14,6 @@ import { db_find, db_insert, db_update, mongoClient } from "@/lib/db";
 
 import "server-only";
 
-// 导出类型，保持向后兼容
-export type {
-	CallTransaction,
-	MonthlyGrant,
-	UserBilling,
-} from "@/types/billing/usage";
-
 /**
  * 获取或创建用户计费信息
  */
