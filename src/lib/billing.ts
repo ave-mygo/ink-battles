@@ -278,3 +278,28 @@ export async function resetMonthlyGrants(): Promise<void> {
 		});
 	}
 }
+
+/**
+ * 增加付费调用次数
+ */
+export async function addPaidCalls(userEmail: string, callsToAdd: number, description: string = "订单兑换获得付费调用次数"): Promise<{ success: boolean; newTotal: number }> {
+	const billing = await getUserBilling(userEmail);
+	
+	const newTotal = billing.paidCallsRemaining + callsToAdd;
+	
+	await db_update(db_name, "user_billing", { userEmail }, {
+		paidCallsRemaining: newTotal,
+		updatedAt: new Date(),
+	});
+
+	// 记录交易
+	await db_insert(db_name, "call_transactions", {
+		userEmail,
+		type: "purchase",
+		amount: callsToAdd,
+		description,
+		timestamp: new Date(),
+	});
+
+	return { success: true, newTotal };
+}

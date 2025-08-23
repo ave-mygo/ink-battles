@@ -18,6 +18,7 @@ export interface UserInfo {
 	afdian_avatar?: string;
 	qqOpenid?: string;
 	loginMethod?: "email" | "qq";
+	admin?: boolean;
 }
 
 export interface SponsorInfo {
@@ -71,6 +72,7 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 				afdian_bound: false,
 				qqOpenid: user.qqOpenid,
 				loginMethod: user.loginMethod,
+				admin: user.admin || false,
 			},
 			subscription: {
 				isSubscribed: false,
@@ -162,6 +164,7 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 				afdian_avatar: afdianUserInfo.avatar,
 				qqOpenid: user.qqOpenid,
 				loginMethod: user.loginMethod,
+				admin: user.admin || false,
 			},
 			subscription: {
 				isSubscribed,
@@ -196,6 +199,7 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 				afdian_avatar: user.afdian_avatar,
 				qqOpenid: user.qqOpenid,
 				loginMethod: user.loginMethod,
+				admin: user.admin || false,
 			},
 			subscription: {
 				isSubscribed: false,
@@ -244,6 +248,7 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 					afdian_avatar: user.afdian_avatar,
 					qqOpenid: user.qqOpenid,
 					loginMethod: user.loginMethod,
+					admin: user.admin || false,
 				},
 				subscription: {
 					isSubscribed: false,
@@ -293,6 +298,7 @@ export async function getUserSubscriptionData(userEmail: string): Promise<UserSu
 				afdian_avatar: (userSponsor?.user?.avatar) || user.afdian_avatar,
 				qqOpenid: user.qqOpenid,
 				loginMethod: user.loginMethod,
+				admin: user.admin || false,
 			},
 			subscription: subscriptionInfo,
 		};
