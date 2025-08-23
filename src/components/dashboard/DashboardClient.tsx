@@ -1,7 +1,7 @@
 "use client";
 
-import type { AnalysisHistoryItem } from "@/lib/analysis-history";
-import type { UserSubscriptionData } from "@/lib/subscription";
+import type { AnalysisHistoryItem } from "@/types/analysis/history";
+import type { UserSubscriptionData } from "@/types/billing/subscription";
 import { RefreshCw } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";

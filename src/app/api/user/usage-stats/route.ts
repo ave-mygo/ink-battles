@@ -7,24 +7,7 @@ import { db_name, getUserType, UserType } from "@/lib/constants";
 import { db_read } from "@/lib/db";
 import { getUserSubscriptionData } from "@/lib/subscription";
 
-interface UsageStats {
-	userType: UserType;
-	totalAnalysis: number;
-	monthlyAnalysis: number;
-	todayAnalysis: number;
-	totalTextLength: number;
-	monthlyTextLength: number;
-	todayTextLength: number;
-	advancedModelStats?: {
-		grantCallsRemaining: number;
-		paidCallsRemaining: number;
-		todayUsed: number;
-	};
-	limits: {
-		perRequest: number | null;
-		dailyLimit: number | null;
-	};
-}
+import type { UsageStats } from "@/types/billing/usage";
 
 export async function GET(_request: NextRequest) {
 	try {

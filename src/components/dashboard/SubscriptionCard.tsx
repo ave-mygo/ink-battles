@@ -1,7 +1,7 @@
 "use client";
 
-import type { UsageStats } from "./types";
-import type { UserSubscriptionData } from "@/lib/subscription";
+import type { UserSubscriptionData } from "@/types/billing/subscription";
+import type { UsageStats } from "@/types/billing/usage";
 import { CheckCircle, Copy, Crown, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";

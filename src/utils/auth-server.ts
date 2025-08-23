@@ -1,25 +1,14 @@
 "use server";
 
+import type { AuthUserInfo } from "@/types/auth/user";
 import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { db_name } from "@/lib/constants";
 import { db_find, db_insert, db_read } from "@/lib/db";
-import "server-only";
 
-export interface UserInfo {
-	uid: number;
-	email?: string | null;
-	nickname?: string | null;
-	avatar?: string | null;
-	qqOpenid?: string | null;
-	loginMethod?: "email" | "qq";
-	passwordHash?: string;
-	createdAt: Date;
-	updatedAt?: Date;
-	isActive?: boolean;
-}
+import "server-only";
 
 /**
  * 生成下一个用户UID
@@ -118,7 +107,7 @@ export const getCurrentUserEmail = async (): Promise<string | null> => {
  * 获取当前登录用户的完整信息
  * @returns 用户信息或null
  */
-export const getCurrentUserInfo = async (): Promise<UserInfo | null> => {
+export const getCurrentUserInfo = async (): Promise<AuthUserInfo | null> => {
 	const cookieStore = await cookies();
 	const token = cookieStore.get("auth-token")?.value;
 	if (!token)
@@ -133,7 +122,7 @@ export const getCurrentUserInfo = async (): Promise<UserInfo | null> => {
 			loginMethod?: "email" | "qq";
 		};
 
-		let user: UserInfo | null = null;
+		let user: AuthUserInfo | null = null;
 
 		// 优先使用UID查询
 		if (payload.uid) {

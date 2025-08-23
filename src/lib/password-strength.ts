@@ -1,18 +1,4 @@
-/**
- * 密码强度验证结果
- */
-export interface PasswordStrength {
-	score: number; // 0-100
-	level: "weak" | "medium" | "strong" | "very-strong";
-	requirements: {
-		length: boolean;
-		lowercase: boolean;
-		uppercase: boolean;
-		number: boolean;
-		special: boolean;
-	};
-	feedback: string[];
-}
+import type { PasswordStrength } from "@/types/common/password";
 
 /**
  * 密码要求配置

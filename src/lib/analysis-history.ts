@@ -1,50 +1,15 @@
+// 类型已迁移到 @/types/analysis
+import type {
+	AnalysisDetailItem,
+	AnalysisHistoryItem,
+	AnalysisHistoryResponse,
+} from "@/types/analysis";
 import process from "node:process";
 import jwt from "jsonwebtoken";
 import { ObjectId } from "mongodb";
 import { db_name } from "@/lib/constants";
+
 import { db_find, db_read } from "@/lib/db";
-
-export interface AnalysisHistoryItem {
-	_id: string;
-	timestamp: string;
-	overallScore: number;
-	title: string;
-	ratingTag: string;
-	summary: string;
-	articleText: string;
-	mode: string;
-	tags?: string[];
-}
-
-export interface AnalysisHistoryResponse {
-	data: AnalysisHistoryItem[];
-	total: number;
-	page: number;
-	limit: number;
-	hasMore: boolean;
-}
-
-export interface AnalysisFullResultDimension {
-	name: string;
-	score: number;
-	description: string;
-}
-
-export interface AnalysisFullResult {
-	overallScore: number;
-	overallAssessment: string;
-	title: string;
-	ratingTag: string;
-	summary: string;
-	tags?: string[];
-	dimensions: AnalysisFullResultDimension[];
-	strengths: string[];
-	improvements: string[];
-}
-
-export interface AnalysisDetailItem extends AnalysisHistoryItem {
-	analysisResult: AnalysisFullResult;
-}
 
 export async function getAnalysisHistory(
 	token: string,

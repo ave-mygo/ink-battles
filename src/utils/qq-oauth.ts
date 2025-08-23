@@ -1,21 +1,6 @@
 "use client";
 
-export interface QQUserInfo {
-	user_id: string;
-	qq_openid: string;
-	nickname: string;
-	avatar: string;
-	gender: string;
-	created_at: string;
-	updated_at: string;
-}
-
-export interface QQOAuthResponse {
-	status: string;
-	code: string;
-	message: string;
-	data: QQUserInfo;
-}
+import type { QQOAuthResponse } from "@/types/auth/user";
 
 /**
  * 构建QQ OAuth授权URL

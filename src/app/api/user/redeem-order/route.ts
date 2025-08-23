@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import type { CreateOrderUsageRecordData } from "@/types/OrderUsageRecord";
+import type { CreateOrderUsageRecordData } from "@/types/order/usage";
 import process from "node:process";
 import jwt from "jsonwebtoken";
 import md5 from "md5";

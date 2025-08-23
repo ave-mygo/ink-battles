@@ -1,6 +1,6 @@
 "use client";
 
-import type { UsageStats } from "./types";
+import type { UsageStats } from "@/types/billing/usage";
 import { CreditCard, Zap } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";

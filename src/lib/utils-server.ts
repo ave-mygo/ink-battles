@@ -1,5 +1,6 @@
 "use server";
 
+import type { BaseUserInfo } from "@/types/auth/user";
 import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -7,19 +8,8 @@ import { cookies } from "next/headers";
 import { calculateAdvancedModelCalls, db_name, getUserType, USER_LIMITS, UserType } from "@/lib/constants";
 import { db_find, db_insert, db_read, db_update } from "@/lib/db";
 import { getUserSubscriptionData } from "@/lib/subscription";
-import "server-only";
 
-export interface UserInfo {
-	email?: string | null;
-	nickname?: string | null;
-	avatar?: string | null;
-	qqOpenid?: string | null;
-	loginMethod?: "email" | "qq";
-	passwordHash?: string;
-	createdAt: Date;
-	updatedAt?: Date;
-	isActive?: boolean;
-}
+import "server-only";
 
 export const db_insert_session = async (): Promise<string> => {
 	const session = Math.random().toString(36).substring(2, 36) + Math.random().toString(36).substring(2, 36);
@@ -231,7 +221,7 @@ export const RegisterUser = async (
  * @param tempCode 临时授权码
  * @returns 登录结果
  */
-export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean; message: string; userInfo?: UserInfo }> => {
+export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean; message: string; userInfo?: BaseUserInfo }> => {
 	if (!tempCode) {
 		return { success: false, message: "授权码不能为空" };
 	}
@@ -267,7 +257,7 @@ export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean;
 			user = { ...user, nickname, avatar, updatedAt: now };
 		} else {
 			// 创建新用户
-			const newUser: UserInfo = {
+			const newUser: BaseUserInfo = {
 				qqOpenid: qq_openid,
 				nickname,
 				avatar,
@@ -426,7 +416,7 @@ export const getCurrentUserEmail = async (): Promise<string | null> => {
  * 获取当前登录用户的完整信息
  * @returns 用户信息或null
  */
-export const getCurrentUserInfo = async (): Promise<UserInfo | null> => {
+export const getCurrentUserInfo = async (): Promise<BaseUserInfo | null> => {
 	const cookieStore = await cookies();
 	const token = cookieStore.get("auth-token")?.value;
 	if (!token)
@@ -440,7 +430,7 @@ export const getCurrentUserInfo = async (): Promise<UserInfo | null> => {
 			loginMethod?: "email" | "qq";
 		};
 
-		let user: UserInfo | null = null;
+		let user: BaseUserInfo | null = null;
 
 		if (payload.email) {
 			user = await db_find(db_name, "users", { email: payload.email });

@@ -1,6 +1,6 @@
 "use client";
 
-import type { UserSubscriptionData } from "@/lib/subscription";
+import type { UserSubscriptionData } from "@/types/billing/subscription";
 import { User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

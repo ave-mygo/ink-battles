@@ -1,6 +1,6 @@
 "use client";
 
-import type { UserSubscriptionData } from "@/lib/subscription";
+import type { UserSubscriptionData } from "@/types/billing/subscription";
 import { Link2, Unlink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 

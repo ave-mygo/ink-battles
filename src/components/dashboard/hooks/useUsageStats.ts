@@ -1,6 +1,6 @@
 "use client";
 
-import type { UsageStats } from "../types";
+import type { UsageStats } from "@/types/billing/usage";
 import { useCallback, useEffect, useState } from "react";
 
 export const useUsageStats = (autoLoad = true) => {

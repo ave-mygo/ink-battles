@@ -6,6 +6,7 @@ import {
 	isPasswordValid,
 	PASSWORD_REQUIREMENTS,
 } from "@/lib/password-strength";
+import type { PasswordStrength } from "@/types/common/password";
 
 interface PasswordStrengthIndicatorProps {
 	password: string;

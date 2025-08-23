@@ -1,5 +1,8 @@
 "use server";
 
+import type {
+	UserBilling,
+} from "@/types/billing/usage";
 import {
 	calculateMonthlyGrantCalls,
 	calculatePaidCallPrice,
@@ -8,36 +11,15 @@ import {
 	MONTHLY_GRANT_BASE,
 } from "@/lib/constants";
 import { db_find, db_insert, db_update, mongoClient } from "@/lib/db";
+
 import "server-only";
 
-export interface UserBilling {
-	userEmail: string;
-	totalSpent: number;
-	monthlyDonation: number;
-	grantCallsRemaining: number;
-	paidCallsRemaining: number;
-	lastGrantUpdate: Date;
-	createdAt: Date;
-	updatedAt: Date;
-}
-
-export interface CallTransaction {
-	userEmail: string;
-	type: "grant" | "purchase" | "usage";
-	amount: number;
-	description: string;
-	relatedOrderId?: string;
-	timestamp: Date;
-}
-
-export interface MonthlyGrant {
-	userEmail: string;
-	year: number;
-	month: number;
-	donationAmount: number;
-	grantedCalls: number;
-	createdAt: Date;
-}
+// 导出类型，保持向后兼容
+export type {
+	CallTransaction,
+	MonthlyGrant,
+	UserBilling,
+} from "@/types/billing/usage";
 
 /**
  * 获取或创建用户计费信息
@@ -284,9 +266,9 @@ export async function resetMonthlyGrants(): Promise<void> {
  */
 export async function addPaidCalls(userEmail: string, callsToAdd: number, description: string = "订单兑换获得付费调用次数"): Promise<{ success: boolean; newTotal: number }> {
 	const billing = await getUserBilling(userEmail);
-	
+
 	const newTotal = billing.paidCallsRemaining + callsToAdd;
-	
+
 	await db_update(db_name, "user_billing", { userEmail }, {
 		paidCallsRemaining: newTotal,
 		updatedAt: new Date(),
