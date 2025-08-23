@@ -114,8 +114,13 @@ export default function WriterAnalysisSystem() {
 	const [abortController, setAbortController] = useState<AbortController | null>(null);
 
 	const handleModeChange = (modeId: string, checked: boolean, modeName: string) => {
-		if (modeId === "fragment" || modeId === "ai-detection") {
-			// 并行激活碎片主义护法和AI鉴别师
+		// 阻止AI鉴别师被选中
+		if (modeId === "ai-detection") {
+			return;
+		}
+
+		if (modeId === "fragment") {
+			// 并行激活碎片主义护法
 			if (checked) {
 				setSelectedMode(prev => prev.includes(modeId) ? prev : [...prev, modeId]);
 				setSelectedModeName(prev => prev.includes(modeName) ? prev : [...prev, modeName]);
@@ -126,8 +131,8 @@ export default function WriterAnalysisSystem() {
 		} else {
 			if (checked) {
 				// 保留现有的并行模式，添加新选择的主模式
-				const parallelModes = selectedMode.filter(id => id === "fragment" || id === "ai-detection");
-				const parallelModeNames = selectedModeName.filter(name => name === "碎片主义护法" || name === "AI鉴别师");
+				const parallelModes = selectedMode.filter(id => id === "fragment");
+				const parallelModeNames = selectedModeName.filter(name => name === "碎片主义护法");
 
 				setSelectedMode([modeId, ...parallelModes]);
 				setSelectedModeName([modeName, ...parallelModeNames]);
