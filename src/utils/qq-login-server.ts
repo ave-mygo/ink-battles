@@ -1,6 +1,6 @@
 "use server";
 
-import type { UserInfo } from "./auth-server";
+import type { AuthUserInfo } from "@/types/auth/user";
 import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -31,7 +31,7 @@ async function generateNextUID(): Promise<number> {
  * @param tempCode 临时授权码
  * @returns 登录结果
  */
-export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean; message: string; userInfo?: UserInfo }> => {
+export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfo }> => {
 	if (!tempCode) {
 		return { success: false, message: "授权码不能为空" };
 	}
@@ -64,7 +64,7 @@ export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean;
 			user = { ...user, nickname, avatar, updatedAt: now };
 		} else {
 			const uid = await generateNextUID();
-			const newUser: UserInfo = {
+			const newUser: AuthUserInfo = {
 				uid,
 				qqOpenid: qq_openid,
 				nickname,

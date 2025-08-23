@@ -1,5 +1,7 @@
 "use server";
 
+import type { BillingService } from "@/types/services/billing";
+
 import {
 	getUserBillingDetails,
 	purchaseCalls,
@@ -8,20 +10,15 @@ import {
 
 import "server-only";
 
-export interface BillingService {
-	getUserBillingInfo: (userEmail: string) => Promise<any>;
-	processDonation: (userEmail: string, amount: number, orderId: string) => Promise<void>;
-	processCallPurchase: (userEmail: string, calls: number) => Promise<{ success: boolean; cost: number; orderId: string }>;
-	calculateCallCost: (userEmail: string, calls: number) => Promise<number>;
-	getMembershipInfo: (userEmail: string) => Promise<any>;
-}
+// 导出类型，保持向后兼容
+export type { BillingService } from "@/types/services/billing";
 
 class BillingServiceImpl implements BillingService {
 	async getUserBillingInfo(userEmail: string) {
 		return await getUserBillingDetails(userEmail);
 	}
 
-	async processDonation(userEmail: string, totalAmount: number, orderId: string): Promise<void> {
+	async processDonation(userEmail: string, totalAmount: number, _orderId: string): Promise<void> {
 		// 基于累计总额更新月度赠送
 		await updateMonthlyGrantByTotalAmount(userEmail, totalAmount);
 	}

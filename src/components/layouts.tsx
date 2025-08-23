@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnalysisResult } from "@/lib/ai";
+import type { AnalysisResult } from "@/types/analysis/result";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";

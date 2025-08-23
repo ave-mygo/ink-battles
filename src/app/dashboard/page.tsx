@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import type { AnalysisHistoryItem } from "@/lib/analysis-history";
-import type { UserSubscriptionData } from "@/lib/subscription";
+import type { AnalysisHistoryItem } from "@/types/analysis/history";
+import type { UserSubscriptionData } from "@/types/billing/subscription";
 import { webcrypto } from "node:crypto";
 import process from "node:process";
 import jwt from "jsonwebtoken";

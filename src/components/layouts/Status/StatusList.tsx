@@ -1,4 +1,4 @@
-import type { UsageLog } from "@/types/status";
+import type { StatusListProps } from "@/types/common/status";
 import { format } from "date-fns";
 import { AlertCircle, CheckCircle, Database } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,11 +11,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-
-interface StatusListProps {
-	logs: UsageLog[];
-	loading?: boolean;
-}
 
 function TableSkeleton() {
 	return (

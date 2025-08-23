@@ -1,7 +1,7 @@
 "use client";
 
-import type { AnalysisHistoryResponse } from "@/lib/analysis-history";
-import type { UserSubscriptionData } from "@/lib/subscription";
+import type { AnalysisHistoryResponse } from "@/types/analysis/history";
+import type { UserSubscriptionData } from "@/types/billing/subscription";
 import { CalendarDays, ChevronLeft, ChevronRight, FileText, LayoutGrid, List, Star, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import React, { useCallback, useEffect, useMemo, useState } from "react";

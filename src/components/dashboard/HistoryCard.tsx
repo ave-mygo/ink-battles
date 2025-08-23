@@ -1,5 +1,6 @@
 "use client";
 
+import type { AnalysisHistoryItem, AnalysisHistoryResponse } from "@/types/analysis/history";
 import { Calendar, ChevronRight, FileText, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -7,28 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface AnalysisHistoryItem {
-	_id: string;
-	timestamp: string;
-	overallScore: number;
-	title: string;
-	ratingTag: string;
-	summary: string;
-	mode: string;
-}
-
-interface AnalysisHistoryResponse {
-	data: AnalysisHistoryItem[];
-	total: number;
-}
-
 interface HistoryCardProps {
 	initialData?: AnalysisHistoryItem[];
 }
 
 export function HistoryCard({ initialData }: HistoryCardProps) {
 	const [historyData, setHistoryData] = useState<AnalysisHistoryResponse | null>(
-		initialData ? { data: initialData, total: initialData.length } : null,
+		initialData ? {
+			data: initialData,
+			total: initialData.length,
+			page: 1,
+			limit: initialData.length,
+			hasMore: false,
+		} : null,
 	);
 	const [loading, setLoading] = useState(!initialData);
 

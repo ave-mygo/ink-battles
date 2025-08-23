@@ -1,11 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import type { AuthState } from "@/types/auth/session";
 
-export interface AuthState {
-	email: string | null;
-	isLoggedIn: boolean;
-}
+import { useCallback, useEffect, useState } from "react";
 
 export function useAuth() {
 	const [user, setUser] = useState<AuthState | null>(null);

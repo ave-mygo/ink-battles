@@ -1,29 +1,10 @@
 "use client";
 
+import type { SponsorData } from "@/types/common/sponsor";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface Sponsor {
-	user: {
-		user_id: string;
-		name: string;
-		avatar: string;
-	};
-	all_sum_amount: string;
-	last_pay_time: number;
-	current_plan: {
-		name: string;
-	};
-}
-
-interface SponsorData {
-	data: {
-		list: Sponsor[];
-		total_page: number;
-	};
-}
 
 function SponsorCardSkeleton() {
 	return (

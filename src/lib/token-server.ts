@@ -1,7 +1,9 @@
+import type { ApiKeyRecord } from "@/types/api/token";
 import crypto from "node:crypto";
 import process from "node:process";
 import dotenv from "dotenv";
 import md5 from "md5";
+
 import { db_find, db_insert, db_update } from "./db";
 
 dotenv.config();
@@ -13,21 +15,6 @@ const TOKEN_SECRET = process.env.TOKEN_SECRET || "default-secret-key";
 // 数据库和集合名称
 const DB_NAME = "ink_battles";
 const COLLECTION_NAME = "api_keys";
-
-/**
- * API Key 数据结构
- */
-export interface ApiKeyRecord {
-	_id?: string;
-	orderNumber: string;
-	orderTime: Date;
-	firstIssuedTime: Date;
-	lastFingerprintUpdateTime: Date;
-	userIp: string;
-	token: string;
-	browserFingerprint: string;
-	isActive: boolean;
-}
 
 /**
  * 验证订单号是否有效
