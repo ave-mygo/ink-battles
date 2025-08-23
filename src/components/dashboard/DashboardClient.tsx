@@ -5,13 +5,13 @@ import type { UserSubscriptionData } from "@/lib/subscription";
 import { RefreshCw } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cleanupOAuthParams, isQQOAuthCallback, parseQQCallback } from "@/utils/qq-oauth";
 import { AccountBinding } from "./AccountBinding";
 import { HistoryCard } from "./HistoryCard";
 import { useUsageStats } from "./hooks/useUsageStats";
 import { useUserData } from "./hooks/useUserData";
+import { OrderRedemptionPanel } from "./OrderRedemptionPanel";
 import { SubscriptionCard } from "./SubscriptionCard";
 import { UsageStatsCard } from "./UsageStatsCard";
 import { UserInfoCard } from "./UserInfoCard";
@@ -29,22 +29,14 @@ interface DashboardClientProps {
 
 export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }: DashboardClientProps) => {
 	const [initialLoading, setInitialLoading] = useState(true);
-	
+
 	const { usageStats, refreshUsageStats } = useUsageStats(false); // 不自动加载
 	const {
 		data,
 		loading,
-		error,
 		bindLoading,
-		orderIdDialogOpen,
-		orderId,
-		orderBindLoading,
 		refreshData,
 		handleUnbindAfdian,
-		handleOrderIdBind,
-		setOrderIdDialogOpen,
-		setOrderId,
-		clearError,
 	} = useUserData(initialData);
 
 	// 统一的初始数据加载
@@ -133,19 +125,6 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 		await Promise.all([refreshData(), refreshUsageStats()]);
 	};
 
-	if (error) {
-		return (
-			<div className="mx-auto p-4 container max-w-4xl sm:p-6">
-				<Alert variant="destructive">
-					<AlertDescription>{error}</AlertDescription>
-				</Alert>
-				<div className="mt-4 text-center">
-					<Button onClick={refreshData}>重试</Button>
-				</div>
-			</div>
-		);
-	}
-
 	// 统一的初始加载状态
 	if (initialLoading) {
 		return (
@@ -160,9 +139,9 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 
 				<div className="gap-4 grid w-full sm:gap-6 lg:grid-cols-2">
 					{/* 统一的加载骨架 */}
-					{[...Array(5)].map((_, index) => (
+					{Array.from({ length: 5 }).fill(0).map((_, index) => (
 						<div key={index} className="min-w-0">
-							<div className="border rounded-lg bg-card text-card-foreground shadow-sm">
+							<div className="bg-card text-card-foreground border rounded-lg shadow-sm">
 								<div className="p-6 space-y-4">
 									<div className="space-y-2">
 										<div className="rounded bg-gray-200 h-4 w-1/2 animate-pulse"></div>
@@ -197,16 +176,8 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 					<UserInfoCard
 						data={data}
 						bindLoading={bindLoading}
-						orderIdDialogOpen={orderIdDialogOpen}
-						orderId={orderId}
-						orderBindLoading={orderBindLoading}
-						error={error}
 						onUnbindAfdian={handleUnbindAfdian}
 						onAfdianAuth={handleAfdianAuth}
-						onOrderIdDialogOpenChange={setOrderIdDialogOpen}
-						onOrderIdChange={setOrderId}
-						onOrderIdBind={handleOrderIdBind}
-						onErrorClear={clearError}
 					/>
 				</div>
 
@@ -229,6 +200,14 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 
 				<div className="min-w-0">
 					<HistoryCard initialData={initialHistoryData} />
+				</div>
+
+				<div className="min-w-0">
+					<OrderRedemptionPanel
+						isAdmin={data.user.admin || false}
+						hasAfdianBinding={data.user.afdian_bound}
+						userTotalSpent={data.subscription.totalAmount || 0}
+					/>
 				</div>
 
 				<div className="min-w-0">
