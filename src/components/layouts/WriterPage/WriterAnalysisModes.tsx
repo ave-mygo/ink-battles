@@ -1,7 +1,6 @@
 "use client";
 import type React from "react";
-import { ChevronDown, ChevronUp, CircleQuestionMark, Gauge, Lock, LogIn } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp, CircleQuestionMark, Gauge, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,24 +30,6 @@ export default function WriterAnalysisModes({
 	setIsModesExpanded,
 	handleModeChange,
 }: WriterAnalysisModesProps) {
-	const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-
-	// 检查用户登录状态
-	useEffect(() => {
-		const checkLoginStatus = async () => {
-			try {
-				const response = await fetch("/api/auth/me", {
-					credentials: "include",
-				});
-				setIsLoggedIn(response.ok);
-			} catch (error) {
-				console.error("检查登录状态失败:", error);
-				setIsLoggedIn(false);
-			}
-		};
-
-		checkLoginStatus();
-	}, []);
 	return (
 		<Card className="border-0 bg-white/80 h-full w-full shadow-lg backdrop-blur-sm">
 			<CardHeader>
@@ -61,7 +42,7 @@ export default function WriterAnalysisModes({
 			<CardContent className="space-y-4">
 				{evaluationModes.slice(0, 4).map((mode) => {
 					const isAiDetection = mode.id === "ai-detection";
-					const isLocked = isAiDetection && !isLoggedIn;
+					const isLocked = isAiDetection; // 永久锁定AI鉴别师
 
 					return (
 						<div
@@ -87,8 +68,8 @@ export default function WriterAnalysisModes({
 										<div className="flex gap-2 items-center">
 											<span className="text-slate-800 font-medium">{mode.name}</span>
 											{isLocked && (
-												<Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-													需要登录
+												<Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+													等待后续迭代开放使用
 												</Badge>
 											)}
 											<HoverCard>
@@ -115,15 +96,9 @@ export default function WriterAnalysisModes({
 								{isLocked
 									? (
 											<div className="flex gap-2 items-center">
-												<Button
-													size="sm"
-													variant="outline"
-													className="text-blue-600 border-blue-300 hover:bg-blue-50"
-													onClick={() => window.location.href = "/signin"}
-												>
-													<LogIn className="mr-1 h-3 w-3" />
-													去登录
-												</Button>
+												<Badge variant="secondary" className="text-slate-600">
+													开发中
+												</Badge>
 											</div>
 										)
 									: (
@@ -148,7 +123,7 @@ export default function WriterAnalysisModes({
 					<div className="pt-2 space-y-4">
 						{evaluationModes.slice(4).map((mode) => {
 							const isAiDetection = mode.id === "ai-detection";
-							const isLocked = isAiDetection && !isLoggedIn;
+							const isLocked = isAiDetection; // 永久锁定AI鉴别师
 
 							return (
 								<div
@@ -181,8 +156,8 @@ export default function WriterAnalysisModes({
 												<div className="flex gap-2 items-center">
 													<span className="text-slate-800 font-medium">{mode.name}</span>
 													{isLocked && (
-														<Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-															需要登录
+														<Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+															等待后续迭代开放使用
 														</Badge>
 													)}
 													<HoverCard>
@@ -209,15 +184,9 @@ export default function WriterAnalysisModes({
 										{isLocked
 											? (
 													<div className="flex gap-2 items-center">
-														<Button
-															size="sm"
-															variant="outline"
-															className="text-blue-600 border-blue-300 hover:bg-blue-50"
-															onClick={() => window.location.href = "/signin"}
-														>
-															<LogIn className="mr-1 h-3 w-3" />
-															去登录
-														</Button>
+														<Badge variant="secondary" className="text-slate-600">
+															开发中
+														</Badge>
 													</div>
 												)
 											: (
