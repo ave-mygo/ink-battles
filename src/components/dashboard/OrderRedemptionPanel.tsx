@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Plus, Ticket } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Ticket, Plus } from "lucide-react";
 
 interface OrderRedemptionPanelProps {
 	isAdmin: boolean;
@@ -21,10 +21,14 @@ export const OrderRedemptionPanel = ({ isAdmin, hasAfdianBinding, userTotalSpent
 
 	// 计算会员等级和折扣价格用于显示
 	const getMemberTier = (totalAmount: number) => {
-		if (totalAmount >= 460) return { name: "钻石会员", discount: 20 };
-		if (totalAmount >= 300) return { name: "金牌会员", discount: 15 };
-		if (totalAmount >= 150) return { name: "银牌会员", discount: 10 };
-		if (totalAmount >= 50) return { name: "铜牌会员", discount: 5 };
+		if (totalAmount >= 460)
+			return { name: "钻石会员", discount: 20 };
+		if (totalAmount >= 300)
+			return { name: "金牌会员", discount: 15 };
+		if (totalAmount >= 150)
+			return { name: "银牌会员", discount: 10 };
+		if (totalAmount >= 50)
+			return { name: "铜牌会员", discount: 5 };
 		return { name: "普通会员", discount: 0 };
 	};
 
@@ -130,7 +134,7 @@ export const OrderRedemptionPanel = ({ isAdmin, hasAfdianBinding, userTotalSpent
 
 				{isAdmin && (
 					<div className="pt-4 border-t">
-						<p className="text-sm text-muted-foreground">
+						<p className="text-muted-foreground text-sm">
 							管理员模式：可查看和管理订单兑换记录
 						</p>
 					</div>

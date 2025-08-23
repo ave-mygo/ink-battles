@@ -1,3 +1,8 @@
+export interface StatusListProps {
+	logs: UsageLog[];
+	loading?: boolean;
+}
+
 export interface UsageLog {
 	created_at: number;
 	type: number;

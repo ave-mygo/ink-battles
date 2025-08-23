@@ -1,49 +1,17 @@
+// 类型已迁移到统一的types目录
+import type {
+	SubscriptionInfo,
+	UserSubscriptionData,
+} from "@/types/billing/subscription";
 import process from "node:process";
 import md5 from "md5";
 import { updateMonthlyGrantByTotalAmount } from "@/lib/billing";
 import { db_name } from "@/lib/constants";
+
 import { db_find, db_update } from "@/lib/db";
 
 const AFDIAN_API_TOKEN = process.env.AFDIAN_API_TOKEN;
 const AFDIAN_USER_ID = process.env.AFDIAN_USER_ID;
-
-export interface UserInfo {
-	id: string;
-	username: string;
-	email: string;
-	avatar: string;
-	afdian_user_id?: string;
-	afdian_bound: boolean;
-	afdian_username?: string;
-	afdian_avatar?: string;
-	qqOpenid?: string;
-	loginMethod?: "email" | "qq";
-	admin?: boolean;
-}
-
-export interface SponsorInfo {
-	user_id: string;
-	name: string;
-	avatar?: string;
-	all_sum_amount: number;
-	bound_order_id?: string;
-	binding_method: "oauth" | "order_id";
-	create_time?: number;
-	last_pay_time?: number;
-}
-
-export interface SubscriptionInfo {
-	isSubscribed: boolean;
-	sponsorInfo: SponsorInfo | null;
-	totalAmount: number;
-	currentPlan: any;
-	subscriptionStatus: string;
-}
-
-export interface UserSubscriptionData {
-	user: UserInfo;
-	subscription: SubscriptionInfo;
-}
 
 /**
  * 统一获取用户订阅信息的函数

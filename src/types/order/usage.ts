@@ -1,3 +1,7 @@
+/**
+ * 订单使用记录类型
+ * 来源：OrderUsageRecord.ts
+ */
 export interface OrderUsageRecord {
 	orderId: string;
 	userEmail: string;
@@ -8,6 +12,10 @@ export interface OrderUsageRecord {
 	adminUserEmail?: string;
 }
 
+/**
+ * 创建订单使用记录数据类型
+ * 来源：OrderUsageRecord.ts
+ */
 export interface CreateOrderUsageRecordData {
 	orderId: string;
 	userEmail: string;

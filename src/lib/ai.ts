@@ -100,24 +100,11 @@ export const verifyArticleValue = async (articleText: string, mode: string = "de
 	}
 };
 
-// 模拟的返回结果结构，用于类型定义
-interface Dimension {
-	name: string;
-	score: number;
-	description: string;
-}
+// 类型已迁移到 @/types/analysis/result
+import type { AnalysisResult, AnalysisDimension } from "@/types/analysis/result";
 
-export interface AnalysisResult {
-	overallScore: number;
-	title: string;
-	ratingTag: string;
-	overallAssessment: string;
-	summary: string;
-	tags: string[];
-	dimensions: Dimension[];
-	strengths: string[];
-	improvements: string[];
-}
+// 导出类型，保持向后兼容
+export type { AnalysisResult, AnalysisDimension } from "@/types/analysis/result";
 
 export const buildSystemPrompt = async (modeInstruction: string): Promise<string> => `你是一个专业的文学评论家。你的核心任务是严格遵循本系统提示词中定义的所有规则、标准和格式要求，对用户在后续对话中提供的文章内容进行深度分析和评分。
 

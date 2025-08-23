@@ -1,6 +1,6 @@
 "use client";
 
-import type { UserSubscriptionData } from "@/lib/subscription";
+import type { UserSubscriptionData } from "@/types/billing/subscription";
 import { useCallback, useState } from "react";
 
 export const useUserData = (initialData: UserSubscriptionData) => {

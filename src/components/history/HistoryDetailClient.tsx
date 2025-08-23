@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnalysisDetailItem } from "@/lib/analysis-history";
+import type { AnalysisDetailItem } from "@/types/analysis/history";
 import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
