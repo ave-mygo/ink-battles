@@ -2,7 +2,7 @@ import type { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { getAnalysisById } from "@/lib/analysis-history";
 
-export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
 		const cookieStore = await cookies();
 		const token = cookieStore.get("auth-token")?.value;
@@ -10,7 +10,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 			return Response.json({ error: "未登录" }, { status: 401 });
 		}
 
-		const { id } = params;
+		const { id } = await params;
 		const detail = await getAnalysisById(token, id);
 		return Response.json(detail);
 	} catch (error) {

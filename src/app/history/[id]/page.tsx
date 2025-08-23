@@ -10,11 +10,12 @@ export async function generateMetadata(): Promise<Metadata> {
 	};
 }
 
-export default async function HistoryDetailPage({ params }: { params: { id: string } }) {
+export default async function HistoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
+	const { id } = await params;
 	const cookieStore = await cookies();
 	const token = cookieStore.get("auth-token")?.value;
 	if (!token)
 		redirect("/signin");
 
-	return <HistoryDetailClient id={params.id} />;
+	return <HistoryDetailClient id={id} />;
 }
