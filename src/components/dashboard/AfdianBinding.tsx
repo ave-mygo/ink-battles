@@ -2,40 +2,20 @@
 
 import type { UserSubscriptionData } from "@/lib/subscription";
 import { Link2, Unlink } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 interface AfdianBindingProps {
 	data: UserSubscriptionData;
 	bindLoading: boolean;
-	orderIdDialogOpen: boolean;
-	orderId: string;
-	orderBindLoading: boolean;
-	error: string | null;
 	onUnbindAfdian: () => void;
 	onAfdianAuth: () => void;
-	onOrderIdDialogOpenChange: (open: boolean) => void;
-	onOrderIdChange: (value: string) => void;
-	onOrderIdBind: () => void;
-	onErrorClear: () => void;
 }
 
 export const AfdianBinding = ({
 	data,
 	bindLoading,
-	orderIdDialogOpen,
-	orderId,
-	orderBindLoading,
-	error,
 	onUnbindAfdian,
 	onAfdianAuth,
-	onOrderIdDialogOpenChange,
-	onOrderIdChange,
-	onOrderIdBind,
-	onErrorClear,
 }: AfdianBindingProps) => {
 	return (
 		<div className="space-y-3">
@@ -94,68 +74,14 @@ export const AfdianBinding = ({
 								</div>
 							</div>
 
-							<div className="flex gap-2">
-								<Button
-									size="sm"
-									onClick={onAfdianAuth}
-									className="text-white bg-orange-500 flex-1 hover:bg-orange-600"
-								>
-									<Link2 className="mr-1 h-3 w-3" />
-									OAuth绑定
-								</Button>
-
-								<Dialog open={orderIdDialogOpen} onOpenChange={onOrderIdDialogOpenChange}>
-									<DialogTrigger asChild>
-										<Button size="sm" variant="outline" className="flex-1">
-											订单号绑定
-										</Button>
-									</DialogTrigger>
-									<DialogContent className="sm:max-w-[425px]">
-										<DialogHeader>
-											<DialogTitle>通过订单号绑定爱发电账号</DialogTitle>
-											<DialogDescription>
-												请输入您在爱发电的任意一笔订单号，我们将通过订单号查询并绑定您的爱发电账号。
-											</DialogDescription>
-										</DialogHeader>
-										<div className="py-4 gap-4 grid">
-											<div className="gap-2 grid">
-												<Label htmlFor="order-id">订单号</Label>
-												<Input
-													id="order-id"
-													placeholder="请输入爱发电订单号"
-													value={orderId}
-													onChange={e => onOrderIdChange(e.target.value)}
-													disabled={orderBindLoading}
-												/>
-											</div>
-											{error && (
-												<Alert variant="destructive">
-													<AlertDescription>{error}</AlertDescription>
-												</Alert>
-											)}
-										</div>
-										<div className="flex justify-end space-x-2">
-											<Button
-												variant="outline"
-												onClick={() => {
-													onOrderIdDialogOpenChange(false);
-													onOrderIdChange("");
-													onErrorClear();
-												}}
-												disabled={orderBindLoading}
-											>
-												取消
-											</Button>
-											<Button
-												onClick={onOrderIdBind}
-												disabled={orderBindLoading || !orderId.trim()}
-											>
-												{orderBindLoading ? "绑定中..." : "确认绑定"}
-											</Button>
-										</div>
-									</DialogContent>
-								</Dialog>
-							</div>
+							<Button
+								size="sm"
+								onClick={onAfdianAuth}
+								className="text-white bg-orange-500 w-full hover:bg-orange-600"
+							>
+								<Link2 className="mr-1 h-3 w-3" />
+								OAuth绑定
+							</Button>
 						</div>
 					)}
 		</div>

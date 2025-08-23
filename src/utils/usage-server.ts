@@ -39,7 +39,14 @@ export const checkAndConsumeUsage = async (
 		try {
 			const subscriptionData = await getUserSubscriptionData(userEmail);
 			donationAmount = subscriptionData.subscription.totalAmount || 0;
-			userType = getUserType(isLoggedIn, donationAmount);
+			
+			// 如果用户是admin，直接赋予最高权限
+			if (subscriptionData.user.admin) {
+				userType = UserType.MEMBER;
+				donationAmount = 999999; // 确保获得最高权限
+			} else {
+				userType = getUserType(isLoggedIn, donationAmount);
+			}
 		} catch (error) {
 			console.warn("获取用户订阅信息失败，使用默认限制:", error);
 		}

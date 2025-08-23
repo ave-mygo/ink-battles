@@ -10,31 +10,15 @@ import { AfdianBinding } from "./AfdianBinding";
 interface UserInfoCardProps {
 	data: UserSubscriptionData;
 	bindLoading: boolean;
-	orderIdDialogOpen: boolean;
-	orderId: string;
-	orderBindLoading: boolean;
-	error: string | null;
 	onUnbindAfdian: () => void;
 	onAfdianAuth: () => void;
-	onOrderIdDialogOpenChange: (open: boolean) => void;
-	onOrderIdChange: (value: string) => void;
-	onOrderIdBind: () => void;
-	onErrorClear: () => void;
 }
 
 export const UserInfoCard = ({
 	data,
 	bindLoading,
-	orderIdDialogOpen,
-	orderId,
-	orderBindLoading,
-	error,
 	onUnbindAfdian,
 	onAfdianAuth,
-	onOrderIdDialogOpenChange,
-	onOrderIdChange,
-	onOrderIdBind,
-	onErrorClear,
 }: UserInfoCardProps) => {
 	const displayName = data.user.username || data.user.email || "用户";
 	const initial = (displayName[0] || "?").toUpperCase();
@@ -76,16 +60,8 @@ export const UserInfoCard = ({
 				<AfdianBinding
 					data={data}
 					bindLoading={bindLoading}
-					orderIdDialogOpen={orderIdDialogOpen}
-					orderId={orderId}
-					orderBindLoading={orderBindLoading}
-					error={error}
 					onUnbindAfdian={onUnbindAfdian}
 					onAfdianAuth={onAfdianAuth}
-					onOrderIdDialogOpenChange={onOrderIdDialogOpenChange}
-					onOrderIdChange={onOrderIdChange}
-					onOrderIdBind={onOrderIdBind}
-					onErrorClear={onErrorClear}
 				/>
 			</CardContent>
 		</Card>
