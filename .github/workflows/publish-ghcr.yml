@@ -1,0 +1,78 @@
+name: Build and Publish Docker image to GHCR
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# Required to push to GHCR
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ghcr-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  # Private repository - use fixed repository name
+  IMAGE_NAME: ave-mygo/ink-battles
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive lowercased image name
+        id: name
+        run: |
+          IMAGE_LC=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "image=$IMAGE_LC" >> "$GITHUB_OUTPUT"
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ steps.name.outputs.image }}
+          tags: |
+            # Mirror .cnb.yml's :latest on default branch
+            type=raw,value=latest,enable={{is_default_branch}}
+            # Use git tag as image tag on tag pushes (e.g., v1.2.3)
+            type=ref,event=tag
+            # Also publish a branch tag for main
+            type=ref,event=branch,branch=main
+          flavor: |
+            latest=false
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
