@@ -1,13 +1,26 @@
 # --- Build 阶段 ---
 FROM node:22-alpine AS builder
 WORKDIR /app
+
+# Make pnpm store path explicit for stable cache mounts
+ENV PNPM_STORE_DIR=/pnpm/store \
+	PNPM_HOME=/root/.local/share/pnpm \
+	PATH=/root/.local/share/pnpm:$PATH \
+	CI=1
+
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable
 RUN corepack pnpm config set registry https://registry.npmmirror.com
-# Use BuildKit cache for pnpm store to speed up installs
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-	corepack pnpm install --frozen-lockfile
+RUN corepack pnpm config set store-dir ${PNPM_STORE_DIR}
+
+# Fetch and install deps based only on lockfile so this layer is cacheable
+RUN --mount=type=cache,target=${PNPM_STORE_DIR},sharing=locked \
+	corepack pnpm fetch
+RUN --mount=type=cache,target=${PNPM_STORE_DIR},sharing=locked \
+	corepack pnpm install --frozen-lockfile --prefer-offline
+
 COPY . .
+
 RUN corepack pnpm build
 
 # --- 运行阶段 ---
