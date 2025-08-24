@@ -61,22 +61,13 @@ export async function GET(request: NextRequest) {
 		}
 
 		const tokenData = await tokenResponse.json();
-		const { access_token, refresh_token } = tokenData;
 
-		// 获取用户信息
-		const userResponse = await fetch("https://afdian.com/api/open/query-user", {
-			method: "GET",
-			headers: {
-				Authorization: `Bearer ${access_token}`,
-			},
-		});
-
-		if (!userResponse.ok) {
-			throw new Error("获取用户信息失败");
+		// 检查爱发电API响应格式
+		if (tokenData.ec !== 200) {
+			throw new Error(`爱发电API返回错误: ${tokenData.em || "未知错误"}`);
 		}
 
-		const userData = await userResponse.json();
-		const afdianUser = userData.data.user;
+		const afdianUser = tokenData.data;
 
 		// 检查用户是否已登录（绑定场景）
 		const authCookie = request.headers.get("cookie");
@@ -112,51 +103,29 @@ export async function GET(request: NextRequest) {
 						afdian_user_id: afdianUser.user_id,
 						afdian_username: afdianUser.name,
 						afdian_avatar: afdianUser.avatar,
-						afdian_access_token: access_token,
-						afdian_refresh_token: refresh_token,
 						updated_at: new Date(),
 					},
 				);
 				user = { ...existingUser, afdian_user_id: afdianUser.user_id };
 			}
-		} else if (!user) {
-			// 新用户场景：创建新的爱发电用户
-			const newUser = {
-				afdian_user_id: afdianUser.user_id,
-				username: afdianUser.name,
-				afdian_username: afdianUser.name,
-				email: afdianUser.email || "",
-				avatar: afdianUser.avatar,
-				afdian_avatar: afdianUser.avatar,
-				created_at: new Date(),
-				updated_at: new Date(),
-				afdian_access_token: access_token,
-				afdian_refresh_token: refresh_token,
-				auth_type: "afdian_oauth",
-			};
-
-			await db_insert(db_name, "users", newUser);
-			user = newUser;
 		} else if (user && existingUserEmail && user.email !== existingUserEmail) {
 			// 冲突场景：爱发电账号已绑定其他用户
 			return NextResponse.json({
 				error: "该爱发电账号已绑定其他用户",
 			}, { status: 409 });
 		} else {
-			// 更新现有用户的令牌
+			// 更新现有用户的信息
 			await db_update(
 				db_name,
 				"users",
 				{ afdian_user_id: afdianUser.user_id },
 				{
-					afdian_access_token: access_token,
-					afdian_refresh_token: refresh_token,
 					afdian_username: afdianUser.name,
 					afdian_avatar: afdianUser.avatar,
 					updated_at: new Date(),
 				},
 			);
-			user = { ...user, afdian_access_token: access_token, afdian_refresh_token: refresh_token };
+			user = { ...user };
 		}
 
 		// 生成 JWT 令牌
