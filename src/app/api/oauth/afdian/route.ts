@@ -7,7 +7,6 @@ import { db_find, db_insert, db_update } from "@/lib/db";
 
 const AFDIAN_CLIENT_ID = process.env.AFDIAN_CLIENT_ID;
 const AFDIAN_CLIENT_SECRET = process.env.AFDIAN_CLIENT_SECRET;
-const AFDIAN_REDIRECT_URI = process.env.AFDIAN_REDIRECT_URI;
 
 export async function GET(request: NextRequest) {
 	const { searchParams } = new URL(request.url);
@@ -29,6 +28,10 @@ export async function GET(request: NextRequest) {
 	}
 
 	try {
+		// 动态构建重定向URI，支持不同环境
+		const { origin } = new URL(request.url);
+		const redirectUri = `${origin}/api/oauth/afdian`;
+		
 		// 获取访问令牌
 		const tokenResponse = await fetch("https://afdian.com/api/oauth/access_token", {
 			method: "POST",
@@ -39,13 +42,22 @@ export async function GET(request: NextRequest) {
 				grant_type: "authorization_code",
 				client_id: AFDIAN_CLIENT_ID!,
 				client_secret: AFDIAN_CLIENT_SECRET!,
-				redirect_uri: AFDIAN_REDIRECT_URI!,
+				redirect_uri: redirectUri,
 				code,
 			}),
 		});
 
 		if (!tokenResponse.ok) {
-			throw new Error("获取访问令牌失败");
+			const errorText = await tokenResponse.text();
+			console.error("爱发电令牌获取失败:", {
+				status: tokenResponse.status,
+				statusText: tokenResponse.statusText,
+				error: errorText,
+				redirect_uri: redirectUri,
+				client_id: AFDIAN_CLIENT_ID,
+				code: code?.substring(0, 20) + "...",
+			});
+			throw new Error(`获取访问令牌失败: ${tokenResponse.status} ${errorText}`);
 		}
 
 		const tokenData = await tokenResponse.json();
