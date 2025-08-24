@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable unocss/order */
 
 import type { AnalysisHistoryItem } from "@/types/analysis/history";
 import type { UserSubscriptionData } from "@/types/billing/subscription";
@@ -46,8 +47,7 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 				// 并行加载所有需要的数据
 				await Promise.all([
 					refreshUsageStats(),
-					// 如果需要刷新用户数据，取消注释下一行
-					// refreshData(),
+					refreshData(), // 如果需要刷新用户数据，取消注释
 				]);
 			} catch (error) {
 				console.error("初始数据加载失败:", error);
@@ -137,10 +137,11 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 					</Button>
 				</div>
 
-				<div className="gap-4 grid w-full sm:gap-6 lg:grid-cols-2">
+				{/* 骨架使用瀑布流布局，保持与正式内容一致 */}
+				<div className="w-full columns-1 gap-x-4 sm:gap-x-6 sm:columns-2">
 					{/* 统一的加载骨架 */}
 					{Array.from({ length: 6 }).fill(0).map((_, index) => (
-						<div key={index} className="min-w-0">
+						<div key={index} className="min-w-0 break-inside-avoid mb-4 sm:mb-6">
 							<div className="bg-card text-card-foreground border rounded-lg shadow-sm">
 								<div className="p-6 space-y-4">
 									<div className="space-y-2">
@@ -170,9 +171,9 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 				</Button>
 			</div>
 
-			<div className="gap-4 grid w-full sm:gap-6 lg:grid-cols-2">
-				{/* 添加 min-w-0 给每个卡片防止溢出 */}
-				<div className="min-w-0">
+			<div className="w-full columns-1 gap-x-4 sm:gap-x-6 sm:columns-2">
+				{/* 每个卡片在瀑布流中避免内部换列 */}
+				<div className="min-w-0 break-inside-avoid mb-4 sm:mb-6">
 					<UserInfoCard
 						data={data}
 						bindLoading={bindLoading}
@@ -181,11 +182,11 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 					/>
 				</div>
 
-				<div className="min-w-0">
+				<div className="min-w-0 break-inside-avoid mb-4 sm:mb-6">
 					<SubscriptionCard data={data} usageStats={usageStats} />
 				</div>
 
-				<div className="min-w-0">
+				<div className="min-w-0 break-inside-avoid mb-4 sm:mb-6">
 					<AccountBinding
 						userInfo={{
 							email: data.user.email,
@@ -198,11 +199,11 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 					/>
 				</div>
 
-				<div className="min-w-0">
+				<div className="min-w-0 break-inside-avoid mb-4 sm:mb-6">
 					<HistoryCard initialData={initialHistoryData} />
 				</div>
 
-				<div className="min-w-0">
+				<div className="min-w-0 break-inside-avoid mb-4 sm:mb-6">
 					<OrderRedemptionPanel
 						isAdmin={data.user.admin || false}
 						hasAfdianBinding={data.user.afdian_bound}
@@ -210,7 +211,7 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 					/>
 				</div>
 
-				<div className="min-w-0">
+				<div className="min-w-0 break-inside-avoid mb-4 sm:mb-6">
 					<UsageStatsCard usageStats={usageStats} statsLoading={false} />
 				</div>
 			</div>
