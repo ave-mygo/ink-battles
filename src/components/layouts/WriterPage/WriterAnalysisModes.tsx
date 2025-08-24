@@ -1,4 +1,5 @@
 "use client";
+
 import type React from "react";
 import { ChevronDown, ChevronUp, CircleQuestionMark, Gauge, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -31,13 +32,13 @@ export default function WriterAnalysisModes({
 	handleModeChange,
 }: WriterAnalysisModesProps) {
 	return (
-		<Card className="border-0 bg-white/80 h-full w-full shadow-lg backdrop-blur-sm">
+		<Card className="border-0 bg-white/80 h-full w-full shadow-lg backdrop-blur-sm dark:bg-slate-900/40">
 			<CardHeader>
 				<CardTitle className="flex gap-2 items-center">
-					<Gauge className="text-blue-600 h-5 w-5" />
+					<Gauge className="text-blue-600 h-5 w-5 dark:text-blue-300" />
 					评分模式（可选）
 				</CardTitle>
-				<CardDescription>选择适合的评分视角，不同模式将采用不同的评判标准</CardDescription>
+				<CardDescription className="dark:text-slate-300">选择适合的评分视角，不同模式将采用不同的评判标准</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4">
 				{evaluationModes.slice(0, 4).map((mode) => {
@@ -49,34 +50,34 @@ export default function WriterAnalysisModes({
 							key={mode.id}
 							className={`p-4 border-2 rounded-lg w-full transition-all duration-200 ${
 								selectedMode.includes(mode.id)
-									? "border-blue-500 bg-blue-50"
+									? "border-blue-500 bg-blue-50 dark:border-blue-400/60 dark:bg-blue-900/15"
 									: isLocked
-										? "border-slate-200 bg-slate-50 opacity-60"
-										: "border-slate-200 hover:border-slate-300"
+										? "border-slate-200 bg-slate-50 opacity-60 dark:border-slate-700 dark:bg-slate-800/60"
+										: "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
 							}`}
 						>
-							<div className="flex items-center justify-between">
-								<div className="flex gap-3 items-center">
+							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+								<div className="flex flex-1 gap-3 min-w-0 items-center">
 									<div
 										className={`p-2 rounded-lg ${
-											selectedMode.includes(mode.id) ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
+											selectedMode.includes(mode.id) ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
 										}`}
 									>
 										{isLocked ? <Lock className="h-4 w-4" /> : mode.icon}
 									</div>
-									<div>
-										<div className="flex gap-2 items-center">
-											<span className="text-slate-800 font-medium">{mode.name}</span>
+									<div className="min-w-0">
+										<div className="flex flex-wrap gap-2 items-center sm:flex-nowrap">
+											<span className="text-slate-800 font-medium truncate dark:text-slate-100">{mode.name}</span>
 											{isLocked && (
-												<Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+												<Badge variant="outline" className="text-xs text-orange-600 border-orange-300 dark:text-orange-300 dark:border-orange-800/50">
 													等待后续迭代开放使用
 												</Badge>
 											)}
 											<HoverCard>
-												<HoverCardTrigger>
-													<CircleQuestionMark className="text-slate-500 h-3 w-3" />
+												<HoverCardTrigger className="shrink-0">
+													<CircleQuestionMark className="text-slate-500 h-3 w-3 dark:text-slate-400" />
 												</HoverCardTrigger>
-												<HoverCardContent>
+												<HoverCardContent className="text-sm max-w-xs dark:text-slate-200 dark:border-slate-700 dark:bg-slate-900">
 													<ul className="pl-6 list-disc space-y-2">
 														{mode.text.split("-").map((line, index) => (
 															<li key={index}>{line}</li>
@@ -85,18 +86,18 @@ export default function WriterAnalysisModes({
 												</HoverCardContent>
 											</HoverCard>
 											{selectedMode.includes(mode.id) && (
-												<Badge variant="default" className="bg-blue-600">
+												<Badge variant="default" className="bg-blue-600 dark:text-white dark:bg-blue-600">
 													已选择
 												</Badge>
 											)}
 										</div>
-										<p className="text-sm text-slate-600 mt-1">{mode.description}</p>
+										<p className="text-sm text-slate-600 mt-1 dark:text-slate-300">{mode.description}</p>
 									</div>
 								</div>
 								{isLocked
 									? (
 											<div className="flex gap-2 items-center">
-												<Badge variant="secondary" className="text-slate-600">
+												<Badge variant="secondary" className="text-slate-600 dark:text-slate-300">
 													开发中
 												</Badge>
 											</div>
@@ -134,37 +135,37 @@ export default function WriterAnalysisModes({
 											: "translate-y-2 opacity-0"
 									}  ${
 										selectedMode.includes(mode.id)
-											? "border-blue-500 bg-blue-50"
+											? "border-blue-500 bg-blue-50 dark:border-blue-400/60 dark:bg-blue-900/15"
 											: isLocked
-												? "border-slate-200 bg-slate-50 opacity-60"
-												: "border-slate-200 hover:border-slate-300"
+												? "border-slate-200 bg-slate-50 opacity-60 dark:border-slate-700 dark:bg-slate-800/60"
+												: "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
 									}`}
 									style={{
 										transitionDelay: isModesExpanded ? `${evaluationModes.slice(4).indexOf(mode) * 50}ms` : "0ms",
 									}}
 								>
-									<div className="flex items-center justify-between">
-										<div className="flex gap-3 items-center">
+									<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+										<div className="flex flex-1 gap-3 min-w-0 items-center">
 											<div
 												className={`p-2 rounded-lg ${
-													selectedMode.includes(mode.id) ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
+													selectedMode.includes(mode.id) ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
 												}`}
 											>
 												{isLocked ? <Lock className="h-4 w-4" /> : mode.icon}
 											</div>
-											<div>
-												<div className="flex gap-2 items-center">
-													<span className="text-slate-800 font-medium">{mode.name}</span>
+											<div className="min-w-0">
+												<div className="flex flex-wrap gap-2 items-center sm:flex-nowrap">
+													<span className="text-slate-800 font-medium truncate dark:text-slate-100">{mode.name}</span>
 													{isLocked && (
-														<Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+														<Badge variant="outline" className="text-xs text-orange-600 border-orange-300 dark:text-orange-300 dark:border-orange-800/50">
 															等待后续迭代开放使用
 														</Badge>
 													)}
 													<HoverCard>
-														<HoverCardTrigger>
-															<CircleQuestionMark className="text-slate-500 h-3 w-3" />
+														<HoverCardTrigger className="shrink-0">
+															<CircleQuestionMark className="text-slate-500 h-3 w-3 dark:text-slate-400" />
 														</HoverCardTrigger>
-														<HoverCardContent>
+														<HoverCardContent className="text-sm max-w-xs dark:text-slate-200 dark:border-slate-700 dark:bg-slate-900">
 															<ul className="pl-6 list-disc space-y-2">
 																{mode.text.split("-").map((line, index) => (
 																	<li key={index}>{line}</li>
@@ -173,18 +174,18 @@ export default function WriterAnalysisModes({
 														</HoverCardContent>
 													</HoverCard>
 													{selectedMode.includes(mode.id) && (
-														<Badge variant="default" className="bg-blue-600">
+														<Badge variant="default" className="bg-blue-600 dark:text-white dark:bg-blue-600">
 															已选择
 														</Badge>
 													)}
 												</div>
-												<p className="text-sm text-slate-600 mt-1">{mode.description}</p>
+												<p className="text-sm text-slate-600 mt-1 dark:text-slate-300">{mode.description}</p>
 											</div>
 										</div>
 										{isLocked
 											? (
 													<div className="flex gap-2 items-center">
-														<Badge variant="secondary" className="text-slate-600">
+														<Badge variant="secondary" className="text-slate-600 dark:text-slate-300">
 															开发中
 														</Badge>
 													</div>
@@ -204,7 +205,7 @@ export default function WriterAnalysisModes({
 
 				<Button
 					variant="ghost"
-					className="text-slate-600 w-full transition-all duration-200 hover:text-blue-600"
+					className="text-slate-600 w-full transition-all duration-200 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300"
 					onClick={() => setIsModesExpanded(!isModesExpanded)}
 				>
 					{isModesExpanded

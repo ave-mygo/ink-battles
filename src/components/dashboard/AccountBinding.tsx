@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable unocss/order */
 
 import { Icon } from "@iconify/react";
 import { Mail, Shield } from "lucide-react";
@@ -107,7 +106,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 									disabled={_bindingQQ}
 									variant="outline"
 									size="sm"
-									className="self-start text-[#12B7F5] border-[#12B7F5] hover:bg-[#12B7F5] hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#12B7F5]/40 dark:text-[#12B7F5] dark:border-[#12B7F5]/40 dark:hover:bg-[#12B7F5]/15 dark:focus-visible:ring-[#12B7F5]/40 sm:self-auto"
+									className="text-[#12B7F5] border-[#12B7F5] self-start dark:text-[#12B7F5] hover:text-white focus-visible:outline-none dark:border-[#12B7F5]/40 hover:bg-[#12B7F5] focus-visible:ring-1 focus-visible:ring-[#12B7F5]/40 sm:self-auto dark:hover:bg-[#12B7F5]/15 dark:focus-visible:ring-[#12B7F5]/40"
 								>
 									{_bindingQQ ? "绑定中..." : "绑定QQ"}
 								</Button>
@@ -139,7 +138,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 									onClick={() => setEmailBindOpen(true)}
 									variant="outline"
 									size="sm"
-									className="self-start text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-500/10 dark:focus-visible:ring-blue-800 sm:self-auto"
+									className="text-blue-600 border-blue-600 self-start dark:text-blue-300 hover:text-white focus-visible:outline-none dark:border-blue-700 hover:bg-blue-600 focus-visible:ring-1 focus-visible:ring-blue-300 sm:self-auto dark:hover:bg-blue-500/10 dark:focus-visible:ring-blue-800"
 								>
 									绑定邮箱
 								</Button>
@@ -197,7 +196,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 							<Button
 								onClick={handleEmailBind}
 								disabled={bindingEmail}
-								className="flex-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 dark:bg-slate-700 dark:text-slate-50 dark:hover:bg-slate-600 dark:focus-visible:ring-slate-600"
+								className="focus-visible:ring-primary/40 flex-1 dark:text-slate-50 focus-visible:outline-none dark:bg-slate-700 focus-visible:ring-1 dark:hover:bg-slate-600 dark:focus-visible:ring-slate-600"
 							>
 								{bindingEmail ? "绑定中..." : "确认绑定"}
 							</Button>
