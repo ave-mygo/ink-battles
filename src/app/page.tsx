@@ -13,11 +13,27 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-	// 服务端获取公告内容
-	const res = await fetch("https://mx.tnxg.top/api/v2/snippets/data/ink-battles", { cache: "no-store" });
-	const data = await res.json();
-	const message = data.message || "";
-	const link = data.link || "https://afdian.com/a/tianxiang?tab=feed";
+	// 服务端获取公告内容，5秒超时
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 5000);
+
+	let message = "";
+	let link = "https://afdian.com/a/tianxiang?tab=feed";
+
+	try {
+		const res = await fetch(
+			"https://mx.tnxg.top/api/v2/snippets/data/ink-battles",
+			{ cache: "no-store", signal: controller.signal }
+		);
+		clearTimeout(timeout);
+		const data = await res.json();
+		message = data.message || "";
+		link = data.link || link;
+	} catch (e) {
+		clearTimeout(timeout);
+		message = "公告服务器出现问题";
+	}
+
 	return (
 		<>
 			<NoticeBar message={message} link={link} />
