@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JetBrains_Mono, Noto_Sans_SC } from "next/font/google";
 
 import AppHeader from "@/components/global/AppHeader";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
@@ -33,7 +34,7 @@ export default async function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="zh-CN">
+		<html lang="zh-CN" suppressHydrationWarning>
 			<head>
 				<meta charSet="UTF-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -43,9 +44,16 @@ export default async function RootLayout({
 			<body
 				className={`${notoSans.variable}  ${jetBrainsMono.variable} antialiased`}
 			>
-				<AppHeader />
-				{children}
-				<Toaster />
+				<ThemeProvider
+					attribute="class"
+					defaultTheme="system"
+					enableSystem
+					disableTransitionOnChange
+				>
+					<AppHeader />
+					{children}
+					<Toaster />
+				</ThemeProvider>
 			</body>
 		</html>
 	);

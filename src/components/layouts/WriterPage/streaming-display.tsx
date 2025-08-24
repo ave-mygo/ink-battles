@@ -92,7 +92,7 @@ export default function StreamingDisplay({
 	if (isMinimized) {
 		return (
 			<div className="bottom-4 right-4 fixed z-50">
-				<Card className="border-0 bg-white w-80 shadow-lg">
+				<Card className="border-0 bg-white dark:bg-gray-800 w-80 shadow-lg">
 					<CardContent className="p-4">
 						<div className="mb-2 flex items-center justify-between">
 							<div className="flex gap-2 items-center">
@@ -128,8 +128,8 @@ export default function StreamingDisplay({
 	}
 
 	return (
-		<div className="p-4 bg-black/50 flex items-center inset-0 justify-center fixed z-50 backdrop-blur-sm">
-			<Card className={`border-0 bg-white w-full shadow-2xl ${
+		<div className="p-4 bg-black/50 dark:bg-black/70 flex items-center inset-0 justify-center fixed z-50 backdrop-blur-sm">
+			<Card className={`border-0 bg-white dark:bg-gray-800 w-full shadow-2xl ${
 				isMobile
 					? "max-w-full max-h-[90vh]"
 					: "max-w-4xl max-h-[80vh]"
@@ -164,7 +164,7 @@ export default function StreamingDisplay({
 				<CardContent>
 					{!isCompleted && !isError && (
 						<div className="mb-4">
-							<div className="text-sm text-gray-600 mb-2 flex justify-between">
+							<div className="text-sm text-gray-600 dark:text-gray-400 mb-2 flex justify-between">
 								<span>分析进度</span>
 								<span>
 									{Math.round(progress)}
@@ -180,15 +180,15 @@ export default function StreamingDisplay({
 					}`}
 					>
 						<div className="space-y-2">
-							<div className="text-sm text-slate-600 mb-4">
+							<div className="text-sm text-slate-600 dark:text-slate-400 mb-4">
 								{isError ? "错误日志：" : "实时输出流："}
 							</div>
 							<div
 								ref={scrollRef}
 								className={`text-sm font-mono p-4 rounded-lg whitespace-pre-wrap break-words ${
 									isError
-										? "bg-red-50 border border-red-200 text-red-800"
-										: "bg-slate-50"
+										? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
+										: "bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300"
 								}`}
 							>
 								{streamContent}

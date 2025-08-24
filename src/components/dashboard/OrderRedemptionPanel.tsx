@@ -1,7 +1,7 @@
 "use client";
 
-import { Plus, Ticket } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Ticket } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,6 @@ interface OrderRedemptionPanelProps {
 export const OrderRedemptionPanel = ({ isAdmin, hasAfdianBinding, userTotalSpent = 0 }: OrderRedemptionPanelProps) => {
 	const [orderId, setOrderId] = useState("");
 	const [loading, setLoading] = useState(false);
-	const [calculationInfo, setCalculationInfo] = useState<string>("");
 
 	// 计算会员等级和折扣价格用于显示
 	const getMemberTier = (totalAmount: number) => {
@@ -35,11 +34,9 @@ export const OrderRedemptionPanel = ({ isAdmin, hasAfdianBinding, userTotalSpent
 	const tierInfo = getMemberTier(userTotalSpent);
 	const discountedPrice = (0.50 * (1 - tierInfo.discount / 100)).toFixed(2);
 
-	useEffect(() => {
-		setCalculationInfo(`您的会员等级: ${tierInfo.name} (累计消费: ${userTotalSpent}元)
+	const calculationInfo = `您的会员等级: ${tierInfo.name} (累计消费: ${userTotalSpent}元)
 折扣后单价: ${discountedPrice}元/次 (原价0.50元/次，享受${tierInfo.discount}%折扣)
-兑换公式: 订单金额 ÷ ${discountedPrice}元/次 = 兑换次数`);
-	}, [tierInfo, discountedPrice, userTotalSpent]);
+兑换公式: 订单金额 ÷ ${discountedPrice}元/次 = 兑换次数`;
 
 	const handleRedeem = async () => {
 		if (!orderId.trim()) {
@@ -97,8 +94,8 @@ export const OrderRedemptionPanel = ({ isAdmin, hasAfdianBinding, userTotalSpent
 			</CardHeader>
 			<CardContent className="space-y-4">
 				{!hasAfdianBinding && (
-					<div className="p-3 border border-orange-200 rounded-lg bg-orange-50">
-						<p className="text-sm text-orange-800">
+					<div className="p-3 border border-orange-200 rounded-lg bg-orange-50 dark:border-orange-900/40 dark:bg-orange-900/15">
+						<p className="text-sm text-orange-800 dark:text-orange-300">
 							请先绑定爱发电账号才能兑换订单号
 						</p>
 					</div>
@@ -112,11 +109,13 @@ export const OrderRedemptionPanel = ({ isAdmin, hasAfdianBinding, userTotalSpent
 						value={orderId}
 						onChange={e => setOrderId(e.target.value)}
 						disabled={loading || !hasAfdianBinding}
+						className={`focus-visible:outline-none focus-visible:ring-2 ${hasAfdianBinding
+							? "focus-visible:ring-blue-200 dark:focus-visible:ring-blue-900/40"
+							: "bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500"}  `}
 					/>
 				</div>
-
-				<div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
-					<p className="text-sm text-blue-700 whitespace-pre-line">
+				<div className="p-3 border border-blue-200 rounded-lg bg-blue-50 dark:border-blue-900/40 dark:bg-blue-900/15">
+					<p className="text-sm text-blue-700 whitespace-pre-line dark:text-blue-300">
 						{calculationInfo}
 					</p>
 				</div>
@@ -125,15 +124,17 @@ export const OrderRedemptionPanel = ({ isAdmin, hasAfdianBinding, userTotalSpent
 					<Button
 						onClick={handleRedeem}
 						disabled={loading || !orderId.trim() || !hasAfdianBinding}
-						className="w-full"
+						className={`w-full focus-visible:outline-none focus-visible:ring-2 ${hasAfdianBinding
+							? "hover:bg-primary/90 focus-visible:ring-primary/30 dark:text-slate-50 dark:bg-slate-700 dark:hover:bg-slate-600 dark:focus-visible:ring-slate-600"
+							: "bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500"}  `}
 					>
-						<Plus className="mr-2 h-4 w-4" />
 						{loading ? "兑换中..." : "确认兑换"}
 					</Button>
+
 				</div>
 
 				{isAdmin && (
-					<div className="pt-4 border-t">
+					<div className="pt-4 border-t border-slate-200 dark:border-slate-800/80">
 						<p className="text-muted-foreground text-sm">
 							管理员模式：可查看和管理订单兑换记录
 						</p>

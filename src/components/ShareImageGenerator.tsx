@@ -1,6 +1,7 @@
 "use client";
 
 import { Download } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useRef } from "react";
 import { toast } from "sonner";
 
@@ -28,55 +29,64 @@ interface ShareImageGeneratorProps {
 
 export function ShareImageGenerator({ data }: ShareImageGeneratorProps) {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
+	const { theme, resolvedTheme } = useTheme();
+	
+	// 根据主题确定是否使用暗色模式
+	const isDarkMode = resolvedTheme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
 	// 专业的设计系统
 	const designSystem = {
 		colors: {
 			primary: {
-				50: "#f0f9ff",
-				100: "#e0f2fe",
-				200: "#bae6fd",
-				300: "#7dd3fc",
-				400: "#38bdf8",
-				500: "#0ea5e9",
-				600: "#0284c7",
-				700: "#0369a1",
-				800: "#075985",
-				900: "#0c4a6e",
+				50: isDarkMode ? "#1e293b" : "#f0f9ff",
+				100: isDarkMode ? "#334155" : "#e0f2fe",
+				200: isDarkMode ? "#475569" : "#bae6fd",
+				300: isDarkMode ? "#64748b" : "#7dd3fc",
+				400: isDarkMode ? "#94a3b8" : "#38bdf8",
+				500: isDarkMode ? "#cbd5e1" : "#0ea5e9",
+				600: isDarkMode ? "#e2e8f0" : "#0284c7",
+				700: isDarkMode ? "#f1f5f9" : "#0369a1",
+				800: isDarkMode ? "#f8fafc" : "#075985",
+				900: isDarkMode ? "#ffffff" : "#0c4a6e",
 			},
 			accent: {
-				50: "#fffbeb",
-				100: "#fef3c7",
-				200: "#fde68a",
-				300: "#fcd34d",
-				400: "#fbbf24",
-				500: "#f59e0b",
-				600: "#d97706",
-				700: "#b45309",
+				50: isDarkMode ? "#451a03" : "#fffbeb",
+				100: isDarkMode ? "#78350f" : "#fef3c7",
+				200: isDarkMode ? "#a16207" : "#fde68a",
+				300: isDarkMode ? "#ca8a04" : "#fcd34d",
+				400: isDarkMode ? "#eab308" : "#fbbf24",
+				500: isDarkMode ? "#facc15" : "#f59e0b",
+				600: isDarkMode ? "#fde047" : "#d97706",
+				700: isDarkMode ? "#fef08a" : "#b45309",
 			},
 			success: {
-				50: "#f0fdf4",
-				100: "#dcfce7",
-				300: "#86efac",
-				500: "#22c55e",
-				600: "#16a34a",
+				50: isDarkMode ? "#14532d" : "#f0fdf4",
+				100: isDarkMode ? "#166534" : "#dcfce7",
+				300: isDarkMode ? "#4ade80" : "#86efac",
+				500: isDarkMode ? "#10b981" : "#22c55e",
+				600: isDarkMode ? "#059669" : "#16a34a",
 			},
 			neutral: {
-				50: "#fafafa",
-				100: "#f5f5f5",
-				200: "#e5e5e5",
-				300: "#d4d4d4",
-				400: "#a3a3a3",
-				500: "#737373",
-				600: "#525252",
-				700: "#404040",
-				800: "#262626",
-				900: "#171717",
+				50: isDarkMode ? "#18181b" : "#fafafa",
+				100: isDarkMode ? "#27272a" : "#f5f5f5",
+				200: isDarkMode ? "#3f3f46" : "#e5e5e5",
+				300: isDarkMode ? "#52525b" : "#d4d4d4",
+				400: isDarkMode ? "#71717a" : "#a3a3a3",
+				500: isDarkMode ? "#a1a1aa" : "#737373",
+				600: isDarkMode ? "#d4d4d8" : "#525252",
+				700: isDarkMode ? "#e4e4e7" : "#404040",
+				800: isDarkMode ? "#f4f4f5" : "#262626",
+				900: isDarkMode ? "#fafafa" : "#171717",
 			},
 			text: {
-				primary: "#1a202c",
-				secondary: "#4a5568",
-				muted: "#718096",
+				primary: isDarkMode ? "#f8fafc" : "#1a202c",
+				secondary: isDarkMode ? "#cbd5e1" : "#4a5568",
+				muted: isDarkMode ? "#94a3b8" : "#718096",
+			},
+			background: {
+				primary: isDarkMode ? "#0f172a" : "#ffffff",
+				secondary: isDarkMode ? "#1e293b" : "#f8fafc",
+				card: isDarkMode ? "#334155" : "#ffffff",
 			},
 		},
 		typography: {
@@ -211,7 +221,7 @@ export function ShareImageGenerator({ data }: ShareImageGeneratorProps) {
 		} = {},
 	) => {
 		const {
-			backgroundColor = "#ffffff",
+			backgroundColor = designSystem.colors.background.card,
 			borderColor,
 			borderWidth = 0,
 			borderRadius = designSystem.borderRadius.xl,

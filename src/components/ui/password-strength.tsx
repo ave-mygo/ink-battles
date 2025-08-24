@@ -6,7 +6,6 @@ import {
 	isPasswordValid,
 	PASSWORD_REQUIREMENTS,
 } from "@/lib/password-strength";
-import type { PasswordStrength } from "@/types/common/password";
 
 interface PasswordStrengthIndicatorProps {
 	password: string;
@@ -38,11 +37,11 @@ export const PasswordStrengthIndicator = ({
 	].filter(Boolean).length;
 
 	return (
-		<div className={`p-3 border rounded-lg bg-white/70 backdrop-blur space-y-3 sm:p-4 ${className}`}>
+		<div className={`p-3 border rounded-lg backdrop-blur space-y-3 sm:p-4 bg-white/70 dark:bg-gray-800/70 border-gray-200 dark:border-gray-700 ${className}`}>
 			<div className="flex items-center justify-between">
-				<div className="text-sm text-slate-700 font-medium">密码要求（满足任意两项即可）</div>
+				<div className="text-sm text-slate-700 dark:text-slate-200 font-medium">密码要求（满足任意两项即可）</div>
 				<div className={`text-xs px-2 py-0.5 border rounded-full ${
-					categoriesMet >= 2 ? "text-green-700 border-green-200 bg-green-50" : "text-amber-700 border-amber-200 bg-amber-50"
+					categoriesMet >= 2 ? "text-green-700 dark:text-green-300 border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/30" : "text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30"
 				}`}
 				>
 					已满足
@@ -53,7 +52,7 @@ export const PasswordStrengthIndicator = ({
 			</div>
 
 			{/* 进度条：更纤细，颜色柔和 */}
-			<div className="rounded-full bg-slate-200/70 h-1.5 w-full">
+			<div className="rounded-full bg-slate-200/70 dark:bg-slate-700/70 h-1.5 w-full">
 				<div
 					className={`rounded-full h-1.5 transition-all duration-300 ${progressColor}`}
 					style={{ width: `${strength.score}%` }}
@@ -71,7 +70,7 @@ export const PasswordStrengthIndicator = ({
 							: (
 									<XCircle className="text-amber-600 h-4 w-4" />
 								)}
-						<span className={strength.requirements.length ? "text-green-700" : "text-slate-500"}>
+						<span className={strength.requirements.length ? "text-green-700 dark:text-green-300" : "text-slate-500 dark:text-slate-400"}>
 							至少
 							{" "}
 							{PASSWORD_REQUIREMENTS.minLength}
@@ -89,7 +88,7 @@ export const PasswordStrengthIndicator = ({
 							: (
 									<XCircle className="text-slate-400 h-4 w-4" />
 								)}
-						<span className={strength.requirements.lowercase ? "text-green-700" : "text-slate-500"}>小写字母</span>
+						<span className={strength.requirements.lowercase ? "text-green-700 dark:text-green-300" : "text-slate-500 dark:text-slate-400"}>小写字母</span>
 					</div>
 
 					{/* 大写 */}
@@ -101,7 +100,7 @@ export const PasswordStrengthIndicator = ({
 							: (
 									<XCircle className="text-slate-400 h-4 w-4" />
 								)}
-						<span className={strength.requirements.uppercase ? "text-green-700" : "text-slate-500"}>大写字母</span>
+						<span className={strength.requirements.uppercase ? "text-green-700 dark:text-green-300" : "text-slate-500 dark:text-slate-400"}>大写字母</span>
 					</div>
 
 					{/* 数字 */}
@@ -113,7 +112,7 @@ export const PasswordStrengthIndicator = ({
 							: (
 									<XCircle className="text-slate-400 h-4 w-4" />
 								)}
-						<span className={strength.requirements.number ? "text-green-700" : "text-slate-500"}>数字</span>
+						<span className={strength.requirements.number ? "text-green-700 dark:text-green-300" : "text-slate-500 dark:text-slate-400"}>数字</span>
 					</div>
 
 					{/* 特殊字符 */}
@@ -125,7 +124,7 @@ export const PasswordStrengthIndicator = ({
 							: (
 									<XCircle className="text-slate-400 h-4 w-4" />
 								)}
-						<span className={strength.requirements.special ? "text-green-700" : "text-slate-500"}>特殊字符</span>
+						<span className={strength.requirements.special ? "text-green-700 dark:text-green-300" : "text-slate-500 dark:text-slate-400"}>特殊字符</span>
 					</div>
 				</div>
 			)}
@@ -137,13 +136,13 @@ export const PasswordStrengthIndicator = ({
 						? (
 								<>
 									<CheckCircle className="text-green-600 h-4 w-4" />
-									<span className="text-green-700">可使用该密码</span>
+									<span className="text-green-700 dark:text-green-300">可使用该密码</span>
 								</>
 							)
 						: (
 								<>
 									<XCircle className="text-amber-600 h-4 w-4" />
-									<span className="text-slate-600">需满足“长度 + 任意两项”</span>
+									<span className="text-slate-600 dark:text-slate-400">需满足"长度 + 任意两项"</span>
 								</>
 							)}
 				</div>
@@ -188,7 +187,7 @@ export const PasswordStrengthMeter = ({
 					{getPasswordStrengthText(strength.level)}
 				</span>
 			</div>
-			<div className="rounded-full bg-gray-200 h-1.5 w-full">
+			<div className="rounded-full bg-gray-200 dark:bg-gray-700 h-1.5 w-full">
 				<div
 					className={`rounded-full h-1.5 transition-all duration-300 ${progressColor}`}
 					style={{ width: `${strength.score}%` }}

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable unocss/order */
 
 import { Icon } from "@iconify/react";
 import { Mail, Shield } from "lucide-react";
@@ -97,7 +98,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 						? (
 								<div className="flex items-center space-x-2">
 									<div className="rounded-full bg-green-500 h-2 w-2"></div>
-									<span className="text-sm text-green-600">已绑定</span>
+									<span className="text-sm text-green-600 dark:text-green-300">已绑定</span>
 								</div>
 							)
 						: (
@@ -106,7 +107,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 									disabled={_bindingQQ}
 									variant="outline"
 									size="sm"
-									className="text-[#12B7F5] border-[#12B7F5] self-start hover:text-white hover:bg-[#12B7F5] sm:self-auto"
+									className="self-start text-[#12B7F5] border-[#12B7F5] hover:bg-[#12B7F5] hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#12B7F5]/40 dark:text-[#12B7F5] dark:border-[#12B7F5]/40 dark:hover:bg-[#12B7F5]/15 dark:focus-visible:ring-[#12B7F5]/40 sm:self-auto"
 								>
 									{_bindingQQ ? "绑定中..." : "绑定QQ"}
 								</Button>
@@ -118,7 +119,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 				{/* 邮箱绑定状态 */}
 				<div className="p-3 border rounded-lg flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
 					<div className="flex items-center space-x-3">
-						<Mail className="text-blue-600 h-6 w-6" />
+						<Mail className="text-blue-600 h-6 w-6 dark:text-blue-300" />
 						<div>
 							<div className="font-medium">邮箱账号</div>
 							<div className="text-muted-foreground text-sm">
@@ -130,7 +131,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 						? (
 								<div className="flex items-center space-x-2">
 									<div className="rounded-full bg-green-500 h-2 w-2"></div>
-									<span className="text-sm text-green-600">已绑定</span>
+									<span className="text-sm text-green-600 dark:text-green-300">已绑定</span>
 								</div>
 							)
 						: (
@@ -138,7 +139,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 									onClick={() => setEmailBindOpen(true)}
 									variant="outline"
 									size="sm"
-									className="text-blue-600 border-blue-600 self-start hover:text-white hover:bg-blue-600 sm:self-auto"
+									className="self-start text-blue-600 border-blue-600 hover:bg-blue-600 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300 dark:text-blue-300 dark:border-blue-700 dark:hover:bg-blue-500/10 dark:focus-visible:ring-blue-800 sm:self-auto"
 								>
 									绑定邮箱
 								</Button>
@@ -147,8 +148,8 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 
 				{/* 绑定提示 */}
 				{(!userInfo.email || !userInfo.qqOpenid) && (
-					<div className="p-3 border border-blue-200 rounded-lg bg-blue-50">
-						<p className="text-sm text-blue-700">
+					<div className="p-3 border border-blue-200 rounded-lg bg-blue-50 dark:border-blue-900/40 dark:bg-blue-900/15">
+						<p className="text-sm text-blue-700 dark:text-blue-300">
 							建议绑定邮箱和QQ账号，这样即使其中一种登录方式出现问题，您仍可以通过另一种方式访问账户。
 						</p>
 					</div>
@@ -172,6 +173,7 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 								placeholder="请输入邮箱地址"
 								value={emailData.email}
 								onChange={e => setEmailData(prev => ({ ...prev, email: e.target.value }))}
+								className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 dark:focus-visible:ring-blue-900/40"
 							/>
 						</div>
 						<div className="space-y-2">
@@ -181,20 +183,21 @@ export const AccountBinding = ({ userInfo, onUpdate }: AccountBindingProps) => {
 								placeholder="请设置登录密码"
 								value={emailData.password}
 								onChange={e => setEmailData(prev => ({ ...prev, password: e.target.value }))}
+								className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-200 dark:focus-visible:ring-blue-900/40"
 							/>
 						</div>
 						<div className="pt-4 flex space-x-2">
 							<Button
 								variant="outline"
 								onClick={() => setEmailBindOpen(false)}
-								className="flex-1"
+								className="flex-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-300 dark:focus-visible:ring-slate-700"
 							>
 								取消
 							</Button>
 							<Button
 								onClick={handleEmailBind}
 								disabled={bindingEmail}
-								className="flex-1"
+								className="flex-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 dark:bg-slate-700 dark:text-slate-50 dark:hover:bg-slate-600 dark:focus-visible:ring-slate-600"
 							>
 								{bindingEmail ? "绑定中..." : "确认绑定"}
 							</Button>

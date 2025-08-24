@@ -217,24 +217,24 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 			case UserType.GUEST: {
 				displayName = "游客用户";
 				icon = <Users className="h-4 w-4" />;
-				badgeColor = "text-gray-600 bg-gray-50 border-gray-200";
+				badgeColor = "text-gray-600 bg-gray-50 border-gray-200 dark:text-slate-300 dark:bg-slate-800/60 dark:border-slate-700";
 				break;
 			}
 			case UserType.REGULAR: {
 				displayName = "普通用户";
 				icon = <Gift className="h-4 w-4" />;
-				badgeColor = "text-blue-600 bg-blue-50 border-blue-200";
+				badgeColor = "text-blue-600 bg-blue-50 border-blue-200 dark:text-blue-300 dark:bg-blue-950/30 dark:border-blue-900";
 				break;
 			}
 			case UserType.MEMBER: {
 				displayName = "会员用户";
 				icon = <Crown className="h-4 w-4" />;
-				badgeColor = "text-yellow-700 bg-gradient-to-r from-yellow-100 to-orange-100 border-yellow-300";
+				badgeColor = "text-yellow-700 bg-gradient-to-r from-yellow-100 to-orange-100 border-yellow-300 dark:text-yellow-300 dark:from-yellow-900/30 dark:to-orange-900/30 dark:border-yellow-800";
 				break;
 			}
 		}
 
-	// 新的计费系统不再显示每日次数，而是显示实际余额
+		// 新的计费系统不再显示每日次数，而是显示实际余额
 		const advancedModelCalls = userType === UserType.MEMBER && donationAmount > 0
 			? 1 // 仅用于标识有高级权限，具体次数在后台查看
 			: undefined;
@@ -300,42 +300,42 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 
 	if (loading) {
 		return (
-			<Card className="border-0 bg-white/80 h-full w-full shadow-lg backdrop-blur-sm">
+			<Card className="border-0 bg-white/80 h-full w-full shadow-lg backdrop-blur-sm dark:bg-slate-900/70">
 				<CardHeader>
 					<CardTitle className="flex gap-2 items-center">
-						<FileText className="text-blue-600 h-5 w-5" />
+						<FileText className="text-blue-600 h-5 w-5 dark:text-blue-400" />
 						作品输入
 					</CardTitle>
 					<CardDescription>请粘贴您要分析的完整作品内容，支持小说、散文、诗歌等各类文体</CardDescription>
 				</CardHeader>
 				<CardContent className="flex flex-col h-full">
-					<div className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50 animate-pulse">
-						<div className="mb-2 rounded bg-gray-200 h-4 w-1/2"></div>
-						<div className="rounded bg-gray-200 h-3 w-3/4"></div>
+					<div className="mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50 animate-pulse dark:border-slate-700 dark:bg-slate-800">
+						<div className="mb-2 rounded bg-gray-200 h-4 w-1/2 dark:bg-slate-700"></div>
+						<div className="rounded bg-gray-200 h-3 w-3/4 dark:bg-slate-700"></div>
 					</div>
-					<div className="rounded bg-gray-100 flex-1 min-h-[200px] animate-pulse"></div>
+					<div className="rounded bg-gray-100 flex-1 min-h-[200px] animate-pulse dark:bg-slate-800/70"></div>
 				</CardContent>
 			</Card>
 		);
 	}
 
 	return (
-		<Card className="border-0 bg-white/80 h-full w-full shadow-lg backdrop-blur-sm">
+		<Card className="border-0 bg-white/80 h-full w-full shadow-lg backdrop-blur-sm dark:bg-slate-900/70">
 			<CardHeader>
 				<CardTitle className="flex gap-2 items-center">
-					<FileText className="text-blue-600 h-5 w-5" />
+					<FileText className="text-blue-600 h-5 w-5 dark:text-blue-400" />
 					作品输入
 				</CardTitle>
 				<CardDescription>请粘贴您要分析的完整作品内容，支持小说、散文、诗歌等各类文体</CardDescription>
 			</CardHeader>
 			<CardContent className="flex flex-col h-full">
 				{/* 用户分级信息（现代化设计） */}
-				<div className="mb-4 p-4 rounded-xl ring-1 ring-slate-200 from-indigo-50/60 to-white bg-gradient-to-r">
+				<div className="mb-4 p-4 rounded-xl ring-1 ring-slate-200 from-indigo-50/60 to-white bg-gradient-to-r dark:ring-slate-700 dark:from-slate-800/60 dark:to-slate-900/40">
 					<div className="flex items-start justify-between">
 						<div className="flex gap-2 items-center">
 							{tierData.icon}
 							<div className="flex flex-col">
-								<div className="text-sm leading-none font-semibold">{tierData.displayName}</div>
+								<div className="text-sm text-slate-900 leading-none font-semibold dark:text-slate-100">{tierData.displayName}</div>
 								{tierData.email && (
 									<div className="text-muted-foreground text-[11px] mt-1">{tierData.email}</div>
 								)}
@@ -351,18 +351,18 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 
 					{/* 权益速览 */}
 					<div className="text-[12px] mt-3 gap-2 grid grid-cols-3">
-						<div className="px-2 py-1.5 border border-slate-200 rounded-md bg-white/70 flex items-center justify-between">
-							<span className="text-slate-500">单次上限</span>
+						<div className="px-2 py-1.5 border border-slate-200 rounded-md bg-white/70 flex items-center justify-between dark:border-slate-700 dark:bg-slate-800/60">
+							<span className="text-slate-500 dark:text-slate-300">单次上限</span>
 							<span className="font-medium">{tierData.limits.perRequest ? `${tierData.limits.perRequest.toLocaleString()} 字` : "无限制"}</span>
 						</div>
-						<div className="px-2 py-1.5 border border-slate-200 rounded-md bg-white/70 flex items-center justify-between">
-							<span className="text-slate-500">每日上限</span>
+						<div className="px-2 py-1.5 border border-slate-200 rounded-md bg-white/70 flex items-center justify-between dark:border-slate-700 dark:bg-slate-800/60">
+							<span className="text-slate-500 dark:text-slate-300">每日上限</span>
 							<span className="font-medium">{tierData.limits.dailyLimit ? `${tierData.limits.dailyLimit.toLocaleString()} 字` : "无限制"}</span>
 						</div>
 						{tierData.advancedModelCalls
 							? (
-									<div className="px-2 py-1.5 border border-slate-200 rounded-md bg-white/70 flex items-center justify-between">
-										<span className="text-slate-500 flex gap-1 items-center">
+									<div className="px-2 py-1.5 border border-slate-200 rounded-md bg-white/70 flex items-center justify-between dark:border-slate-700 dark:bg-slate-800/60">
+										<span className="text-slate-500 flex gap-1 items-center dark:text-slate-300">
 											<Zap className="h-3 w-3" />
 											高级模型
 										</span>
@@ -372,7 +372,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 									</div>
 								)
 							: (
-									<div className="text-slate-400 px-2 py-1.5 border border-slate-200 rounded-md border-dashed bg-white/40 flex items-center justify-center">暂无高级模型额度</div>
+									<div className="text-slate-400 px-2 py-1.5 border border-slate-200 rounded-md border-dashed bg-white/40 flex items-center justify-center dark:text-slate-500 dark:border-slate-700 dark:bg-slate-800/40">暂无高级模型额度</div>
 								)}
 					</div>
 
@@ -381,24 +381,24 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 						<div className="mt-3 pt-3 border-t flex items-center justify-between">
 							<div className="text-muted-foreground text-[12px]">登录可获得更高字数限制</div>
 							<div className="flex gap-2">
-								<a href="/signin" className="text-xs text-blue-600 font-medium hover:text-blue-700">登录</a>
-								<a href="/signup" className="text-xs text-blue-600 font-medium hover:text-blue-700">注册</a>
+								<a href="/signin" className="text-xs text-blue-600 font-medium dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">登录</a>
+								<a href="/signup" className="text-xs text-blue-600 font-medium dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">注册</a>
 							</div>
 						</div>
 					)}
 					{tierData.userType === UserType.REGULAR && (
 						<div className="mt-3 pt-3 border-t flex items-center justify-between">
 							<div className="text-muted-foreground text-[12px]">升级会员解锁无限分析与高级模型</div>
-							<a href="/sponsors" className="text-xs text-orange-600 font-medium hover:text-orange-700">了解会员</a>
+							<a href="/sponsors" className="text-xs text-orange-600 font-medium dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">了解会员</a>
 						</div>
 					)}
 					{tierData.userType === UserType.MEMBER && tierData.donationAmount !== undefined && (
-						<div className="text-[12px] text-slate-600 mt-3 pt-3 border-t flex items-center justify-between">
+						<div className="text-[12px] text-slate-600 mt-3 pt-3 border-t flex items-center justify-between dark:text-slate-300">
 							<span>
 								感谢支持！当前累计赞助：¥
 								{tierData.donationAmount?.toLocaleString?.() || tierData.donationAmount}
 							</span>
-							<a href="/dashboard" className="text-xs text-slate-500 hover:text-slate-700">管理赞助</a>
+							<a href="/dashboard" className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">管理赞助</a>
 						</div>
 					)}
 				</div>
@@ -408,7 +408,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 					placeholder="请在此处粘贴要分析的作品全文..."
 					value={articleText}
 					onChange={handleTextChange}
-					className="text-base leading-relaxed border-slate-200 flex-1 max-h-[400px] min-h-[200px] w-full resize-none overflow-auto focus:border-blue-500 focus:ring-blue-500/20"
+					className="text-base leading-relaxed border-slate-200 flex-1 max-h-[400px] min-h-[200px] w-full resize-none overflow-auto dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
 				/>
 				<WordCounter
 					articleLength={articleText.length}

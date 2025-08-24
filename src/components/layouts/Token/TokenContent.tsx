@@ -9,7 +9,7 @@ import { DAILY_CAP_GUEST, PER_REQUEST_GUEST, PER_REQUEST_LOGGED } from "@/lib/co
 export default function TokenContent() {
 	return (
 		<div className="gap-6 grid md:grid-cols-2">
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 				<CardHeader>
 					<CardTitle className="text-slate-800 flex gap-2 items-center">
 						当前使用规则
@@ -55,7 +55,7 @@ export default function TokenContent() {
 				</CardContent>
 			</Card>
 
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 				<CardHeader>
 					<CardTitle className="text-slate-800 flex gap-2 items-center">
 						🚀 推荐操作

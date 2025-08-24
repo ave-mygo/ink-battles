@@ -72,21 +72,21 @@ export default function UserTierInfo({ className }: UserTierInfoProps) {
 					displayName = "游客用户";
 					icon = <Users className="h-4 w-4" />;
 					badgeVariant = "outline";
-					badgeColor = "text-gray-600 bg-gray-50 border-gray-200";
+					badgeColor = "text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700";
 					break;
 				}
 				case UserType.REGULAR: {
 					displayName = "普通用户";
 					icon = <Gift className="h-4 w-4" />;
 					badgeVariant = "secondary";
-					badgeColor = "text-blue-600 bg-blue-50 border-blue-200";
+					badgeColor = "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800";
 					break;
 				}
 				case UserType.MEMBER: {
 					displayName = "会员用户";
 					icon = <Crown className="h-4 w-4" />;
 					badgeVariant = "default";
-					badgeColor = "text-yellow-700 bg-gradient-to-r from-yellow-100 to-orange-100 border-yellow-300";
+					badgeColor = "text-yellow-700 dark:text-yellow-300 bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 border-yellow-300 dark:border-yellow-700";
 					break;
 				}
 			}
@@ -137,9 +137,9 @@ export default function UserTierInfo({ className }: UserTierInfoProps) {
 			<Card className={className}>
 				<CardContent className="p-4">
 					<div className="animate-pulse space-y-2">
-						<div className="rounded bg-gray-200 h-4 w-1/2"></div>
-						<div className="rounded bg-gray-200 h-3 w-3/4"></div>
-						<div className="rounded bg-gray-200 h-3 w-2/3"></div>
+						<div className="rounded bg-gray-200 dark:bg-gray-700 h-4 w-1/2"></div>
+						<div className="rounded bg-gray-200 dark:bg-gray-700 h-3 w-3/4"></div>
+						<div className="rounded bg-gray-200 dark:bg-gray-700 h-3 w-2/3"></div>
 					</div>
 				</CardContent>
 			</Card>

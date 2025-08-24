@@ -53,9 +53,9 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 			}
 
 			setHistoryData(data);
-		} catch (error) {
-			console.error("获取历史记录失败:", error);
-			setError(error instanceof Error ? error.message : "获取历史记录失败");
+		} catch (err) {
+			console.error("获取历史记录失败:", err);
+			setError(err instanceof Error ? err.message : "获取历史记录失败");
 			toast.error("获取历史记录失败");
 		} finally {
 			setLoading(false);
@@ -96,11 +96,9 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 		return "text-red-800";
 	}, []);
 
-	// client-side filter & sort within current page - 使用useMemo优化性能
+	// client-side filter & sort within current page
 	const displayedItems = useMemo(() => {
 		const items = historyData?.data ?? [];
-
-		// 避免重复计算
 		const queryLower = query.trim().toLowerCase();
 		const hasQuery = queryLower.length > 0;
 
@@ -113,7 +111,6 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 			return hitQuery && hitMode;
 		});
 
-		// 优化排序，减少不必要的Date对象创建
 		const sorted = [...filtered].sort((a, b) => {
 			switch (sortBy) {
 				case "time_asc":
@@ -129,7 +126,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 		});
 
 		return sorted;
-	}, [historyData?.data, query, modeFilter, sortBy]); // 更精确的依赖项
+	}, [historyData?.data, query, modeFilter, sortBy]);
 
 	if (error) {
 		return (
@@ -158,7 +155,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 							variant="outline"
 							size="sm"
 							onClick={() => setView(view === "list" ? "grid" : "list")}
-							className="border-2 bg-white hover:bg-gray-50"
+							className="border-2 bg-white dark:border-slate-700 dark:bg-transparent hover:bg-gray-50"
 						>
 							{view === "grid" ? <List className="mr-2 h-4 w-4" /> : <LayoutGrid className="mr-2 h-4 w-4" />}
 							{view === "grid" ? "列表视图" : "网格视图"}
@@ -167,7 +164,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 				</div>
 
 				{/* Filters & Search Bar */}
-				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 					<CardContent className="p-4">
 						<div className="gap-4 grid md:grid-cols-4">
 							<div className="space-y-2">
@@ -182,7 +179,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="mode" className="text-sm font-medium">分析模式</Label>
-								<Select value={modeFilter} onValueChange={setModeFilter}>
+								<Select value={modeFilter} onValueChange={(v: string) => setModeFilter(v)}>
 									<SelectTrigger id="mode" className="h-9">
 										<SelectValue />
 									</SelectTrigger>
@@ -223,7 +220,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 										setModeFilter("all");
 										setSortBy("time_desc");
 									}}
-									className="border-2 bg-white h-9 w-full hover:bg-gray-50"
+									className="border-2 bg-white h-9 w-full dark:border-slate-700 dark:bg-transparent hover:bg-gray-50"
 								>
 									重置筛选
 								</Button>
@@ -236,7 +233,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 			{/* Stats Overview */}
 			{historyData && (
 				<div className="mb-6 gap-4 grid md:grid-cols-3">
-					<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+					<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 						<CardContent className="p-4">
 							<div className="flex gap-3 items-center">
 								<div className="rounded-full bg-blue-100 flex h-10 w-10 items-center justify-center">
@@ -249,7 +246,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 							</div>
 						</CardContent>
 					</Card>
-					<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+					<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 						<CardContent className="p-4">
 							<div className="flex gap-3 items-center">
 								<div className="rounded-full bg-green-100 flex h-10 w-10 items-center justify-center">
@@ -266,7 +263,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 							</div>
 						</CardContent>
 					</Card>
-					<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+					<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 						<CardContent className="p-4">
 							<div className="flex gap-3 items-center">
 								<div className="rounded-full bg-purple-100 flex h-10 w-10 items-center justify-center">
@@ -307,8 +304,8 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 			)}
 
 			{/* Empty State */}
-			{!loading && displayedItems.length === 0 && (
-				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+			{!loading && historyData && historyData.data.length === 0 && (
+				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 					<CardContent className="py-12 text-center">
 						<FileText className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
 						<h3 className="text-lg font-semibold mb-2">暂无分析记录</h3>
@@ -321,81 +318,76 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 			)}
 
 			{/* History Items */}
-			{!loading && displayedItems.length > 0 && (
-				<div className={view === "grid" ? "gap-4 grid md:grid-cols-2" : "space-y-4"}>
-					{displayedItems.map(item => (
-						<Card key={item._id} className="group border-0 bg-white/80 shadow-lg transition-all duration-200 backdrop-blur-sm hover:shadow-xl">
-							<CardContent className="p-6">
-								<div className="flex gap-4 items-start">
-									{/* Score Badge */}
-									<div className={`rounded-full flex shrink-0 h-12 w-12 items-center justify-center ${getScoreBg(item.overallScore)}`}>
-										<Star className={`h-5 w-5 ${getScoreText(item.overallScore)}`} />
-									</div>
-
-									{/* Content */}
-									<div className="flex-1 min-w-0">
-										<h3 className="group-hover:text-primary text-lg font-semibold mb-2 transition-colors line-clamp-2">
-											{item.title}
-										</h3>
-										<p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-											{item.summary}
-										</p>
-
-										{/* Meta Information */}
-										<div className="flex flex-wrap gap-2 items-center">
-											<Badge variant="secondary" className="text-xs">
-												{item.mode || "默认模式"}
-											</Badge>
-											<Badge
-												variant="outline"
-												className={`text-xs ${getScoreText(item.overallScore)}`}
-											>
-												{item.overallScore}
-												分 ·
-												{item.ratingTag}
-											</Badge>
-											<span className="text-muted-foreground text-xs">
-												{formatDate(item.timestamp)}
-											</span>
-										</div>
-
-										{/* Tags */}
-										{item.tags && item.tags.length > 0 && (
-											<div className="mt-2 flex flex-wrap gap-1">
-												{item.tags.slice(0, 4).map((tag, index) => (
-													<Badge
-														key={index}
-														variant="outline"
-														className="text-xs text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100"
-													>
-														{tag}
-													</Badge>
-												))}
-												{item.tags.length > 4 && (
-													<Badge
-														variant="outline"
-														className="text-xs text-gray-600 border-gray-200 bg-gray-50"
-													>
-														+
-														{item.tags.length - 4}
-													</Badge>
-												)}
-											</div>
-										)}
-									</div>
-
-									{/* Action Button */}
-									<Button asChild variant="default" size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0">
-										<Link href={`/history/${item._id}`}>
-											查看详情
-										</Link>
-									</Button>
+			<div className={view === "grid" ? "gap-4 grid md:grid-cols-2" : "space-y-4"}>
+				{displayedItems.map(item => (
+					<Card key={item._id} className="group border-0 bg-white/80 shadow-lg transition-all duration-200 backdrop-blur-sm dark:bg-slate-800/60 hover:shadow-xl dark:hover:shadow-black/40">
+						<CardContent className="p-6">
+							<div className="flex gap-4 items-start">
+								{/* Score Badge */}
+								<div className={`rounded-full flex shrink-0 h-12 w-12 items-center justify-center ${getScoreBg(item.overallScore)}`}>
+									<Star className={`h-5 w-5 ${getScoreText(item.overallScore)}`} />
 								</div>
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			)}
+
+								{/* Content */}
+								<div className="flex-1 min-w-0">
+									<h3 className="group-hover:text-primary text-lg font-semibold mb-2 transition-colors line-clamp-2">
+										{item.title}
+									</h3>
+									<p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+										{item.summary}
+									</p>
+
+									{/* Meta Information */}
+									<div className="flex flex-wrap gap-2 items-center">
+										<Badge variant="secondary" className="text-xs dark:border-slate-700 dark:bg-slate-800/60">
+											{item.mode || "默认模式"}
+										</Badge>
+										<Badge
+											variant="outline"
+											className={`text-xs ${getScoreText(item.overallScore)}`}
+										>
+											{item.overallScore}
+											{" "}
+											分 ·
+											{item.ratingTag}
+										</Badge>
+										<span className="text-muted-foreground text-xs">{formatDate(item.timestamp)}</span>
+									</div>
+
+									{/* Tags */}
+									{item.tags && item.tags.length > 0 && (
+										<div className="mt-2 flex flex-wrap gap-1">
+											{item.tags.slice(0, 4).map((tag, index) => (
+												<Badge
+													key={index}
+													variant="outline"
+													className="text-xs text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100"
+												>
+													{tag}
+												</Badge>
+											))}
+											{item.tags.length > 4 && (
+												<Badge
+													variant="outline"
+													className="text-xs text-gray-600 border-gray-200 bg-gray-50"
+												>
+													+
+													{item.tags.length - 4}
+												</Badge>
+											)}
+										</div>
+									)}
+								</div>
+
+								{/* Action Button */}
+								<Button asChild variant="default" size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shrink-0">
+									<Link href={`/history/${item._id}`}>查看详情</Link>
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+				))}
+			</div>
 
 			{/* Pagination */}
 			{!loading && historyData && totalPages > 1 && (
@@ -406,7 +398,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 							size="sm"
 							onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
 							disabled={currentPage <= 1}
-							className="border-2 bg-white hover:bg-gray-50"
+							className="border-2 bg-white dark:border-slate-700 dark:bg-transparent hover:bg-gray-50"
 						>
 							<ChevronLeft className="h-4 w-4" />
 							上一页
@@ -431,7 +423,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 										onClick={() => setCurrentPage(pageNum)}
 										className={`p-0 h-8 w-8 ${pageNum === currentPage
 											? "bg-primary hover:bg-primary/90 text-primary-foreground"
-											: "border-2 bg-white hover:bg-gray-50"
+											: "border-2 bg-white hover:bg-gray-50 dark:bg-transparent dark:border-slate-700"
 										}`}
 									>
 										{pageNum}
@@ -445,7 +437,7 @@ export const HistoryClient = ({ _initialData, initialHistory }: HistoryClientPro
 							size="sm"
 							onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
 							disabled={currentPage >= totalPages}
-							className="border-2 bg-white hover:bg-gray-50"
+							className="border-2 bg-white dark:border-slate-700 dark:bg-transparent hover:bg-gray-50"
 						>
 							下一页
 							<ChevronRight className="h-4 w-4" />

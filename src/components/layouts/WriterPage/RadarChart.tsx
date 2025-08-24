@@ -48,8 +48,9 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 						key={levelIdx}
 						points={points}
 						fill="none"
-						stroke="rgba(148, 163, 184, 0.4)" /* slate-400/40 */
+						stroke="rgba(148, 163, 184, 0.4)" /* slate-400/40 for light, will be overridden by CSS */
 						strokeWidth={1}
+						className="stroke-slate-400/40 dark:stroke-slate-600/60"
 					/>
 				);
 			})}
@@ -66,6 +67,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 						y2={y}
 						stroke="rgba(148, 163, 184, 0.5)"
 						strokeWidth={1}
+						className="stroke-slate-400/50 dark:stroke-slate-600/70"
 					/>
 				);
 			})}
@@ -76,12 +78,13 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 				fill="rgba(59, 130, 246, 0.25)" /* blue-500/25 */
 				stroke="rgba(59, 130, 246, 0.9)" /* blue-500/90 */
 				strokeWidth={2}
+				className="fill-blue-500/25 dark:fill-blue-400/30 stroke-blue-500/90 dark:stroke-blue-400/90"
 			/>
 
 			{/* 顶点标记 */}
 			{values.map((v, i) => {
 				const { x, y } = pointFor(i, v);
-				return <circle key={`dot-${i}`} cx={x} cy={y} r={3} fill="rgb(59, 130, 246)" />;
+				return <circle key={`dot-${i}`} cx={x} cy={y} r={3} fill="rgb(59, 130, 246)" className="fill-blue-500 dark:fill-blue-400" />;
 			})}
 
 			{/* 标签 */}
@@ -94,7 +97,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 						y={y}
 						textAnchor="middle"
 						dominantBaseline="middle"
-						className="text-[10px] fill-slate-600"
+						className="text-[10px] fill-slate-600 dark:fill-slate-300"
 					>
 						{label}
 					</text>

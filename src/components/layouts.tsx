@@ -380,7 +380,7 @@ export default function WriterAnalysisSystem() {
 	};
 
 	return (
-		<div className="min-h-screen from-slate-50 to-slate-100 bg-gradient-to-br">
+		<div className="min-h-screen from-slate-50 to-slate-100 bg-gradient-to-br dark:from-slate-900 dark:to-slate-800">
 			<div className="mx-auto px-4 py-6 container max-w-7xl sm:py-8">
 				{/* Header */}
 				<WriterAnalysisHeader />
@@ -432,7 +432,7 @@ export default function WriterAnalysisSystem() {
 						disabled={isAnalyzing}
 						size="lg"
 						variant="outline"
-						className="text-base font-medium px-8 py-3 border-gray-300 rounded-lg bg-white w-full transition-all duration-150 hover:border-gray-400 hover:bg-gray-50 disabled:opacity-50 sm:w-auto disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500/20"
+						className="text-base font-medium px-8 py-3 border-gray-300 rounded-lg bg-white w-full transition-all duration-150 dark:text-slate-100 dark:border-slate-700 hover:border-gray-400 dark:bg-slate-800/60 hover:bg-gray-50 disabled:opacity-50 sm:w-auto disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500/20 dark:hover:bg-slate-700"
 					>
 						<RefreshCw className="mr-2 h-4 w-4" />
 						清除重置
