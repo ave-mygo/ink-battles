@@ -9,7 +9,8 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"knip": "knip"
 	},
 	"dependencies": {
 		"@fingerprintjs/fingerprintjs": "^4.6.2",
@@ -67,6 +68,7 @@
 		"eslint-plugin-format": "^1.0.1",
 		"eslint-plugin-react-hooks": "^5.2.0",
 		"eslint-plugin-react-refresh": "^0.4.20",
+		"knip": "^5.63.0",
 		"tailwindcss": "^4.1.12",
 		"tw-animate-css": "^1.3.7",
 		"typescript": "^5.9.2"
