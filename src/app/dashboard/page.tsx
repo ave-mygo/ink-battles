@@ -44,11 +44,14 @@ async function getDashboardData(token: string): Promise<{ userData: UserSubscrip
 // 服务端生成OAuth URL和state
 async function generateOAuthUrl() {
 	const clientId = process.env.AFDIAN_CLIENT_ID;
-	const redirectUri = process.env.AFDIAN_REDIRECT_URI;
 
-	if (!clientId || !redirectUri) {
+	if (!clientId) {
 		throw new Error("OAuth配置缺失");
 	}
+
+	// 动态构建重定向URI，支持不同环境
+	const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+	const redirectUri = `${baseUrl}/api/oauth/afdian`;
 
 	// 服务端生成安全的state
 	const state = webcrypto.getRandomValues(new Uint32Array(4)).join("");
