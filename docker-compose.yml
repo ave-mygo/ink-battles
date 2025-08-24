@@ -1,7 +1,8 @@
 services:
   app:
     container_name: ink_battles_app
-    image: docker.cnb.cool/takamatsu_tomori/ink-battles:latest
+    # image: docker.cnb.cool/takamatsu_tomori/ink-battles:latest
+    image: ghcr.io/ave-mygo/ink-battles:latest
     ports:
       - "3000:3000"
     env_file:
