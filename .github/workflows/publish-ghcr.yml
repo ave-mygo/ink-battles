@@ -55,7 +55,7 @@ jobs:
           images: |
             ${{ steps.name.outputs.image }}
           tags: |
-            # Mirror .cnb.yml's :latest on default branch
+            # Publish :latest on default branch (GitHub)
             type=raw,value=latest,enable={{is_default_branch}}
             # Use git tag as image tag on tag pushes (e.g., v1.2.3)
             type=ref,event=tag
