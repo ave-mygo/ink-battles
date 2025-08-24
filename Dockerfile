@@ -4,7 +4,9 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable
 RUN corepack pnpm config set registry https://registry.npmmirror.com
-RUN corepack pnpm install --frozen-lockfile
+# Use BuildKit cache for pnpm store to speed up installs
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+	corepack pnpm install --frozen-lockfile
 COPY . .
 RUN corepack pnpm build
 

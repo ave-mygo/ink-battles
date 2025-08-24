@@ -28,12 +28,12 @@ export async function GET(request: NextRequest) {
 	}
 
 	try {
-		// 动态构建重定向URI，支持不同环境
-		const { origin } = new URL(request.url);
-		const redirectUri = `${origin}/api/oauth/afdian`;
-		
-		// 获取访问令牌
-		const tokenResponse = await fetch("https://afdian.com/api/oauth/access_token", {
+		// 动态构建重定向URI，优先使用环境变量（适配Docker环境）
+		const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+		const redirectUri = `${baseUrl}/api/oauth/afdian`;
+
+		// 获取访问令牌 - 尝试token端点
+		const tokenResponse = await fetch("https://afdian.com/api/oauth2/access_token", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/x-www-form-urlencoded",
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 				error: errorText,
 				redirect_uri: redirectUri,
 				client_id: AFDIAN_CLIENT_ID,
-				code: code?.substring(0, 20) + "...",
+				code: `${code?.substring(0, 20)}...`,
 			});
 			throw new Error(`获取访问令牌失败: ${tokenResponse.status} ${errorText}`);
 		}
