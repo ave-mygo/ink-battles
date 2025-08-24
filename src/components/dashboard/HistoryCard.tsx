@@ -14,13 +14,15 @@ interface HistoryCardProps {
 
 export function HistoryCard({ initialData }: HistoryCardProps) {
 	const [historyData, setHistoryData] = useState<AnalysisHistoryResponse | null>(
-		initialData ? {
-			data: initialData,
-			total: initialData.length,
-			page: 1,
-			limit: initialData.length,
-			hasMore: false,
-		} : null,
+		initialData
+			? {
+					data: initialData,
+					total: initialData.length,
+					page: 1,
+					limit: initialData.length,
+					hasMore: false,
+				}
+			: null,
 	);
 	const [loading, setLoading] = useState(!initialData);
 
@@ -68,7 +70,7 @@ export function HistoryCard({ initialData }: HistoryCardProps) {
 	};
 
 	return (
-		<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+		<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 			<CardHeader>
 				<CardTitle className="flex gap-2 items-center">
 					<Calendar className="text-blue-600 h-5 w-5" />
@@ -133,7 +135,7 @@ export function HistoryCard({ initialData }: HistoryCardProps) {
 								</div>
 							)}
 				<div className="mt-4 pt-3 border-t">
-					<Button asChild variant="outline" size="sm" className="border-2 bg-white w-full hover:bg-gray-50">
+					<Button asChild variant="outline" size="sm" className="border-2 bg-white w-full dark:border-slate-700 dark:bg-slate-800/60 hover:bg-gray-50 dark:hover:bg-slate-700">
 						<Link href="/history" className="flex gap-2 items-center">
 							查看全部历史
 							<ChevronRight className="h-4 w-4" />
