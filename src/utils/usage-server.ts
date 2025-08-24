@@ -7,8 +7,8 @@ import { getUserSubscriptionData } from "@/lib/subscription";
 import "server-only";
 
 /**
- * 校验并消耗使用额度 - 支持用户分级
- * - 游客（未登录）：按配置的单次和每日限制
+ * 校验并消耗使用额度 - 支持用户分级和浏览器指纹追踪
+ * - 游客（未登录）：按配置的单次和每日限制，优先使用浏览器指纹追踪，IP作为备用
  * - 普通用户（已登录但未捐赠）：按配置的单次限制，无日累计限制
  * - 会员用户（已登录且已捐赠）：无单次和日累计限制，可使用高级模型
  * @returns 是否允许本次请求、提示信息和用户信息
@@ -39,7 +39,7 @@ export const checkAndConsumeUsage = async (
 		try {
 			const subscriptionData = await getUserSubscriptionData(userEmail);
 			donationAmount = subscriptionData.subscription.totalAmount || 0;
-			
+
 			// 如果用户是admin，直接赋予最高权限
 			if (subscriptionData.user.admin) {
 				userType = UserType.MEMBER;
@@ -107,8 +107,10 @@ export const checkAndConsumeUsage = async (
 
 	if (userType === UserType.GUEST && limits.dailyLimit) {
 		const dayKey = new Date().toISOString().slice(0, 10);
-		const ipKey = ip ? { dayKey, type: "ip", key: ip } : null;
-		const fpKey = fingerprint ? { dayKey, type: "fp", key: fingerprint } : null;
+
+		// 优先使用浏览器指纹，IP作为备用标识
+		const primaryKey = fingerprint ? { dayKey, type: "fp", key: fingerprint } : null;
+		const fallbackKey = ip ? { dayKey, type: "ip", key: ip } : null;
 
 		const readCounter = async (key: { dayKey: string; type: string; key: string } | null): Promise<number> => {
 			if (!key)
@@ -117,11 +119,34 @@ export const checkAndConsumeUsage = async (
 			return doc?.used ?? 0;
 		};
 
-		const ipUsed = await readCounter(ipKey);
-		const fpUsed = await readCounter(fpKey);
-		const existedMax = Math.max(ipUsed, fpUsed);
+		// 检查使用量：优先检查指纹，如果没有指纹则检查IP
+		let currentUsed = 0;
+		let activeKey = null;
 
-		if (existedMax + textLength > limits.dailyLimit) {
+		if (primaryKey) {
+			currentUsed = await readCounter(primaryKey);
+			activeKey = primaryKey;
+
+			// 如果有指纹但没有记录，检查是否有IP记录需要迁移
+			if (currentUsed === 0 && fallbackKey) {
+				const ipUsed = await readCounter(fallbackKey);
+				if (ipUsed > 0) {
+					// 将IP记录迁移到指纹记录
+					currentUsed = ipUsed;
+					await db_insert(db_name, "daily_usage", {
+						...primaryKey,
+						used: ipUsed,
+						migratedFrom: "ip",
+						createdAt: new Date(),
+					});
+				}
+			}
+		} else if (fallbackKey) {
+			currentUsed = await readCounter(fallbackKey);
+			activeKey = fallbackKey;
+		}
+
+		if (currentUsed + textLength > limits.dailyLimit) {
 			return {
 				allowed: false,
 				message: `游客当日累计上限为 ${limits.dailyLimit.toLocaleString()} 字，请登录后继续使用`,
@@ -129,6 +154,7 @@ export const checkAndConsumeUsage = async (
 			};
 		}
 
+		// 更新计数器：只更新活跃的key
 		const incCounter = async (key: { dayKey: string; type: string; key: string } | null, delta: number) => {
 			if (!key)
 				return;
@@ -147,8 +173,7 @@ export const checkAndConsumeUsage = async (
 			}
 		};
 
-		await incCounter(ipKey, textLength);
-		await incCounter(fpKey, textLength);
+		await incCounter(activeKey, textLength);
 	}
 
 	return {
