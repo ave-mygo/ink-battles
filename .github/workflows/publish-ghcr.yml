@@ -48,6 +48,14 @@ jobs:
           IMAGE_LC=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
           echo "image=$IMAGE_LC" >> "$GITHUB_OUTPUT"
 
+      - name: Derive cache image name
+        id: cache
+        run: |
+          IMAGE_LC=${{ steps.name.outputs.image }}
+          # Use a sibling repo for cache layers
+          CACHE_IMAGE="${IMAGE_LC}-cache"
+          echo "ref=$CACHE_IMAGE" >> "$GITHUB_OUTPUT"
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -73,6 +81,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ steps.cache.outputs.ref }}
+          cache-to: |
+            type=gha,mode=max
+            type=registry,ref=${{ steps.cache.outputs.ref }},mode=max,ttl=14d
           platforms: linux/amd64
