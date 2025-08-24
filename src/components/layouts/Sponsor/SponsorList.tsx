@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function SponsorCardSkeleton() {
 	return (
-		<Card className="border-2 border-slate-100 overflow-hidden">
+		<Card className="border-2 border-slate-100 overflow-hidden dark:border-slate-800">
 			<div className="p-6 flex flex-col gap-3 items-center">
 				<Skeleton className="rounded-full h-20 w-20" />
 				<Skeleton className="h-6 w-32" />
@@ -129,8 +129,8 @@ export default function SponsorList() {
 		return (
 			<div className="py-16 text-center">
 				<div className="text-6xl mb-4">💝</div>
-				<h3 className="text-xl text-slate-700 font-semibold mb-2">暂无赞助者</h3>
-				<p className="text-slate-500">成为第一个赞助者，支持我们的项目发展！</p>
+				<h3 className="text-xl text-slate-700 font-semibold mb-2 dark:text-slate-200">暂无赞助者</h3>
+				<p className="text-slate-500 dark:text-slate-400">成为第一个赞助者，支持我们的项目发展！</p>
 			</div>
 		);
 	}
@@ -152,10 +152,10 @@ export default function SponsorList() {
 							key={sponsor.user.user_id}
 							className={`border-2 transition-all duration-300 overflow-hidden hover:shadow-xl hover:-translate-y-1 ${
 								isMost
-									? "border-yellow-400 bg-gradient-to-br from-yellow-50 to-orange-50"
+									? "border-yellow-400 bg-gradient-to-br from-yellow-50 to-orange-50 dark:border-yellow-700 dark:from-yellow-900/20 dark:to-orange-900/10"
 									: isLatest
-										? "border-blue-400 bg-gradient-to-br from-blue-50 to-cyan-50"
-										: "border-slate-100 hover:border-slate-200"
+										? "border-blue-400 bg-gradient-to-br from-blue-50 to-cyan-50 dark:border-blue-700 dark:from-blue-900/20 dark:to-cyan-900/10"
+										: "border-slate-100 hover:border-slate-200 dark:border-slate-800 dark:hover:border-slate-700"
 							}`}
 						>
 							<div className="p-6 flex flex-col gap-4 items-center">
@@ -163,7 +163,7 @@ export default function SponsorList() {
 									<img
 										src={sponsor.user.avatar}
 										alt={sponsor.user.name}
-										className="border-4 border-white rounded-full h-20 w-20 shadow-lg object-cover"
+										className="border-4 border-white rounded-full h-20 w-20 shadow-lg object-cover dark:border-slate-700"
 										loading="lazy"
 									/>
 									{isMost && (
@@ -178,24 +178,24 @@ export default function SponsorList() {
 									)}
 								</div>
 								<div className="text-center">
-									<h3 className="text-lg text-slate-900 font-bold mb-1 max-w-full truncate">
+									<h3 className="text-lg text-slate-900 font-bold mb-1 max-w-full truncate dark:text-slate-100">
 										{sponsor.user.name}
 									</h3>
 								</div>
 								<div className="flex flex-wrap gap-2 w-full items-center justify-center">
-									<span className="text-sm text-amber-800 font-semibold px-3 py-1.5 border border-amber-200 rounded-full from-amber-100 to-yellow-100 bg-gradient-to-r">
+									<span className="text-sm text-amber-800 font-semibold px-3 py-1.5 border border-amber-200 rounded-full from-amber-100 to-yellow-100 bg-gradient-to-r dark:text-amber-200 dark:border-amber-800 dark:from-amber-900/30 dark:to-yellow-900/20">
 										💰 ¥
 										{sponsor.all_sum_amount}
 									</span>
 									{sponsor.current_plan.name && (
-										<span className="text-sm text-blue-800 font-semibold px-3 py-1.5 border border-blue-200 rounded-full from-blue-100 to-cyan-100 bg-gradient-to-r">
+										<span className="text-sm text-blue-800 font-semibold px-3 py-1.5 border border-blue-200 rounded-full from-blue-100 to-cyan-100 bg-gradient-to-r dark:text-blue-200 dark:border-blue-800 dark:from-blue-900/30 dark:to-cyan-900/20">
 											🎯
 											{" "}
 											{sponsor.current_plan.name}
 										</span>
 									)}
 								</div>
-								<div className="text-xs text-slate-500 px-3 py-1 rounded-full bg-slate-50">
+								<div className="text-xs text-slate-500 px-3 py-1 rounded-full bg-slate-50 dark:text-slate-400 dark:bg-slate-800/60">
 									🕒
 									{" "}
 									{new Date(sponsor.last_pay_time * 1000).toLocaleDateString("zh-CN")}
@@ -217,7 +217,7 @@ export default function SponsorList() {
 						disabled={loading}
 						variant="outline"
 						size="lg"
-						className="text-base border-2 rounded-full min-w-[200px] hover:border-pink-300 hover:bg-pink-50"
+						className="text-base border-2 rounded-full min-w-[200px] dark:border-slate-700 hover:border-pink-300 hover:bg-pink-50 dark:hover:bg-slate-800/60"
 					>
 						{loading
 							? (

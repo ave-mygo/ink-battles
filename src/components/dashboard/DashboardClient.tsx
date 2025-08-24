@@ -139,7 +139,7 @@ export const DashboardClient = ({ initialData, oauthConfig, initialHistoryData }
 
 				<div className="gap-4 grid w-full sm:gap-6 lg:grid-cols-2">
 					{/* 统一的加载骨架 */}
-					{Array.from({ length: 5 }).fill(0).map((_, index) => (
+					{Array.from({ length: 6 }).fill(0).map((_, index) => (
 						<div key={index} className="min-w-0">
 							<div className="bg-card text-card-foreground border rounded-lg shadow-sm">
 								<div className="p-6 space-y-4">

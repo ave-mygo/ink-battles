@@ -10,9 +10,9 @@ import { HeaderNav } from "@/components/global/HeaderNav";
  */
 const AppHeader = () => {
 	return (
-		<div className="border-b border-white/40 bg-white/60 top-0 sticky z-40 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+		<div className="border-b border-white/40 bg-white/60 top-0 sticky z-40 backdrop-blur dark:border-white/10 dark:bg-slate-900/60 supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-900/60">
 			<div className="mx-auto px-3 container flex h-14 max-w-6xl items-center justify-between sm:px-4">
-				<Link href="/" className="text-sm text-slate-900 font-semibold transition-opacity sm:text-base hover:opacity-90">
+				<Link href="/" className="text-sm text-slate-900 font-semibold transition-opacity sm:text-base dark:text-slate-100 hover:opacity-90">
 					<span className="hidden sm:inline">作家战力分析</span>
 					<span className="sm:hidden">作家分析</span>
 				</Link>

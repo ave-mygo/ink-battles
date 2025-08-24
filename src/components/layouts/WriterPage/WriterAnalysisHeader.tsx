@@ -9,12 +9,12 @@ export default function WriterAnalysisHeader() {
 	return (
 		<div className="mb-8 text-center">
 			<div className="mb-6 flex flex-col gap-4 items-center justify-center sm:flex-row sm:gap-6">
-				<div className="p-4 rounded-xl shadow-lg from-blue-600 to-purple-600 bg-gradient-to-r">
+				<div className="p-4 rounded-xl shadow-lg from-blue-600 to-purple-600 bg-gradient-to-r dark:from-slate-700 dark:to-slate-800">
 					<PenTool className="text-white h-8 w-8" />
 				</div>
-				<h1 className="text-3xl text-slate-800 leading-tight font-bold sm:text-4xl">作家战力分析系统</h1>
+				<h1 className="text-3xl text-slate-800 leading-tight font-bold sm:text-4xl dark:text-slate-100">作家战力分析系统</h1>
 			</div>
-			<p className="text-lg text-slate-600 mx-auto mb-6 max-w-2xl">
+			<p className="text-lg text-slate-600 mx-auto mb-6 max-w-2xl dark:text-slate-300">
 				基于AI技术的专业文本分析工具，为您的创作提供深度洞察
 			</p>
 
@@ -24,7 +24,7 @@ export default function WriterAnalysisHeader() {
 					href="https://qm.qq.com/q/D6AK1DEQtq"
 					target="_blank"
 					rel="noopener noreferrer"
-					className="text-purple-600 px-6 py-2.5 rounded-lg bg-purple-50 flex gap-2 max-w-2xl w-full transition-colors duration-150 items-center justify-center hover:text-purple-700 hover:bg-purple-100"
+					className="text-purple-600 px-6 py-2.5 rounded-lg bg-purple-50 flex gap-2 max-w-2xl w-full transition-colors duration-150 items-center justify-center dark:text-purple-300 hover:text-purple-700 dark:bg-purple-900/15 hover:bg-purple-100 dark:hover:bg-purple-900/25"
 				>
 					<MessageCircle className="h-4 w-4" />
 					加入QQ群：625618470
@@ -35,7 +35,7 @@ export default function WriterAnalysisHeader() {
 				<div className="gap-3 grid grid-cols-1 max-w-2xl w-full items-center sm:grid-cols-3">
 					<Link
 						href="/sponsors"
-						className="text-pink-600 px-4 py-2.5 rounded-lg bg-pink-50 inline-flex gap-2 transition-colors duration-150 items-center justify-center hover:text-pink-700 hover:bg-pink-100"
+						className="text-pink-600 px-4 py-2.5 rounded-lg bg-pink-50 inline-flex gap-2 transition-colors duration-150 items-center justify-center dark:text-pink-300 hover:text-pink-700 dark:bg-pink-900/15 hover:bg-pink-100 dark:hover:bg-pink-900/25"
 					>
 						<Heart className="h-4 w-4" />
 						赞助支持我们
@@ -43,7 +43,7 @@ export default function WriterAnalysisHeader() {
 					</Link>
 					<Link
 						href="/status"
-						className="text-green-600 px-4 py-2.5 rounded-lg bg-green-50 inline-flex gap-2 transition-colors duration-150 items-center justify-center hover:text-green-700 hover:bg-green-100"
+						className="text-green-600 px-4 py-2.5 rounded-lg bg-green-50 inline-flex gap-2 transition-colors duration-150 items-center justify-center dark:text-green-300 hover:text-green-700 dark:bg-green-900/15 hover:bg-green-100 dark:hover:bg-green-900/25"
 					>
 						<Activity className="h-4 w-4" />
 						前往状态页
@@ -53,7 +53,7 @@ export default function WriterAnalysisHeader() {
 						href="https://github.com/ave-mygo/ink-battles"
 						target="_blank"
 						rel="noopener noreferrer"
-						className="text-gray-600 px-4 py-2.5 rounded-lg bg-gray-50 inline-flex gap-2 transition-colors duration-150 items-center justify-center hover:text-gray-700 hover:bg-gray-100"
+						className="text-gray-600 px-4 py-2.5 rounded-lg bg-gray-50 inline-flex gap-2 transition-colors duration-150 items-center justify-center dark:text-slate-300 hover:text-gray-700 dark:bg-slate-800/40 hover:bg-gray-100 dark:hover:bg-slate-800/60"
 					>
 						<span className="h-4 w-4 inline-block">
 							<svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
@@ -65,7 +65,7 @@ export default function WriterAnalysisHeader() {
 					</Link>
 				</div>
 			</div>
-			<Card className="mt-6 border-0 rounded-xl bg-white/90 shadow-md backdrop-blur-sm">
+			<Card className="mt-6 border-0 rounded-xl bg-white/90 shadow-md backdrop-blur-sm dark:bg-slate-900/40">
 				<div className="text-sm text-slate-500 p-2">
 					<p>
 						本分析报告由AI生成，AI提供的内容具有不确定性，仅供参考。测试量表由三角之外设计，站点由
@@ -93,13 +93,13 @@ export default function WriterAnalysisHeader() {
 					</p>
 				</div>
 				<Separator />
-				<div className="text-sm text-slate-600 p-6 border-l-4 border-blue-200 from-slate-50/80 to-blue-50/80 bg-gradient-to-r backdrop-blur-sm">
-					<h3 className="text-slate-800 font-semibold mb-3 flex gap-2 items-center">
+				<div className="text-sm text-slate-600 p-6 border-l-4 border-blue-200 from-slate-50/80 to-blue-50/80 bg-gradient-to-r backdrop-blur-sm dark:text-slate-200 dark:border-blue-400/30 dark:from-slate-800/40 dark:to-slate-900/40">
+					<h3 className="text-slate-800 font-semibold mb-3 flex gap-2 items-center dark:text-slate-100">
 						<PenTool className="h-4 w-4" />
 						创作理念
 					</h3>
 					<div className="leading-relaxed space-y-3">
-						<p className="text-slate-700 font-medium">
+						<p className="text-slate-700 font-medium dark:text-slate-200">
 							写你想写的，评你想评的！
 						</p>
 						<p>

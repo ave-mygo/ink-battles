@@ -102,7 +102,7 @@ export default function WriterAnalysisResult({
 	return (
 		<div className="gap-6 grid md:grid-cols-3">
 			{/* Score Card */}
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 				<CardHeader className="text-center">
 					<CardTitle className="flex gap-2 items-center justify-center">
 						<Star className="text-yellow-500 h-5 w-5" />
@@ -210,7 +210,7 @@ export default function WriterAnalysisResult({
 			</Card>
 
 			{/* Dimensions Card */}
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 				<CardHeader>
 					<CardTitle className="flex gap-2 items-center">
 						<BarChart3 className="text-blue-600 h-5 w-5" />
@@ -251,7 +251,7 @@ export default function WriterAnalysisResult({
 			</Card>
 
 			{/* Analysis Card */}
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
 				<CardHeader>
 					<CardTitle className="flex gap-2 items-center">
 						<Lightbulb className="text-yellow-500 h-5 w-5" />
