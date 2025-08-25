@@ -172,15 +172,18 @@ export default function WriterAnalysisSystem() {
 
 	const parseStreamedResult = (content: string): AnalysisResult | null => {
 		try {
+			// 首先移除所有模式标识
+			const cleanContent = content.replace(/<!--STREAM_MODE:\w+-->/g, "");
+
 			// 优化正则，避免 \s* 和 [\s\S]*? 组合导致的回溯
-			const jsonMatch = content.match(/```json\n?([\s\S]+?)\n?```/) || content.match(/\{[\s\S]+\}/);
+			const jsonMatch = cleanContent.match(/```json\n?([\s\S]+?)\n?```/) || cleanContent.match(/\{[\s\S]+\}/);
 			if (jsonMatch) {
 				const jsonStr = jsonMatch[1] || jsonMatch[0];
 				return JSON.parse(jsonStr.trim());
 			}
 
 			// 如果没有找到JSON标记，尝试直接解析整个内容
-			return JSON.parse(content.trim());
+			return JSON.parse(cleanContent.trim());
 		} catch (error) {
 			console.error("解析流式结果失败:", error);
 			return null;
@@ -262,6 +265,7 @@ export default function WriterAnalysisSystem() {
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let fullContent = "";
+			let streamModeDetected = false;
 
 			setProgress(20);
 
@@ -277,6 +281,38 @@ export default function WriterAnalysisSystem() {
 					break;
 
 				const chunk = decoder.decode(value, { stream: true });
+
+				// 检查流式模式标识
+				if (!streamModeDetected) {
+					const modeMatch = chunk.match(/<!--STREAM_MODE:(\w+)-->/);
+					if (modeMatch) {
+						streamModeDetected = true;
+						const detectedMode = modeMatch[1];
+
+						let modeMessage = "";
+						switch (detectedMode) {
+							case "native":
+								modeMessage = "✅ 检测到原生流式模式 - API完全支持流式响应";
+								break;
+							case "simulated":
+								modeMessage = "⚠️ 检测到接口无法正常使用流式 - 接口将以默认方式返回";
+								break;
+							default:
+								modeMessage = "✅ 检测到默认模式 - API完全支持正常响应";
+						}
+
+						setStreamContent(prev => `${prev}${modeMessage}\n`);
+
+						// 移除模式标识，只保留实际内容
+						const cleanChunk = chunk.replace(/<!--STREAM_MODE:\w+-->/, "");
+						if (cleanChunk.trim()) {
+							fullContent += cleanChunk;
+							setStreamContent(prev => `${prev}${cleanChunk}`);
+						}
+						continue;
+					}
+				}
+
 				fullContent += chunk;
 				setStreamContent(prev => `${prev}${chunk}`);
 

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
 	try {
 		// 动态构建重定向URI，优先使用环境变量（适配Docker环境）
-		const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
+		const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 		const redirectUri = `${baseUrl}/api/oauth/afdian`;
 
 		// 获取访问令牌 - 尝试token端点
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
 		);
 
 		// 重定向到 dashboard
-		const response = NextResponse.redirect(new URL("/dashboard", request.url));
+		const response = NextResponse.redirect("/dashboard");
 		response.cookies.set("auth-token", token, {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
