@@ -1,7 +1,4 @@
-import type { SubscriptionUserInfo } from "../auth/user";
-
-// 重新导出用户类型以保持向后兼容
-export type { SubscriptionUserInfo } from "../auth/user";
+import type { AuthUserInfo } from "../auth/user";
 
 /**
  * 赞助者信息类型
@@ -13,7 +10,6 @@ export interface SponsorInfo {
 	avatar?: string;
 	all_sum_amount: number;
 	bound_order_id?: string;
-	binding_method: "oauth" | "order_id";
 	create_time?: number;
 	last_pay_time?: number;
 }
@@ -35,6 +31,6 @@ export interface SubscriptionInfo {
  * 来源：subscription.ts
  */
 export interface UserSubscriptionData {
-	user: SubscriptionUserInfo;
+	user: AuthUserInfo;
 	subscription: SubscriptionInfo;
 }

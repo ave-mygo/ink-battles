@@ -87,14 +87,6 @@ export const SubscriptionCard = ({ data, usageStats }: SubscriptionCardProps) =>
 												{(data.subscription.sponsorInfo?.all_sum_amount || data.subscription.totalAmount).toFixed(2)}
 											</span>
 										</div>
-
-										<div className="flex justify-between">
-											<span className="text-sm">绑定方式</span>
-											<span className="text-sm font-medium">
-												{data.subscription.sponsorInfo.binding_method === "oauth" ? "OAuth授权" : "订单号绑定"}
-											</span>
-										</div>
-
 										{data.subscription.sponsorInfo?.create_time && (
 											<div className="flex justify-between">
 												<span className="text-sm">首次赞助时间</span>
