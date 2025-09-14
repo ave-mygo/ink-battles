@@ -1,0 +1,24 @@
+# Node/Next build artifacts
+node_modules
+.next
+out
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+# Env and local config
+.env
+.env.local
+.env.*.local
+# VCS
+.git
+.gitignore
+# Docker
+Dockerfile*
+.dockerignore
+# Editor
+.vscode
+.idea
+*.swp
+*.swo

@@ -1,0 +1,35 @@
+services:
+  app:
+    container_name: ink_battles_app
+    # image: docker.cnb.cool/takamatsu_tomori/ink-battles:latest
+    image: ghcr.io/ave-mygo/ink-battles:latest
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
+    init: true
+    healthcheck:
+      test: [CMD-SHELL, "curl http://localhost:3000"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    depends_on:
+      - mongo
+
+  mongo:
+    container_name: ink_battles_mongo
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS}
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
