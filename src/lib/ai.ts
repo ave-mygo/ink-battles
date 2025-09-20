@@ -1,103 +1,139 @@
 "use server";
+import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 
-import process from "node:process";
 import crypto from "crypto-js";
-
-import dotenv from "dotenv";
 import { OpenAI } from "openai";
 
+import { getConfig } from "@/config";
 import { db_name, db_table } from "@/lib/constants";
 import { db_find, db_read } from "@/lib/db";
 
 import "server-only";
 
-dotenv.config();
+const AppConfig = getConfig();
 
-export const verifyArticleValue = async (articleText: string, mode: string = "default"): Promise<{ success: boolean; error?: string }> => {
-    // 1. 预处理文本，去除符号、空格、换行符
-    const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
-    const sha1 = crypto.SHA1(normalizedText).toString();
-    // 2. 查找数据库缓存
-    const cached = await db_find(db_name, db_table, { sha1, mode });
-    if (cached) {
-        return { success: true };
-    }
+/**
+ * 验证文章内容的有效性，检查是否为有意义的内容。
+ * 同时检测文章来源（经典、同人、再创作）并输出搜索关键词。
+ * @param articleText 文章文本内容
+ * @param mode 分析模式，默认为 "default"
+ * @returns 验证结果，包含成功状态、是否需要搜索和搜索关键词
+ */
+export const verifyArticleValue = async (articleText: string, mode: string = "default"): Promise<
+	{
+		success: boolean;
+		error?: string;
+		needSearch?: boolean;
+		searchKeywords?: string[];
+	}
+> => {
+	// 1. 预处理文本，去除符号、空格、换行符
+	const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
+	const sha1 = crypto.SHA1(normalizedText).toString();
 
-    const openAI = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY_1!,
-        baseURL: process.env.OPENAI_BASE_URL_1!,
-    });
+	// 2. 查找数据库缓存，使用新的数据结构字段路径
+	const cached = await db_find(db_name, db_table, {
+		"metadata.sha1": sha1,
+		"article.input.mode": mode,
+	}) as DatabaseAnalysisRecord | null;
 
-    // 读取模型名，优先使用环境变量，否则用默认值
-    const model: string = process.env.OPENAI_MODEL_1 || "gemini-2.5-flash";
+	if (cached) {
+		return { success: true };
+	}
 
-    // 限制文章长度，防止内存过度使用
-    let truncatedText = articleText;
-    if (articleText.length > 3000) {
-        truncatedText = articleText.slice(0, 3000);
-    }
+	const openAI = new OpenAI({
+		apiKey: AppConfig.system_models.validator.api_key,
+		baseURL: AppConfig.system_models.validator.base_url,
+	});
 
-    try {
-        const response = await openAI.chat.completions.create({
-            model,
-            messages: [
-                {
-                    role: "system",
-                    content:
-                        `你是一个专业的文章质量评估助手。请对给定的内容进行详细分析，判断其是否适合进行文学分析。
-评估标准：
-逻辑连贯性：内容内部是否存在可识别的结构、模式或关联性，使其不显得杂乱无章。
-语言规范性：内容是否由可识别的字符、符号或编码组成，而非随机的、无法解析的乱码。
-内容实质性：内容是否包含某种信息、意图或可解读的模式，而非纯粹的空白或无意义的重复。
-如果内容符合以上标准，返回：\`\`\`json
+	// 读取模型名，优先使用环境变量，否则用默认值
+	const model: string = AppConfig.system_models.validator.model || "gemini-2.5-flash";
+
+	try {
+		const response = await openAI.chat.completions.create({
+			model,
+			messages: [
+				{
+					role: "system",
+					content: `你是一个内容验证和来源分析助手，专注于识别有效内容、检测文章来源并生成搜索关键词。请严格按照以下步骤和规则执行任务：
+1. **内容有效性校验**：
+   - **核心目标**：拦截一切明显无意义或会严重浪费Tokens的内容。
+   - **判定为“无效”的规则（满足任一则判定为不通过）**：
+     - **乱码/不可读**：主要由随机字符、无意义符号或编码噪声构成，无法形成可理解的词语或语句。
+     - **极端重复/灌水**：大段重复同一字符/词/句（如"哈哈哈……"上百上千次，或同一句子成百上千次重复），或无内容的大篇幅占位符。
+     - **净空内容**：仅包含空白、换行或极少量无意义字符。
+   - **判定为“有效”的情况（即使内容不完整或非传统文章形式，只要有意义，均视为有效）**：
+     - 程序代码、配置文件、日志片段、命令行输出、公式、列表、片段化笔记、短语、单个句子等。
+     - 任何非上述“无效”规则涵盖的内容。
+2. **文章来源分析与搜索需求判断**：
+   - **目标**：判断文章是否为具有明确来源的作品（如经典、同人、再创作），并据此决定是否需要搜索。
+   - **判断规则**：
+     - **经典文章**：原文来自知名文学作品、历史文献、学术论文、教科书、百科全书、正式出版物等。
+     - **同人作品**：基于现有经典作品或流行文化（如小说、动漫、影视、游戏）的角色、设定、世界观进行的二次创作。
+     - **再创作/改编**：基于现有文章或故事进行改编、改写、翻译或进一步阐述的内容。
+     - **原创/短文**：内容明显为独立创作，或篇幅极短、信息量有限，不像是基于特定来源的作品。
+   - **\`needSearch\` 字段逻辑**：
+     - 如果内容被判断为**经典文章、同人作品或再创作/改编**，则 \`needSearch\` 必须为 \`true\`。
+     - 如果内容被判断为**原创或短文**，则 \`needSearch\` 必须为 \`false\`。
+3. **搜索关键词生成**：
+   - 仅当 \`needSearch\` 为 \`true\` 时，才需要生成关键词。
+   - 生成3-8个有助于搜索文章出处或相关资料的关键词。这些关键词应包括：
+     - **核心主题词**：文章中的主要人物、概念、事件、作品名称等。
+     - **背景信息词**：所属的时代、流派、团体、作者、原作名称等。
+     - **同人/再创作特有词**：
+       - 如果判断为**同人作品**，关键词应有助于找到其原作或相关社区，并避免出现“同人”、“二次创作”等字样。避免搜索引擎将部分非出处内容归类为同人内容。
+       - 如果判断为**再创作/改编**，关键词应有助于找到其原作或相关阐述。
+   - 如果 \`needSearch\` 为 \`false\`，则 \`searchKeywords\` 字段应为空数组 \`[]\`。
+请严格按照以下JSON格式返回结果：
+\`\`\`json
 {
-"success": true
+  "success": true/false,
+  "message": "如果success为false，提供具体原因，例如：内容乱码，无法分析。",
+  "needSearch": true/false,
+  "searchKeywords": ["关键词1", "关键词2", "关键词3", ...] // 仅在needSearch为true时填充
 }
-\`\`\`
+\`\`\``,
+				},
+				{
+					role: "user",
+					content: articleText,
+				},
+			],
+			response_format: { type: "json_object" },
+		});
 
-如果内容不符合标准，请详细分析原因并返回：\`\`\`json
-{
-"success": false,
-"message": "具体原因"
-}
-\`\`\`
+		const result = response.choices[0].message.content?.trim();
 
-请严格按照以上格式返回，不要添加其他内容。`,
-                },
-                {
-                    role: "user",
-                    content: truncatedText,
-                },
-            ],
-            response_format: { type: "json_object" },
-        });
-        const result = response.choices[0].message.content?.trim();
+		if (!result) {
+			return { success: false, error: "AI返回内容为空" };
+		}
 
-        if (!result) {
-            return { success: false, error: "AI返回内容为空" };
-        }
+		let parsedResult;
+		try {
+			// 合规化并解析JSON响应
+			const cleanedData = result.replace(/```json/g, "").replace(/```/g, "");
+			parsedResult = JSON.parse(cleanedData);
+		} catch (parseError) {
+			console.error("解析AI响应JSON失败:", parseError);
+			return { success: false, error: `AI返回格式异常: ${result.slice(0, 100)}...` };
+		}
 
-        let parsedResult;
-        try {
-            // 合规化并解析JSON响应，立即释放原始字符串
-            const cleanedData = result.replace(/```json/g, "").replace(/```/g, "");
-            parsedResult = JSON.parse(cleanedData);
-        } catch (parseError) {
-            console.error("解析AI响应JSON失败:", parseError);
-            return { success: false, error: `AI返回格式异常: ${result.slice(0, 100)}...` };
-        }
+		// 确保parsedResult的结构符合预期
+		if (typeof parsedResult.success !== "boolean" || typeof parsedResult.needSearch !== "boolean" || !Array.isArray(parsedResult.searchKeywords)) {
+			return { success: false, error: `AI返回格式不完整或字段类型错误: ${JSON.stringify(parsedResult).slice(0, 100)}...` };
+		}
 
-        if (parsedResult.success === true) {
-            return { success: true };
-        } else if (parsedResult.success === false) {
-            return { success: false, error: parsedResult.message || "内容不符合分析标准" };
-        } else {
-            return { success: false, error: `AI返回格式异常: 缺少success字段` };
-        }
-    } catch (error: any) {
-        console.error("Failed to verify article value", error);
-        return { success: false, error: error?.message || "网络连接异常，请检查网络后重试" };
-    }
+		// 返回完整的结果
+		return {
+			success: parsedResult.success,
+			error: parsedResult.success === false ? (parsedResult.message || "内容不符合分析标准") : undefined,
+			needSearch: parsedResult.needSearch,
+			searchKeywords: parsedResult.searchKeywords,
+		};
+	} catch (error: any) {
+		console.error("Failed to verify article value", error);
+		return { success: false, error: error?.message || "网络连接异常，请检查网络后重试" };
+	}
 };
 
 export const buildSystemPrompt = async (modeInstruction: string): Promise<string> => `你是一个专业的文学评论家。你的核心任务是严格遵循本系统提示词中定义的所有规则、标准和格式要求，对用户在后续对话中提供的文章内容进行深度分析和评分。
@@ -402,7 +438,9 @@ ${modeInstruction}
 ## **2个权重维度评分标准 (乘数)**
 
 ### 👑【经典性 Classicity】
-此维度衡量作品在文化传承、跨时代影响力、文坛地位、读者持续关注度、批评史参与度等方面的表现。本维度不是"审美判断"，而是反映"传播广度+代际记忆力+引用深度"。请对网络进行搜索，获取相关作品的背景信息，并确保信息可靠。
+此维度衡量作品在文化传承、跨时代影响力、文坛地位、读者持续关注度、批评史参与度等方面的表现。本维度不是"审美判断"，而是反映"传播广度+代际记忆力+引用深度"。
+
+请对网络进行搜索，获取相关作品的背景信息，并确保信息可靠。
 
 - **SSS (权重 2.0)**: 被广泛公认为世界文学/民族文学之巅峰之作，跨时代、跨文化仍有高度解释力与研究价值。
     - 示例: 《百年孤独》、《战争与和平》、《红楼梦》、《神曲》
@@ -532,10 +570,10 @@ ${modeInstruction}
 
 // 拆分出单模式处理，原switch内容移到这里
 const getModeInstructionsSingle = async (mode: string): Promise<string> => {
-    let instruction = "";
-    switch (mode) {
-        case "初窥门径":
-            instruction = `
+	let instruction = "";
+	switch (mode) {
+		case "初窥门径":
+			instruction = `
 ## 评分模式：✅ 初窥门径
 - **功能说明**: 专为评估未出版或影响力有限的新兴作品设计，旨在提供一个公平的、排除经典光环干扰的评价环境。
 - **启用效果**: 
@@ -543,106 +581,119 @@ const getModeInstructionsSingle = async (mode: string): Promise<string> => {
   - **经典性权重**: 【👑 经典性】维度的权重最高限制为C级 (1.1)。
   - **新锐性权重**: 【🧑‍🚀 新锐性】维度的权重不受此模式限制。
 `;
-            break;
-        case "严苛编辑":
-            instruction = `
+			break;
+		case "严苛编辑":
+			instruction = `
 ## 评分模式：✅ 严苛编辑
 - **功能说明**: 模拟资深编辑或保守评论家的审稿标准，进行压力测试，旨在找出作品的短板和"最低可接受水平"。
 - **启用效果**: 
   - **评分标准收紧**: 对每个基础维度进行更严格的审视，每一维度的评分结果都会比标准模式低0.5至1分（例如，标准模式下的S级4.5分可能降至A级4分）。
   - **杜绝鼓励分**: 彻底排除任何"鼓励性"评分，仅基于文本硬实力给出最审慎的判断。
 `;
-            break;
-        case "宽容读者":
-            instruction = `
+			break;
+		case "宽容读者":
+			instruction = `
 ## 评分模式：✅ 宽容读者
 - **功能说明**: 模拟充满善意的早期读者视角，侧重于发掘作品的闪光点与潜力，适用于为创作者提供积极反馈。
 - **启用效果**: 
   - **优点放大**: 在评估时，若某维度表现出明显优点或潜力，允许在标准评分的基础上酌情上调0.5分（例如，标准B级可提升至A级）。
   - **包容短板**: 对作品的缺点和不足之处采取更包容的态度，在评分时不过分苛责。
 `;
-            break;
-        case "文本法官":
-            instruction = `
+			break;
+		case "文本法官":
+			instruction = `
 ## 评分模式：✅ 文本法官
 - **功能说明**: 采用严格的文本细读（close reading）方法，要求所有评价均建立在可引证的文本证据之上，适用于学术分析或深度评论。
 - **启用效果**: 
   - **强制引证**: 对每个维度的评分，必须在评分理由中明确引用或概括具体的文本段落、情节或语言用法作为核心依据。
   - **无证不评**: 若无法从文本中找到充分证据支撑某一评分等级，则必须选择更低的、有证据支持的等级。
 `;
-            break;
-        case "热血粉丝":
-            instruction = `
+			break;
+		case "热血粉丝":
+			instruction = `
 ## 评分模式：✅ 热血粉丝
 - **功能说明**: 模拟对某一作品或风格抱有极高热情的粉丝视角，允许主观情感和个人偏好显著影响评分结果。
 - **启用效果**: 
   - **主观加权**: 在评分时，可以对特别喜爱的维度（如【💔 情感穿透力】、【🎭 人物塑造力】）给予极高的评价，甚至突破标准模式下的感性上限。
   - **情感优先**: 评价将优先考虑情感共鸣和个人体验，而非纯粹的客观技术分析。
 `;
-            break;
-        case "反现代主义者":
-            instruction = `
+			break;
+		case "反现代主义者":
+			instruction = `
 ## 评分模式：✅ 反现代主义者
 - **功能说明**: 模拟偏爱古典叙事和传统结构的读者视角，降低对实验性和形式主义创新的评价权重。
 - **启用效果**: 
   - **维度降权**: 对【🌀 先锋性/实验性】、【🧠 结构复杂度】、【📚 引用张力】等维度的评价将更为保守，评分上限通常不超过B级 (3分)。
   - **重视传统**: 评分将更侧重于故事的流畅性、情感的普适性和主题的明确性。
 `;
-            break;
-        case "碎片主义护法":
-            instruction = `
+			break;
+		case "碎片主义护法":
+			instruction = `
 ## 评分模式：✅ 碎片主义护法
 - **功能说明**: 模拟热衷于后现代和实验文学的读者视角，高度赞赏并加权评估文本在形式、语言和结构上的创新。
 - **启用效果**: 
   - **维度加权**: 对【🌀 先锋性/实验性】、【🧬 语言原创性】、【🧠 结构复杂度】等维度的评价将给予额外重视和加分，可以突破标准评分的上限。
   - **创新优先**: 评价将优先考虑文本的颠覆性、思辨性和形式美学，而非传统的故事性。
 `;
-            break;
-        case "速写视角":
-            instruction = `
+			break;
+		case "速写视角":
+			instruction = `
 ## 评分模式：✅ 速写视角
 - **功能说明**: 适用于需要快速形成初步印象的场景，通过聚焦少数核心维度进行一次简明扼要的"快照式"评估。
 - **启用效果**: 
   - **聚焦核心**: 仅需选择3-5个最能体现作品特质的维度进行评分和分析。
   - **简化计算**: 未被选择的维度将不参与评分，最终战力值仅基于所选维度的得分计算，不具备全面的参考性。
 `;
-            break;
-        default:
-            instruction = `
+			break;
+		default:
+			instruction = `
 ## 评分模式：⚙️ 标准模式
 - **说明**: 当前未启用任何特殊评分模式。请作为一名客观、中立的文学评论家，严格依据系统的全部16个维度定义和规则，对作品进行全面、均衡的评估。
 `;
-            break;
-    }
-    return instruction;
+			break;
+	}
+	return instruction;
 };
 
 export const getModeInstructions = async (mode: string | string[]): Promise<string> => {
-    let modes: string[] = [];
-    if (Array.isArray(mode)) {
-        modes = mode;
-    } else if (typeof mode === "string") {
-        modes = mode.split(",").map(m => m.trim()).filter(Boolean);
-    }
-    if (modes.length === 0) {
-        return await getModeInstructionsSingle("标准模式");
-    }
-    const instructions = await Promise.all(modes.map(async m => await getModeInstructionsSingle(m)));
-    return instructions.join("\n\n");
+	let modes: string[] = [];
+	if (Array.isArray(mode)) {
+		modes = mode;
+	} else if (typeof mode === "string") {
+		modes = mode.split(",").map(m => m.trim()).filter(Boolean);
+	}
+	if (modes.length === 0) {
+		return await getModeInstructionsSingle("标准模式");
+	}
+	const instructions = await Promise.all(modes.map(async m => await getModeInstructionsSingle(m)));
+	return instructions.join("\n\n");
 };
 
-export async function getScorePercentile(currentScore: number) {
-    try {
-        const scores = await db_read(db_name, "analysis_requests", {}, { sort: { overallScore: -1 } });
-        const totalScores = scores.length;
-        if (totalScores === 0)
-            return null;
+/**
+ * 计算给定分数在所有分析记录中的百分位数
+ * @param currentScore 当前分数
+ * @returns 百分位数字符串（如 "75.3"），如果计算失败则返回 null
+ */
+export const getScorePercentile = async (currentScore: number): Promise<string | null> => {
+	try {
+		// 使用正确的类型定义从 analysis_requests 集合中读取数据
+		const records = await db_read(db_name, "analysis_requests", {}, { sort: { "article.output.overallScore": -1 } }) as DatabaseAnalysisRecord[];
+		const totalScores = records.length;
 
-        const higherScores = scores.filter(s => s.overallScore <= currentScore).length;
-        const percentile = ((higherScores / totalScores) * 100).toFixed(1);
-        return percentile;
-    } catch (error) {
-        console.error("Error calculating percentile:", error);
-        return null;
-    }
-}
+		if (totalScores === 0) {
+			return null;
+		}
+
+		// 计算有多少记录的总分小于等于当前分数
+		const higherOrEqualScores = records.filter(record =>
+			record.article?.output?.overallScore != null && record.article.output.overallScore <= currentScore,
+		).length;
+
+		// 计算百分位数：当前分数超过了多少百分比的其他分数
+		const percentile = ((higherOrEqualScores / totalScores) * 100).toFixed(1);
+		return percentile;
+	} catch (error) {
+		console.error("Error calculating percentile:", error);
+		return null;
+	}
+};

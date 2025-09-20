@@ -1,15 +1,5 @@
-import process from "node:process";
-import dotenv from "dotenv";
 import { MongoClient } from "mongodb";
-
-dotenv.config();
-
-const runtimeEnv = {
-	MONGO_HOST: process.env.MONGO_HOST,
-	MONGO_PORT: process.env.MONGO_PORT,
-	MONGO_USER: process.env.MONGO_USER,
-	MONGO_PASS: process.env.MONGO_PASS,
-};
+import { getConfig } from "@/config";
 
 let cachedClient: MongoClient | null = null;
 let connectionPromise: Promise<MongoClient> | null = null;
@@ -36,10 +26,11 @@ export async function mongoClient(): Promise<MongoClient> {
 		return connectionPromise;
 	}
 
-	const MONGO_HOST = runtimeEnv.MONGO_HOST || "192.168.3.4";
-	let MONGO_PORT: string = (runtimeEnv.MONGO_PORT || 27017).toString();
-	const MONGO_USER = runtimeEnv.MONGO_USER;
-	const MONGO_PASS = runtimeEnv.MONGO_PASS;
+	const AppConfig = getConfig(); // 获取配置
+	const MONGO_HOST = AppConfig.mongodb.host || "192.168.3.4";
+	let MONGO_PORT: string = (AppConfig.mongodb.port || 27017).toString();
+	const MONGO_USER = AppConfig.mongodb.user;
+	const MONGO_PASS = AppConfig.mongodb.password;
 
 	MONGO_PORT = Number.isNaN(Number.parseInt(MONGO_PORT)) ? "27017" : Number.parseInt(MONGO_PORT).toString();
 
