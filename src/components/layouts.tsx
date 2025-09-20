@@ -11,6 +11,7 @@ import WriterAnalysisModes from "@/components/layouts/WriterPage/WriterAnalysisM
 import WriterAnalysisResult from "@/components/layouts/WriterPage/WriterAnalysisResult";
 import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/WriterAnalysisResultPlaceholder";
 import { Button } from "@/components/ui/button";
+import { getAvailableGradingModels } from "@/config";
 import { verifyArticleValue } from "@/lib/ai";
 import { getFingerprintId } from "@/lib/fingerprint";
 
@@ -112,7 +113,8 @@ export default function WriterAnalysisSystem() {
 	const [progress, setProgress] = useState(0);
 	const [retryCount, setRetryCount] = useState(0);
 	const [abortController, setAbortController] = useState<AbortController | null>(null);
-
+	const availableGradingModels = getAvailableGradingModels();
+	const [selectedModelId, setSelectedModelId] = useState<string>(availableGradingModels[0].model);
 	const handleModeChange = (modeId: string, checked: boolean, modeName: string) => {
 		// 阻止AI鉴别师被选中
 		if (modeId === "ai-detection") {
@@ -177,6 +179,7 @@ export default function WriterAnalysisSystem() {
 
 			// 优化正则，避免 \s* 和 [\s\S]*? 组合导致的回溯
 			const jsonMatch = cleanContent.match(/```json\n?([\s\S]+?)\n?```/) || cleanContent.match(/\{[\s\S]+\}/);
+
 			if (jsonMatch) {
 				const jsonStr = jsonMatch[1] || jsonMatch[0];
 				return JSON.parse(jsonStr.trim());
@@ -247,6 +250,9 @@ export default function WriterAnalysisSystem() {
 				body: JSON.stringify({
 					articleText,
 					mode: selectedModeName.join(","),
+					modelId: selectedModelId,
+					needSearch: verifyResult.needSearch,
+					searchKeywords: verifyResult.searchKeywords,
 				}),
 				signal: controller.signal,
 			});
@@ -442,6 +448,21 @@ export default function WriterAnalysisSystem() {
 
 				{/* 操作按钮区 - 优化UX体验 */}
 				<div className="mb-8 flex flex-col gap-4 items-center sm:flex-row sm:justify-center">
+					{/* 模型选择器 */}
+					<div className="flex gap-2 w-full items-center sm:w-auto">
+						<label htmlFor="model-selector" className="text-sm text-slate-600 whitespace-nowrap dark:text-slate-300">选择模型</label>
+						<select
+							id="model-selector"
+							className="text-sm px-3 py-2 border border-gray-300 rounded-md bg-white shadow-sm dark:text-slate-100 focus:outline-none dark:border-slate-700 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500/20"
+							value={selectedModelId}
+							onChange={e => setSelectedModelId(e.target.value)}
+							disabled={isAnalyzing}
+						>
+							{availableGradingModels.map(opt => (
+								<option key={opt.model} value={opt.model}>{opt.name}</option>
+							))}
+						</select>
+					</div>
 					<Button
 						onClick={handleAnalyze}
 						disabled={isAnalyzing || !articleText.trim()}

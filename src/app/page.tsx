@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NoticeBar } from "@/components/common/notice-bar";
 import WriterAnalysisSystem from "@/components/layouts";
+import { getConfig } from "@/config";
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
@@ -13,12 +14,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-	const message = "";
-	const link = "https://afdian.com/a/tianxiang?tab=feed";
+	const noticeConf = getConfig().app.notice;
 
 	return (
 		<>
-			<NoticeBar message={message} link={link} />
+			{noticeConf.enabled && <NoticeBar message={noticeConf.content} link={noticeConf.link} />}
 			<WriterAnalysisSystem />
 		</>
 	);
