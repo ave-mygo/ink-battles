@@ -6,7 +6,8 @@ import { OpenAI } from "openai";
 
 import { getConfig } from "@/config";
 import { db_name, db_table } from "@/lib/constants";
-import { db_find, db_read } from "@/lib/db";
+import { db_find, db_insert, db_read } from "@/lib/db";
+import { generateSessionId } from "@/utils/auth";
 
 import "server-only";
 
@@ -17,24 +18,27 @@ const AppConfig = getConfig();
  * 同时检测文章来源（经典、同人、再创作）并输出搜索关键词。
  * @param articleText 文章文本内容
  * @param mode 分析模式，默认为 "default"
- * @returns 验证结果，包含成功状态、是否需要搜索和搜索关键词
+ * @returns 验证结果，包含成功状态、是否需要搜索和搜索关键词，以及session
  */
-export const verifyArticleValue = async (articleText: string, mode: string = "default"): Promise<
+
+export const verifyArticleValue = async (articleText: string, mode: string = "default", modelId: string, fingerprint: string): Promise<
 	{
 		success: boolean;
 		error?: string;
 		needSearch?: boolean;
 		searchKeywords?: string[];
+		session?: string;
 	}
 > => {
 	// 1. 预处理文本，去除符号、空格、换行符
 	const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
-	const sha1 = crypto.SHA1(normalizedText).toString();
+	const sha1 = crypto.SHA1(normalizedText).toString(); // 计算文本的SHA1哈希值
 
 	// 2. 查找数据库缓存，使用新的数据结构字段路径
 	const cached = await db_find(db_name, db_table, {
 		"metadata.sha1": sha1,
 		"article.input.mode": mode,
+		"metadata.modelId": modelId,
 	}) as DatabaseAnalysisRecord | null;
 
 	if (cached) {
@@ -123,12 +127,19 @@ export const verifyArticleValue = async (articleText: string, mode: string = "de
 			return { success: false, error: `AI返回格式不完整或字段类型错误: ${JSON.stringify(parsedResult).slice(0, 100)}...` };
 		}
 
+		// 生成session
+		const session = generateSessionId(16);
+
+		// 写入数据库
+		await db_insert(db_name, "sessions", { fingerprint, session, sha1, used: false });
+
 		// 返回完整的结果
 		return {
 			success: parsedResult.success,
 			error: parsedResult.success === false ? (parsedResult.message || "内容不符合分析标准") : undefined,
 			needSearch: parsedResult.needSearch,
 			searchKeywords: parsedResult.searchKeywords,
+			session,
 		};
 	} catch (error: any) {
 		console.error("Failed to verify article value", error);

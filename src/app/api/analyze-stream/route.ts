@@ -9,11 +9,9 @@ import { db_name, db_table } from "@/lib/constants";
 
 import { db_find, db_insert } from "@/lib/db";
 import { searchWebFromJina } from "@/lib/external";
-import { aiResultCache } from "@/lib/memory-cache";
 
-const CHUNK_BUFFER_SIZE = 10; // 减少缓冲区大小
-const NON_STREAM_TIMEOUT = 120000; // 非流式模式超时时间
-const FIRST_CHUNK_TIMEOUT = 10000; // 首个chunk超时时间
+const NON_STREAM_TIMEOUT = 120 * 1000; // 非流式模式超时时间
+const FIRST_CHUNK_TIMEOUT = 60 * 1000; // 首个chunk超时时间
 
 // 格式化搜索结果为适合AI对话的文本
 function formatSearchResultsForAI(searchResult: JinaSearchResponse): string {
@@ -22,7 +20,6 @@ function formatSearchResultsForAI(searchResult: JinaSearchResponse): string {
 	}
 
 	const searchInfo = searchResult.data
-		.slice(0, 5) // 只取前5个结果，避免内容过长
 		.map((article, index) => {
 			return `${index + 1}. 标题: ${article.title}
    来源: ${article.url}
@@ -36,7 +33,6 @@ function formatSearchResultsForAI(searchResult: JinaSearchResponse): string {
 
 export async function POST(request: NextRequest) {
 	let resultContent = "";
-	let chunkQueue: string[] = [];
 	let hasError = false;
 
 	try {
@@ -55,30 +51,39 @@ export async function POST(request: NextRequest) {
 
 		const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
 		const sha1 = crypto.SHA1(normalizedText).toString();
-		const cacheKey = `${sha1}-${mode || "default"}-${modelId}`;
 
-		// 先检查内存缓存
-		const memoryResult = aiResultCache.get(cacheKey);
-		if (memoryResult) {
-			return createStreamResponse(memoryResult, "cached");
-		}
-
-		// 再检查数据库缓存
+		// 检查数据库缓存
 		const cached = await db_find(db_name, db_table, {
-			sha1,
-			mode: mode || "default",
-			modelId: modelId || "standard",
+			"metadata.sha1": sha1,
+			"article.input.mode": mode,
+			"metadata.modelId": modelId,
 		});
-		if (cached && cached.result) {
-			const resultStr = typeof cached.result === "string" ? cached.result : JSON.stringify(cached.result);
-			// 存入内存缓存以加速后续访问
-			aiResultCache.set(cacheKey, resultStr);
+
+		if (cached && cached.article.output.result) {
+			const resultStr = typeof cached.article.output.result === "string" ? cached.article.output.result : JSON.stringify(cached.article.output.result);
 			return createStreamResponse(resultStr, "cached");
 		}
 
 		// 新限额逻辑：基于登录状态、IP、指纹
 		const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null;
 		const fingerprint = request.headers.get("x-fingerprint");
+		const session = request.headers.get("x-session");
+
+		if (!session) {
+			return Response.json({ error: "缺少会话标识，请刷新页面重试" }, { status: 400 });
+		}
+
+		// 校验session有效性
+		const sessionRecords = await db_find(db_name, "sessions", { session });
+		if (!sessionRecords) {
+			return Response.json({ error: "无效的会话标识，请刷新页面重试" }, { status: 400 });
+		}
+		if (sessionRecords.used) {
+			return Response.json({ error: "该会话标识已被使用，请刷新页面重试" }, { status: 400 });
+		}
+
+		// 标记session为已使用
+		await db_insert(db_name, "sessions", { ...sessionRecords, used: true });
 
 		// 执行搜索并保存结果
 		let searchResult = null;
@@ -103,7 +108,7 @@ export async function POST(request: NextRequest) {
 		const abortController = new AbortController();
 		const timeoutId = setTimeout(() => {
 			abortController.abort();
-		}, NON_STREAM_TIMEOUT); // 使用更长的超时时间以支持非流式模式
+		}, NON_STREAM_TIMEOUT);
 
 		try {
 			// 动态构建 messages，将搜索结果插入到系统提示之后
@@ -125,7 +130,7 @@ export async function POST(request: NextRequest) {
 			const stream = await openAI.chat.completions.create({
 				model,
 				messages,
-				temperature: 0.3,
+				temperature: model.includes("gpt-5-nano") ? 1 : 0.3,
 				stream: true,
 				response_format: { type: "json_object" },
 				seed: fingerprint ? Number.parseInt(fingerprint) : undefined,
@@ -135,7 +140,7 @@ export async function POST(request: NextRequest) {
 
 			// 创建一个可读流
 			const encoder = new TextEncoder();
-			let isStreamingMode = true; // 假设支持流式，在首次响应时验证
+			let isStreamingMode = true;
 
 			const readable = new ReadableStream({
 				async start(controller) {
@@ -157,12 +162,10 @@ export async function POST(request: NextRequest) {
 								if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta) {
 									isStreamingMode = true;
 									console.warn("检测到原生流式模式");
-									// 发送模式标识（客户端可以解析这个信息）
 									controller.enqueue(encoder.encode("<!--STREAM_MODE:native-->"));
 								} else {
 									isStreamingMode = false;
 									console.warn("检测到非流式模式，将等待完整响应");
-									// 发送模式标识（客户端可以解析这个信息）
 									controller.enqueue(encoder.encode("<!--STREAM_MODE:simulated-->"));
 								}
 							}
@@ -173,24 +176,14 @@ export async function POST(request: NextRequest) {
 
 								if (isStreamingMode) {
 									// 流式模式：立即发送内容
-									chunkQueue.push(content);
-									if (chunkQueue.length >= CHUNK_BUFFER_SIZE) {
-										const bufferedContent = chunkQueue.join("");
-										chunkQueue = [];
-										controller.enqueue(encoder.encode(bufferedContent));
-									}
+									controller.enqueue(encoder.encode(content));
 								}
-								// 非流式模式：只累积内容，不立即发送
 							}
 						}
 
 						// 处理剩余内容
 						if (!hasError) {
-							if (isStreamingMode && chunkQueue.length > 0) {
-								// 流式模式：发送剩余的缓冲内容
-								controller.enqueue(encoder.encode(chunkQueue.join("")));
-								chunkQueue = [];
-							} else if (!isStreamingMode && resultContent.trim()) {
+							if (!isStreamingMode && resultContent.trim()) {
 								// 非流式模式：模拟流式发送完整内容
 								const chunkSize = 50;
 								let pos = 0;
@@ -202,10 +195,10 @@ export async function POST(request: NextRequest) {
 									const chunk = resultContent.slice(pos, pos + chunkSize);
 									controller.enqueue(encoder.encode(chunk));
 									pos += chunkSize;
-									setTimeout(sendChunks, 10); // 添加小延迟模拟流式
+									setTimeout(sendChunks, 10);
 								};
 								sendChunks();
-								return; // 提前返回，避免重复关闭
+								return;
 							}
 						}
 
@@ -227,10 +220,7 @@ export async function POST(request: NextRequest) {
 										}
 									} catch (parseError) {
 										console.error("JSON解析失败，以文本形式保存", parseError);
-										parsedResult = resultContent; // 如果解析失败，则保存原始文本
-									} finally {
-										// 立即清空大对象引用，释放内存
-										resultContent = "";
+										parsedResult = resultContent;
 									}
 
 									const overallScore = parsedResult.overallScore || 0;
@@ -242,21 +232,26 @@ export async function POST(request: NextRequest) {
 										{
 											uid: null,
 											article: {
-												input: { articleText, mode: mode || "default", modelId: modelId || "standard" },
+												input: {
+													articleText,
+													mode: mode || "default",
+													search: {
+														needSearch,
+														searchKeywords: searchKeywords || [],
+														searchResult: searchResult || "",
+													},
+												},
 												output: { result: jsonContent, overallScore, tags },
 											},
 											metadata: {
 												sha1,
 												ip,
 												fingerprint,
-												modelId: modelId || "standard",
+												modelId,
 											},
 											timestamp: new Date().toISOString(),
 										},
 									);
-
-									// 同时存入内存缓存
-									aiResultCache.set(cacheKey, jsonContent);
 								} catch (e) {
 									console.error("缓存AI结果失败", e);
 								}
@@ -267,9 +262,6 @@ export async function POST(request: NextRequest) {
 						controller.error(error);
 					} finally {
 						clearTimeout(timeoutId);
-						// 清理内存
-						resultContent = "";
-						chunkQueue = [];
 					}
 				},
 			});
@@ -279,8 +271,8 @@ export async function POST(request: NextRequest) {
 					"Content-Type": "text/plain; charset=utf-8",
 					"Cache-Control": "no-cache",
 					"Connection": "keep-alive",
-					"X-Stream-Mode": "auto-detect", // 表示将在运行时检测
-					"X-Response-Mode": "adaptive", // 表示自适应模式
+					"X-Stream-Mode": "auto-detect",
+					"X-Response-Mode": "adaptive",
 				},
 			});
 		} finally {
@@ -288,17 +280,14 @@ export async function POST(request: NextRequest) {
 		}
 	} catch (error) {
 		console.error("流式分析出错:", error);
-		// 清理内存
-		resultContent = "";
-		chunkQueue = [];
 		return Response.json({ error: "分析出错", detail: (error as Error).message }, { status: 500 });
 	}
 }
 
 // 辅助函数：创建流式响应
-function createStreamResponse(resultStr: string, mode: "cached" | "simulated" | "native" = "native") {
+function createStreamResponse(resultStr: string, mode: "cached") {
 	const encoder = new TextEncoder();
-	const chunkSize = 50; // 减小块大小以减少内存占用
+	const chunkSize = 50;
 	let pos = 0;
 
 	const readable = new ReadableStream({
@@ -330,23 +319,6 @@ function createStreamResponse(resultStr: string, mode: "cached" | "simulated" | 
 		"Cache-Control": "no-cache",
 		"Connection": "keep-alive",
 	};
-
-	// 添加响应头指示当前模式
-	switch (mode) {
-		case "cached":
-			headers["X-Stream-Mode"] = "cached";
-			headers["X-Response-Mode"] = "cached";
-			break;
-		case "simulated":
-			headers["X-Stream-Mode"] = "simulated";
-			headers["X-Response-Mode"] = "non-streaming";
-			break;
-		case "native":
-		default:
-			headers["X-Stream-Mode"] = "native";
-			headers["X-Response-Mode"] = "streaming";
-			break;
-	}
 
 	return new Response(readable, { headers });
 }

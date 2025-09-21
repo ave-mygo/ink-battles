@@ -10,6 +10,7 @@ import WriterAnalysisInput from "@/components/layouts/WriterPage/WriterAnalysisI
 import WriterAnalysisModes from "@/components/layouts/WriterPage/WriterAnalysisModes";
 import WriterAnalysisResult from "@/components/layouts/WriterPage/WriterAnalysisResult";
 import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/WriterAnalysisResultPlaceholder";
+import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
 import { getAvailableGradingModels } from "@/config";
 import { verifyArticleValue } from "@/lib/ai";
@@ -222,8 +223,11 @@ export default function WriterAnalysisSystem() {
 		try {
 			setStreamContent(prev => `${prev}${isRetry ? "重试" : "开始"}分析，校验文章内容...\n`);
 
+			// 生成浏览器指纹
+			const fingerprint = await getFingerprintId();
+
 			// 验证文章内容
-			const verifyResult = await verifyArticleValue(articleText);
+			const verifyResult = await verifyArticleValue(articleText, selectedModeName.join(","), selectedModelId, fingerprint);
 
 			if (!verifyResult.success) {
 				const errorMessage = verifyResult.error || "文章内容不符合分析标准";
@@ -232,9 +236,6 @@ export default function WriterAnalysisSystem() {
 
 			setStreamContent(prev => `${prev}校验通过，正在分析中...\n`);
 			setProgress(10);
-
-			// 生成浏览器指纹
-			const fingerprint = await getFingerprintId();
 
 			// 创建请求超时
 			const timeoutId = setTimeout(() => {
@@ -246,6 +247,7 @@ export default function WriterAnalysisSystem() {
 				headers: {
 					"Content-Type": "application/json",
 					"X-Fingerprint": fingerprint,
+					"X-Session": verifyResult.session || "",
 				},
 				body: JSON.stringify({
 					articleText,
@@ -428,41 +430,36 @@ export default function WriterAnalysisSystem() {
 				<WriterAnalysisHeader />
 
 				{/* 主要内容区域 - 优化布局比例 */}
-				<div className="mb-6 gap-6 grid lg:gap-8 lg:grid-cols-5">
-					{/* 左侧：文章输入区 - 扩大宽度 */}
-					<div className="lg:col-span-3">
+				<div className="mb-6 gap-6 grid lg:gap-8 lg:grid-cols-8">
+					{/* 左侧：文章输入区 - 增加宽度 */}
+					<div className="lg:col-span-5">
 						<WriterAnalysisInput articleText={articleText} setArticleText={setArticleText} />
 					</div>
 
-					{/* 右侧：评估模式选择 - 适度缩小 */}
-					<div className="lg:col-span-2">
-						<WriterAnalysisModes
-							evaluationModes={evaluationModes}
-							selectedMode={selectedMode}
-							isModesExpanded={isModesExpanded}
-							setIsModesExpanded={setIsModesExpanded}
-							handleModeChange={handleModeChange}
+					{/* 右侧：AI模型选择 - 减少宽度 */}
+					<div className="lg:col-span-3">
+						<WriterModelSelector
+							availableModels={availableGradingModels}
+							selectedModelId={selectedModelId}
+							onModelChange={setSelectedModelId}
+							disabled={isAnalyzing}
 						/>
 					</div>
 				</div>
 
+				{/* 评分模式区域 - 独立一行（原先为模型选择） */}
+				<div className="mb-6">
+					<WriterAnalysisModes
+						evaluationModes={evaluationModes}
+						selectedMode={selectedMode}
+						isModesExpanded={isModesExpanded}
+						setIsModesExpanded={setIsModesExpanded}
+						handleModeChange={handleModeChange}
+					/>
+				</div>
+
 				{/* 操作按钮区 - 优化UX体验 */}
 				<div className="mb-8 flex flex-col gap-4 items-center sm:flex-row sm:justify-center">
-					{/* 模型选择器 */}
-					<div className="flex gap-2 w-full items-center sm:w-auto">
-						<label htmlFor="model-selector" className="text-sm text-slate-600 whitespace-nowrap dark:text-slate-300">选择模型</label>
-						<select
-							id="model-selector"
-							className="text-sm px-3 py-2 border border-gray-300 rounded-md bg-white shadow-sm dark:text-slate-100 focus:outline-none dark:border-slate-700 dark:bg-slate-800 focus:ring-2 focus:ring-blue-500/20"
-							value={selectedModelId}
-							onChange={e => setSelectedModelId(e.target.value)}
-							disabled={isAnalyzing}
-						>
-							{availableGradingModels.map(opt => (
-								<option key={opt.model} value={opt.model}>{opt.name}</option>
-							))}
-						</select>
-					</div>
 					<Button
 						onClick={handleAnalyze}
 						disabled={isAnalyzing || !articleText.trim()}
