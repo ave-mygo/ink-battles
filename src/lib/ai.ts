@@ -20,7 +20,6 @@ const AppConfig = getConfig();
  * @param mode 分析模式，默认为 "default"
  * @returns 验证结果，包含成功状态、是否需要搜索和搜索关键词，以及session
  */
-
 export const verifyArticleValue = async (articleText: string, mode: string = "default", modelId: string, fingerprint: string): Promise<
 	{
 		success: boolean;
@@ -495,7 +494,6 @@ ${modeInstruction}
 
 1.  **计算基础得分**: 对14个基础维度（人物塑造力 至 语言原创性）逐一打分（1-5分），然后将这14个分数相加，得到"基础得分"。（满分70）
 2.  **获取权重**: 对"经典性"和"新锐性"两个维度进行评级，并获取对应的权重乘数。
-3.  **计算最终战力值**: \`最终战力值 = 基础得分 × 经典性权重 × 新锐性权重\`。
 
 # **第五部分：赋予称号**
 
@@ -525,7 +523,6 @@ ${modeInstruction}
 以下是返回事例：
 \`\`\`json
 {
-  "overallScore": 0,
   "overallAssessment": "",
   "title": "",
   "ratingTag": "",
@@ -560,7 +557,7 @@ ${modeInstruction}
 }
 \`\`\`
 
-- **overallScore**: 必须是根据上述公式计算出的最终战力值 (number)。
+- **overallScore**: 必须为0，实际战力值将由系统计算 (number)。
 - **overallAssessment**: 一个字符串，总结作品的总体水平和发展前景 (string)。
 - **title**: 根据最终战力值赋予的称号 (string)。
 - **ratingTag**: 根据经典性权重与新锐性权重乘积赋予的快速评分标签 (string)。
@@ -707,4 +704,31 @@ export const getScorePercentile = async (currentScore: number): Promise<string |
 		console.error("Error calculating percentile:", error);
 		return null;
 	}
+};
+
+export const calculateFinalScore = async (parsedResult: any): Promise<number> => {
+	if (!parsedResult.dimensions || !Array.isArray(parsedResult.dimensions)) {
+		return 0;
+	}
+
+	// 提取经典性和新锐性（只要名字包含关键字即可）
+	const classicityDimension = parsedResult.dimensions.find((d: any) => d.name.includes("经典"));
+	const noveltyDimension = parsedResult.dimensions.find((d: any) => d.name.includes("新锐"));
+
+	// 计算基础得分（排除掉经典性和新锐性维度）
+	const baseDimensions = parsedResult.dimensions.filter(
+		(d: any) => !d.name.includes("经典") && !d.name.includes("新锐"),
+	);
+	const baseScore = baseDimensions.reduce((sum: number, dimension: any) => {
+		return sum + (dimension.score || 0);
+	}, 0);
+
+	// 获取权重（默认 1.0）
+	const classicityWeight = classicityDimension?.score || 1.0;
+	const noveltyWeight = noveltyDimension?.score || 1.0;
+
+	// 计算最终战力值
+	const finalScore = baseScore * classicityWeight * noveltyWeight;
+
+	return finalScore;
 };

@@ -106,5 +106,3 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 		</svg>
 	);
 };
-
-// 命名导出，遵循项目导入规范

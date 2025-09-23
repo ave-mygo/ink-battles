@@ -3,7 +3,7 @@ import type { JinaSearchResponse } from "@/types/callback/external";
 import crypto from "crypto-js";
 import OpenAI from "openai";
 import { getGradingModel } from "@/config";
-import { buildSystemPrompt, getModeInstructions } from "@/lib/ai";
+import { buildSystemPrompt, calculateFinalScore, getModeInstructions } from "@/lib/ai";
 
 import { db_name, db_table } from "@/lib/constants";
 
@@ -223,7 +223,6 @@ export async function POST(request: NextRequest) {
 										parsedResult = resultContent;
 									}
 
-									const overallScore = parsedResult.overallScore || 0;
 									const tags = parsedResult.tags || [];
 
 									await db_insert(
@@ -241,7 +240,7 @@ export async function POST(request: NextRequest) {
 														searchResult: searchResult || "",
 													},
 												},
-												output: { result: jsonContent, overallScore, tags },
+												output: { result: jsonContent, overallScore: calculateFinalScore(parsedResult), tags },
 											},
 											metadata: {
 												sha1,

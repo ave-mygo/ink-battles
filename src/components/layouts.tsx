@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { getAvailableGradingModels } from "@/config";
 import { verifyArticleValue } from "@/lib/ai";
 import { getFingerprintId } from "@/lib/fingerprint";
+import { calculateFinalScore } from "@/lib/utils-client";
 
 const evaluationModes = [
 	{
@@ -183,11 +184,19 @@ export default function WriterAnalysisSystem() {
 
 			if (jsonMatch) {
 				const jsonStr = jsonMatch[1] || jsonMatch[0];
-				return JSON.parse(jsonStr.trim());
+				const parsed = JSON.parse(jsonStr.trim());
+				if (parsed && (parsed.overallScore == null || parsed.overallScore === 0)) {
+					parsed.overallScore = calculateFinalScore(parsed);
+				}
+				return parsed as AnalysisResult;
 			}
 
 			// 如果没有找到JSON标记，尝试直接解析整个内容
-			return JSON.parse(cleanContent.trim());
+			const fallback = JSON.parse(cleanContent.trim());
+			if (fallback && (fallback.overallScore == null || fallback.overallScore === 0)) {
+				fallback.overallScore = calculateFinalScore(fallback);
+			}
+			return fallback as AnalysisResult;
 		} catch (error) {
 			console.error("解析流式结果失败:", error);
 			return null;
