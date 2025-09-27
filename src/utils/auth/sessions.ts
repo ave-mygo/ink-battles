@@ -9,3 +9,5 @@ export const generateSessionId = (length = 12) => {
 	}
 	return result;
 };
+
+export default generateSessionId;

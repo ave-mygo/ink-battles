@@ -1,5 +1,9 @@
+"use server";
+
 import { MongoClient } from "mongodb";
 import { getConfig } from "@/config";
+
+import "server-only";
 
 let cachedClient: MongoClient | null = null;
 let connectionPromise: Promise<MongoClient> | null = null;

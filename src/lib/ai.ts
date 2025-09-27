@@ -7,7 +7,7 @@ import { OpenAI } from "openai";
 import { getConfig } from "@/config";
 import { db_name, db_table } from "@/lib/constants";
 import { db_find, db_insert, db_read } from "@/lib/db";
-import { generateSessionId } from "@/utils/auth";
+import { generateSessionId } from "@/utils/auth/sessions";
 
 import "server-only";
 

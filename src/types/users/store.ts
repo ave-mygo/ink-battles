@@ -10,5 +10,6 @@ export interface UserStoreData {
 	loading: boolean;
 	setUser: (user: UserStore) => void;
 	logout: () => void;
+	clearStore: () => void;
 	setLoading: (loading: boolean) => void;
 }
