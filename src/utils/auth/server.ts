@@ -1,7 +1,6 @@
 "use server";
 
 import type { AuthUserInfo } from "@/types/auth/user";
-import type { UserStore } from "@/types/users";
 import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -10,7 +9,7 @@ import { getConfig } from "@/config";
 import { db_name } from "@/lib/constants";
 import { db_find, db_insert } from "@/lib/db";
 
-import { generateNextUID } from "@/utils/auth/common";
+import { generateNextUID } from "@/utils/auth";
 
 import "server-only";
 
@@ -19,18 +18,6 @@ const {
 		secret: JWT_SECRET,
 	},
 } = getConfig();
-
-const FALLBACK_AVATAR = "/favicon.png";
-
-export const mapUserToStore = (user: Record<string, any>): UserStore => {
-	const emailName = user?.email ? String(user.email).split("@")[0] : `用户${user?.uid ?? ""}`;
-	return {
-		uid: String(user.uid),
-		nickname: user?.nickname ?? emailName,
-		avatar: user?.avatar ?? FALLBACK_AVATAR,
-		isLoggedIn: true,
-	};
-};
 
 /**
  * 用户注册
@@ -64,10 +51,7 @@ export async function registerUser(email: string, password: string): Promise<{ s
  * @param password 密码
  * @returns { success, message } 登录结果对象，包含是否成功和提示信息
  */
-export async function LoginUser(
-	email: string,
-	password: string,
-): Promise<{ success: boolean; message: string; user?: UserStore }> {
+export async function LoginUser(email: string, password: string): Promise<{ success: boolean; message: string }> {
 	if (!email || !password) {
 		return { success: false, message: "邮箱和密码不能为空" };
 	}
@@ -89,8 +73,7 @@ export async function LoginUser(
 		path: "/",
 		maxAge: 24 * 60 * 60 * 7,
 	});
-
-	return { success: true, message: "登录成功", user: mapUserToStore(user) };
+	return { success: true, message: "登录成功" };
 }
 
 /**
@@ -137,23 +120,11 @@ export const getCurrentUserInfo = async (): Promise<AuthUserInfo | null> => {
 };
 
 /**
- * 获取用于前端 Store 水合的精简用户信息
- * - 仅返回 UI 需要的最小字段，避免泄露敏感信息
- */
-export const getCurrentUserStoreInfo = async (): Promise<UserStore | null> => {
-	const info = await getCurrentUserInfo();
-	if (!info)
-		return null;
-
-	return mapUserToStore(info as Record<string, any>);
-};
-
-/**
  * 用户注销，清空cookies
  * @returns { success, message } 注销结果对象
  */
-export async function logoutUser(): Promise<{ success: boolean; message: string }> {
+export const logoutUser = async (): Promise<{ success: boolean; message: string }> => {
 	const cookieStore = await cookies();
 	cookieStore.delete("auth-token");
 	return { success: true, message: "注销成功" };
-}
+};

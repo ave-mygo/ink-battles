@@ -5,8 +5,6 @@ export async function POST(req: Request) {
 	try {
 		const { code } = await req.json();
 
-		console.log("收到QQ登录请求，授权码:", code);
-
 		if (!code) {
 			return NextResponse.json(
 				{ success: false, message: "缺少授权码" },

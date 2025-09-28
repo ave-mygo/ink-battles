@@ -2,6 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { ArrowRight, Lock, LogIn, Mail } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { toast } from "sonner";
@@ -9,12 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cleanupOAuthParams, initiateQQLogin, isQQOAuthCallback, parseQQCallback } from "@/utils/auth";
+import { loginSetState } from "@/utils/auth/client";
 
 /**
  * 登录表单组件
  * @returns 登录交互卡片
  */
 const SignInForm = () => {
+	const router = useRouter();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
@@ -33,8 +36,10 @@ const SignInForm = () => {
 
 			if (data.success) {
 				toast.success("QQ登录成功");
+				// 同步登录状态到状态管理
+				await loginSetState();
 				cleanupOAuthParams();
-				window.location.href = "/dashboard";
+				router.push("/dashboard");
 			} else {
 				toast.error(data.message || "QQ登录失败");
 				cleanupOAuthParams();
@@ -84,7 +89,9 @@ const SignInForm = () => {
 			const data = await res.json();
 			if (data.success) {
 				toast.success("登录成功");
-				window.location.href = "/dashboard";
+				// 同步登录状态到状态管理
+				await loginSetState();
+				router.push("/dashboard");
 			} else {
 				toast.error(data.message || "登录失败");
 			}
