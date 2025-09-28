@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
 														searchResult: searchResult || "",
 													},
 												},
-												output: { result: jsonContent, overallScore: calculateFinalScore(parsedResult), tags },
+												output: { result: jsonContent, overallScore: await calculateFinalScore(parsedResult), tags },
 											},
 											metadata: {
 												sha1,

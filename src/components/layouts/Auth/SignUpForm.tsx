@@ -2,6 +2,7 @@
 
 import { Icon } from "@iconify/react";
 import { ArrowRight, Lock, Mail, ShieldCheck, Timer, UserPlus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { toast } from "sonner";
@@ -11,12 +12,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { isPasswordValid } from "@/lib/password-strength";
 import { cleanupOAuthParams, initiateQQLogin, isQQOAuthCallback, parseQQCallback } from "@/utils/auth";
+import { loginSetState } from "@/utils/auth/client";
 
 /**
  * 注册表单组件（含邮箱验证码）
  * @returns 注册交互卡片
  */
 const SignUpForm = () => {
+	const router = useRouter();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,8 +44,10 @@ const SignUpForm = () => {
 
 			if (data.success) {
 				toast.success("QQ登录成功");
+				// 同步登录状态到状态管理
+				await loginSetState();
 				cleanupOAuthParams();
-				window.location.href = "/dashboard";
+				router.push("/dashboard");
 			} else {
 				toast.error(data.message || "QQ登录失败");
 				cleanupOAuthParams();
@@ -135,8 +140,28 @@ const SignUpForm = () => {
 			});
 			const data = await res.json();
 			if (data.success) {
-				toast.success("注册成功，请登录");
-				window.location.href = "/signin";
+				toast.success("注册成功，尝试自动登录");
+				// 注册成功后，尝试自动登录
+				try {
+					const loginRes = await fetch("/api/login", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ email, password }),
+					});
+					const loginData = await loginRes.json();
+					if (loginData.success) {
+						// 同步登录状态到状态管理
+						await loginSetState();
+						toast.success("自动登录成功");
+						router.push("/dashboard");
+					} else {
+						// 自动登录失败，跳转到登录页
+						router.push("/signin");
+					}
+				} catch (loginError) {
+					console.error("自动登录失败:", loginError);
+					router.push("/signin");
+				}
 			} else {
 				toast.error(data.message || "注册失败");
 			}
