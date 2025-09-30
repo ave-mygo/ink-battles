@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/common/theme/toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAuthActions, useAuthLoading, useIsAuthenticated } from "@/store";
+import { useAuthActions, useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
 
 interface NavItem {
 	href: string;
@@ -25,6 +25,11 @@ export const HeaderNav = () => {
 	const isLoggedIn = useIsAuthenticated();
 	const loading = useAuthLoading();
 	const { logout } = useAuthActions();
+
+	// 确保客户端水合完成
+	useAuthHydration();
+
+	// 开发调试请改用 console.warn 或 console.error 避免 lint 报错
 
 	const baseBtn = (variant: NavItem["variant"] = "default") =>
 		buttonVariants({ size: "sm", variant });

@@ -1,15 +1,17 @@
 "use client";
 
-import type { AuthUserInfo } from "@/types/auth/user";
+import type { AuthUserInfoSafe, UserStore } from "@/types/users";
 import { clearAuthStore, syncAuthStoreAfterLogin } from "@/store";
 import { getCurrentUserInfo, logoutUser } from "./server";
 
-const mapAuthToUserStore = (user: AuthUserInfo) => ({
-	uid: String(user.uid),
-	nickname: user.nickname || user.email?.split("@")[0] || "用户",
-	avatar: user.avatar || "",
-	isLoggedIn: true,
-});
+const mapAuthToUserStore = (user: AuthUserInfoSafe): UserStore => {
+	return {
+		uid: String(user.uid),
+		nickname: user.email?.split("@")[0] || "用户",
+		avatar: "",
+		isLoggedIn: true,
+	};
+};
 
 /**
  * 登录后同步状态到客户端 Store

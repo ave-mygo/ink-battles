@@ -1,6 +1,7 @@
 "use client";
 
 import type { UserStore, UserStoreData } from "@/types/users";
+import { useEffect } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
@@ -12,7 +13,8 @@ export const useAuthStore = create<UserStoreData>()(
 	persist(
 		set => ({
 			user: null,
-			loading: false,
+			// 初始为 true，直到客户端完成持久化数据的水合
+			loading: true,
 
 			// 设置用户信息并标记为已登录
 			setUser: (user: UserStore) => set({ user, loading: false }),
@@ -68,4 +70,23 @@ export const syncAuthStoreAfterLogin = (user: UserStore) => {
  */
 export const clearAuthStore = () => {
 	useAuthStore.getState().clearStore();
+};
+
+/**
+ * 客户端水合 hook
+ * 确保持久化存储的数据在客户端正确加载
+ */
+export const useAuthHydration = () => {
+	const { setLoading } = useAuthActions();
+
+	useEffect(() => {
+		// 手动触发持久化状态的水合（因启用了 skipHydration）
+		const anyStore = useAuthStore as unknown as { persist?: { rehydrate?: () => void } };
+		try {
+			anyStore.persist?.rehydrate?.();
+		} finally {
+			// 结束加载态（即使本地没有持久化数据，也要结束加载）
+			setLoading(false);
+		}
+	}, [setLoading]);
 };
