@@ -1,6 +1,6 @@
 "use client";
 
-import type { QQOAuthResponse } from "@/types/auth/user";
+import type { QQOAuthResponse } from "@/types/users/user";
 
 /**
  * 构建QQ OAuth授权URL

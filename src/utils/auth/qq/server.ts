@@ -1,6 +1,6 @@
 "use server";
 
-import type { AuthUserInfo } from "@/types/auth/user";
+import type { AuthUserInfo, AuthUserInfoSafe } from "@/types/users/user";
 import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -23,7 +23,7 @@ const {
  * @param tempCode 临时授权码
  * @returns 登录结果
  */
-export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfo }> => {
+export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfoSafe }> => {
 	if (!tempCode) {
 		return { success: false, message: "授权码不能为空" };
 	}
@@ -79,10 +79,18 @@ export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean;
 			maxAge: 24 * 60 * 60 * 7,
 		});
 
+		// 净化返回到客户端的用户信息
+		const { _id, createdAt, updatedAt, ...rest } = user as any;
+		const safeUser: AuthUserInfoSafe = {
+			...rest,
+			createdAt: createdAt ? new Date(createdAt).toISOString() : null,
+			updatedAt: updatedAt ? new Date(updatedAt).toISOString() : null,
+		};
+
 		return {
 			success: true,
 			message: "QQ登录成功",
-			userInfo: user,
+			userInfo: safeUser,
 		};
 	} catch (error) {
 		console.error("QQ登录错误:", error);

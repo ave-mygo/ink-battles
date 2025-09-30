@@ -1,16 +1,16 @@
 "use server";
 
-import type { AuthUserInfo } from "@/types/auth/user";
+import type { AuthUserInfo, AuthUserInfoSafe } from "@/types/users/user";
 import process from "node:process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { getConfig } from "@/config";
 import { db_name } from "@/lib/constants";
+
 import { db_find, db_insert } from "@/lib/db";
 
 import { generateNextUID } from "@/utils/auth";
-
 import "server-only";
 
 const {
@@ -102,7 +102,7 @@ export const getCurrentUserEmail = async (): Promise<string | null> => {
  * 获取当前登录用户的完整信息
  * @returns 用户信息或null
  */
-export const getCurrentUserInfo = async (): Promise<AuthUserInfo | null> => {
+export const getCurrentUserInfo = async (): Promise<AuthUserInfoSafe | null> => {
 	const cookieStore = await cookies();
 	const token = cookieStore.get("auth-token")?.value;
 	if (!token)
@@ -110,10 +110,18 @@ export const getCurrentUserInfo = async (): Promise<AuthUserInfo | null> => {
 
 	try {
 		const secret = JWT_SECRET || "dev_secret_change_me";
-		const payload = jwt.verify(token, secret) as {
-			uid: number;
+		const payload = jwt.verify(token, secret) as { uid: number };
+		const doc = await db_find(db_name, "users", { uid: payload.uid }) as AuthUserInfo;
+		if (!doc)
+			return null;
+		// 将 Mongo 文档净化为可序列化的纯对象
+		const { _id, createdAt, updatedAt, ...rest } = doc;
+		const safe: AuthUserInfoSafe = {
+			...rest,
+			createdAt: createdAt ? new Date(createdAt).toISOString() : null,
+			updatedAt: updatedAt ? new Date(updatedAt).toISOString() : null,
 		};
-		return await db_find(db_name, "users", { uid: payload.uid });
+		return safe;
 	} catch {
 		return null;
 	}
