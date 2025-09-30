@@ -8,6 +8,9 @@ ENV PNPM_STORE_DIR=/pnpm/store \
 	PATH=/root/.local/share/pnpm:$PATH \
 	CI=1
 
+# Next.js/SWC 在 Alpine (musl) 环境需要 libc6-compat 支持
+RUN apk add --no-cache libc6-compat
+
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable
 RUN corepack pnpm config set registry https://registry.npmmirror.com
@@ -27,6 +30,9 @@ RUN corepack pnpm build
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+
+# 运行环境同样需要 libc6-compat
+RUN apk add --no-cache libc6-compat
 
 # 创建非root用户
 RUN addgroup -g 1001 -S nodejs
