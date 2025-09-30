@@ -1,3 +1,0 @@
-dev-ink-battles.rikki.top {
-    reverse_proxy localhost:3000
-}
