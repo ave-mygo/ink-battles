@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SendVerificationEmail } from "@/utils/verification-server";
+import { SendVerificationEmail } from "@/utils/common/mail";
 
 export async function POST(req: Request) {
 	const { email, type } = await req.json();
