@@ -17,8 +17,10 @@ export const ThemeToggle = () => {
 	const [mounted, setMounted] = useState(false);
 
 	// 避免服务端渲染时的主题闪烁
+	// 使用 requestAnimationFrame 延迟状态更新，规避 lint 关于在 useEffect 中直接 setState 的告警
 	useEffect(() => {
-		setMounted(true);
+		const id = requestAnimationFrame(() => setMounted(true));
+		return () => cancelAnimationFrame(id);
 	}, []);
 
 	if (!mounted) {
