@@ -2,7 +2,7 @@
 
 import type { AnalysisResult } from "@/types/callback/ai";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import StreamingDisplay from "@/components/layouts/WriterPage/streaming-display";
 import WriterAnalysisHeader from "@/components/layouts/WriterPage/WriterAnalysisHeader";
@@ -115,8 +115,60 @@ export default function WriterAnalysisSystem() {
 	const [progress, setProgress] = useState(0);
 	const [retryCount, setRetryCount] = useState(0);
 	const [abortController, setAbortController] = useState<AbortController | null>(null);
+	// 控制自动重试与关闭后的取消
+	const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const isCancelledRef = useRef(false);
+	const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const availableGradingModels = getAvailableGradingModels();
-	const [selectedModelId, setSelectedModelId] = useState<string>(availableGradingModels[0].model);
+	// SSR 安全的默认模型：group[2]，不存在则回退第一个
+	const validIds = availableGradingModels.map(m => m.model);
+	const DEFAULT_INDEX = 2;
+	const defaultModelId = validIds[DEFAULT_INDEX] ?? validIds[0] ?? "";
+
+	// 使用 useSyncExternalStore 订阅本地存储，避免水合不一致
+	const STORAGE_KEY = "writer.selectedModelId";
+	const subscribe = (callback: () => void) => {
+		if (typeof window === "undefined")
+			return () => {};
+		const onStorage = (e: StorageEvent) => {
+			if (e.key === STORAGE_KEY)
+				callback();
+		};
+		const onCustom = () => callback();
+		window.addEventListener("storage", onStorage);
+		window.addEventListener("writer-model-change", onCustom as EventListener);
+		return () => {
+			window.removeEventListener("storage", onStorage);
+			window.removeEventListener("writer-model-change", onCustom as EventListener);
+		};
+	};
+	const getSnapshot = () => {
+		try {
+			if (typeof window !== "undefined") {
+				const saved = window.localStorage.getItem(STORAGE_KEY);
+				if (saved && validIds.includes(saved))
+					return saved;
+			}
+		} catch {
+			// 忽略读取异常
+		}
+		return defaultModelId;
+	};
+	const getServerSnapshot = () => defaultModelId;
+	const selectedModelId = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+	// 提供一个变更处理，写入本地并广播变更事件
+	const setSelectedModelId = (id: string) => {
+		try {
+			if (typeof window !== "undefined") {
+				window.localStorage.setItem(STORAGE_KEY, id);
+				// 通知订阅者（当前标签页）
+				window.dispatchEvent(new Event("writer-model-change"));
+			}
+		} catch {
+			// 忽略写入异常
+		}
+	};
 	const handleModeChange = (modeId: string, checked: boolean, modeName: string) => {
 		// 阻止AI鉴别师被选中
 		if (modeId === "ai-detection") {
@@ -152,6 +204,17 @@ export default function WriterAnalysisSystem() {
 		if (abortController) {
 			abortController.abort();
 			setAbortController(null);
+		}
+
+		// 取消计划中的重试
+		if (retryTimeoutRef.current) {
+			clearTimeout(retryTimeoutRef.current);
+			retryTimeoutRef.current = null;
+		}
+		isCancelledRef.current = true;
+		if (progressIntervalRef.current) {
+			clearInterval(progressIntervalRef.current);
+			progressIntervalRef.current = null;
 		}
 
 		setArticleText("");
@@ -219,15 +282,25 @@ export default function WriterAnalysisSystem() {
 	};
 
 	const performAnalysis = async (isRetry = false): Promise<void> => {
+		// 若已关闭或取消，不再继续
+		if (isCancelledRef.current)
+			return;
+
 		const controller = new AbortController();
 		setAbortController(controller);
 
+		// 重试时也需要清理错误/完成态
 		if (!isRetry) {
 			resetAnalysisState();
+		} else {
+			setIsError(false);
+			setIsCompleted(false);
 		}
 
 		const startTime = Date.now();
 		const progressInterval = simulateProgress(startTime);
+		// 记录到ref，便于外部（关闭/清理）中止
+		progressIntervalRef.current = progressInterval as unknown as ReturnType<typeof setInterval>;
 
 		try {
 			setStreamContent(prev => `${prev}${isRetry ? "重试" : "开始"}分析，校验文章内容...\n`);
@@ -294,8 +367,17 @@ export default function WriterAnalysisSystem() {
 
 				const { done, value } = await Promise.race([readPromise, timeoutPromise]);
 
-				if (done)
+				// 若已取消（关闭窗口或清除），停止继续读取
+				if (isCancelledRef.current) {
+					try {
+						await reader.cancel?.();
+					} catch {}
 					break;
+				}
+
+				if (done) {
+					break;
+				}
 
 				const chunk = decoder.decode(value, { stream: true });
 
@@ -339,6 +421,10 @@ export default function WriterAnalysisSystem() {
 			}
 
 			clearInterval(progressInterval);
+			if (progressIntervalRef.current) {
+				clearInterval(progressIntervalRef.current);
+				progressIntervalRef.current = null;
+			}
 			setProgress(95);
 
 			// 解析结果
@@ -347,6 +433,7 @@ export default function WriterAnalysisSystem() {
 			if (parsedResult) {
 				setAnalysisResult(parsedResult);
 				setProgress(100);
+				setIsError(false);
 				setIsCompleted(true);
 				setStreamContent(prev => `${prev}\n✅ 分析完成！`);
 				toast.success("分析完成");
@@ -361,6 +448,10 @@ export default function WriterAnalysisSystem() {
 			}
 		} catch (error: any) {
 			clearInterval(progressInterval);
+			if (progressIntervalRef.current) {
+				clearInterval(progressIntervalRef.current);
+				progressIntervalRef.current = null;
+			}
 			setIsError(true);
 			setProgress(0);
 
@@ -385,8 +476,15 @@ export default function WriterAnalysisSystem() {
 				setRetryCount(nextRetryCount);
 				setStreamContent(prev => `${prev}准备第 ${nextRetryCount} 次重试...\n`);
 
-				setTimeout(() => {
-					performAnalysis(true);
+				// 先清除上一轮定时器，避免关闭后仍然重试
+				if (retryTimeoutRef.current) {
+					clearTimeout(retryTimeoutRef.current);
+					retryTimeoutRef.current = null;
+				}
+				retryTimeoutRef.current = setTimeout(() => {
+					if (!isCancelledRef.current) {
+						performAnalysis(true);
+					}
 				}, 2000);
 			} else {
 				toast.error(errorMessage);
@@ -401,6 +499,13 @@ export default function WriterAnalysisSystem() {
 		if (!articleText.trim()) {
 			toast.error("请先输入要分析的作品内容");
 			return;
+		}
+
+		// 开始新会话，解除取消标记，并清理潜在的重试定时器
+		isCancelledRef.current = false;
+		if (retryTimeoutRef.current) {
+			clearTimeout(retryTimeoutRef.current);
+			retryTimeoutRef.current = null;
 		}
 
 		setIsAnalyzing(true);
@@ -522,6 +627,16 @@ export default function WriterAnalysisSystem() {
 					onClose={() => {
 						if (abortController) {
 							abortController.abort();
+						}
+						// 关闭时标记取消并清理计划中的重试
+						isCancelledRef.current = true;
+						if (retryTimeoutRef.current) {
+							clearTimeout(retryTimeoutRef.current);
+							retryTimeoutRef.current = null;
+						}
+						if (progressIntervalRef.current) {
+							clearInterval(progressIntervalRef.current);
+							progressIntervalRef.current = null;
 						}
 						setShowStreamingDisplay(false);
 						setIsAnalyzing(false);

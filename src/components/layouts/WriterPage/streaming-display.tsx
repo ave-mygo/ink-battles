@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, X, Zap } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -26,19 +26,17 @@ export default function StreamingDisplay({
 	progress = 0,
 	onRetry: _onRetry,
 }: StreamingDisplayProps) {
-	const [isMinimized, setIsMinimized] = useState(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
-	const [isMobile, setIsMobile] = useState(false);
-
-	const checkMobile = useCallback(() => {
-		setIsMobile(window.innerWidth < 768);
-	}, []);
-
-	useEffect(() => {
-		checkMobile();
-		window.addEventListener("resize", checkMobile);
-		return () => window.removeEventListener("resize", checkMobile);
-	}, [checkMobile]);
+	const isMobile = useSyncExternalStore(
+		(cb) => {
+			if (typeof window === "undefined")
+				return () => {};
+			window.addEventListener("resize", cb);
+			return () => window.removeEventListener("resize", cb);
+		},
+		() => (typeof window !== "undefined" ? window.innerWidth < 768 : false),
+		() => false,
+	);
 
 	useEffect(() => {
 		// 使用节流来减少频繁的 DOM 操作
@@ -73,59 +71,22 @@ export default function StreamingDisplay({
 	if (!isVisible)
 		return null;
 
+	// 完成态优先于错误态，避免成功后仍显示红色
 	const getIcon = () => {
-		if (isError)
-			return <AlertCircle className="text-red-600 h-5 w-5" />;
 		if (isCompleted)
 			return <CheckCircle2 className="text-green-600 h-5 w-5" />;
+		if (isError)
+			return <AlertCircle className="text-red-600 h-5 w-5" />;
 		return <Zap className="text-blue-600 h-5 w-5 animate-pulse" />;
 	};
 
 	const getTitle = () => {
-		if (isError)
-			return "分析遇到错误";
 		if (isCompleted)
 			return "分析完成";
+		if (isError)
+			return "分析遇到错误";
 		return "AI 正在分析中...";
 	};
-
-	if (isMinimized) {
-		return (
-			<div className="bottom-4 right-4 fixed z-50">
-				<Card className="border-0 bg-white w-80 shadow-lg dark:bg-gray-800">
-					<CardContent className="p-4">
-						<div className="mb-2 flex items-center justify-between">
-							<div className="flex gap-2 items-center">
-								{getIcon()}
-								<span className="text-sm font-medium">{getTitle()}</span>
-							</div>
-							<div className="flex gap-1">
-								<Button
-									variant="ghost"
-									size="icon"
-									onClick={() => setIsMinimized(false)}
-									className="h-6 w-6"
-								>
-									<span className="text-xs">展开</span>
-								</Button>
-								<Button
-									variant="ghost"
-									size="icon"
-									onClick={onClose}
-									className="h-6 w-6"
-								>
-									<X className="h-3 w-3" />
-								</Button>
-							</div>
-						</div>
-						{!isCompleted && !isError && (
-							<Progress value={progress} className="h-2" />
-						)}
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
 
 	return (
 		<div className="p-4 bg-black/50 flex items-center inset-0 justify-center fixed z-50 backdrop-blur-sm dark:bg-black/70">
@@ -141,15 +102,6 @@ export default function StreamingDisplay({
 						{getTitle()}
 					</CardTitle>
 					<div className="flex gap-1">
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => setIsMinimized(true)}
-							className="h-8 w-8"
-							title="最小化"
-						>
-							<span className="text-xs">—</span>
-						</Button>
 						<Button
 							variant="ghost"
 							size="icon"
