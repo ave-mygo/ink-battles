@@ -206,7 +206,7 @@ interface StatCardProps {
 
 function StatCard({ title, description, value, icon, color, bgColor }: StatCardProps) {
 	return (
-		<Card className={`border-0 shadow-lg overflow-hidden bg-gradient-to-br ${bgColor} transition-all duration-300 hover:shadow-xl dark:from-slate-800/60 dark:to-slate-900/40 hover:-translate-y-1`}>
+		<Card className={`border-0 shadow-lg overflow-hidden bg-linear-to-br ${bgColor} transition-all duration-300 hover:shadow-xl dark:from-slate-800/60 dark:to-slate-900/40 hover:-translate-y-1`}>
 			<CardHeader className="pb-3">
 				<div className="flex items-center justify-between">
 					<div className="space-y-1">
@@ -214,7 +214,7 @@ function StatCard({ title, description, value, icon, color, bgColor }: StatCardP
 							{title}
 						</CardTitle>
 					</div>
-					<div className={`p-2 rounded-lg bg-gradient-to-br ${color} text-white shadow-md`}>
+					<div className={`p-2 rounded-lg bg-linear-to-br ${color} text-white shadow-md`}>
 						{icon}
 					</div>
 				</div>
@@ -223,7 +223,7 @@ function StatCard({ title, description, value, icon, color, bgColor }: StatCardP
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<div className="text-2xl text-slate-900 font-bold flex min-h-[40px] items-center dark:text-slate-100">
+				<div className="text-2xl text-slate-900 font-bold flex min-h-10 items-center dark:text-slate-100">
 					{value}
 				</div>
 			</CardContent>

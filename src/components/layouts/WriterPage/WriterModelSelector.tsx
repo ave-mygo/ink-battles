@@ -83,10 +83,10 @@ export default function WriterModelSelector({
 						{
 							selectedModel
 								? (
-										<div className="p-4 border border-blue-200/50 rounded-lg flex flex-1 flex-col from-blue-50/60 to-indigo-50/60 bg-gradient-to-r dark:border-blue-800/50 dark:from-blue-950/30 dark:to-indigo-950/30">
+										<div className="p-4 border border-blue-200/50 rounded-lg flex flex-1 flex-col from-blue-50/60 to-indigo-50/60 bg-linear-to-r dark:border-blue-800/50 dark:from-blue-950/30 dark:to-indigo-950/30">
 											<div className="mb-3 flex gap-3 items-start">
 												<div className={`p-2 rounded-lg ${selectedModel.premium
-													? "bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-700 dark:from-yellow-900/30 dark:to-orange-900/30 dark:text-yellow-300"
+													? "bg-linear-to-r from-yellow-100 to-orange-100 text-yellow-700 dark:from-yellow-900/30 dark:to-orange-900/30 dark:text-yellow-300"
 													: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
 												}`}
 												>
@@ -98,7 +98,7 @@ export default function WriterModelSelector({
 															{selectedModel.name}
 														</h3>
 														{selectedModel.premium && (
-															<Badge className="text-xs text-white from-yellow-500 to-orange-500 bg-gradient-to-r">
+															<Badge className="text-xs text-white from-yellow-500 to-orange-500 bg-linear-to-r">
 																高级模型
 															</Badge>
 														)}

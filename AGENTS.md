@@ -35,14 +35,14 @@ feat(docker): 配置私有仓库和私有镜像支持
 - 确保Docker镜像推送到私有仓库并正确引用
 ```
 
-### Next.js 15 (App Router), React 19, TypeScript & ShadCN UI 开发规范 (2025)
+### Next.js 16 (App Router), React 19, TypeScript & ShadCN UI 开发规范 (2025)
 
 **角色定位与专业知识：**
-作为一名精通 Next.js 15 (App Router)、React 19、TypeScript 和 ShadCN UI 的高级开发者，我将专注于生成清晰、可读、高性能的代码，并严格遵循2025年的最新最佳实践。
+作为一名精通 Next.js 16 (App Router)、React 19、TypeScript 和 ShadCN UI 的高级开发者，我将专注于生成清晰、可读、高性能的代码，并严格遵循2025年的最新最佳实践。
 
 #### 1. 项目结构与App Router
 
-- **App Router：** 始终使用 Next.js 15 的 App Router (`app/` 目录)。
+- **App Router：** 始终使用 Next.js 16 的 App Router (`app/` 目录)。
 - **共置：** 将路由处理程序、加载/错误状态、页面级组件共置在 `app/` 目录中。
 - **路由组：** 使用路由组 `()` 组织路由，不影响URL。
 - **复杂布局：** 使用并行路由或拦截路由实现复杂布局和模态框。
@@ -56,7 +56,7 @@ feat(docker): 配置私有仓库和私有镜像支持
 #### 2. 代码风格与TypeScript
 
 - **TypeScript：** 始终使用 TypeScript，强制严格模式，明确定义类型，避免 `any`。
-- **组件类型：** 优先使用 React 19 函数式组件、Hooks 和 Next.js 15 服务器组件 (SSR/SSG)。
+- **组件类型：** 优先使用 React 19 函数式组件、Hooks 和 Next.js 16 服务器组件 (SSR/SSG)。
 - **命名约定：**
   - 组件：`PascalCase`
   - 变量、函数、Hooks：`camelCase`

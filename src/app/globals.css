@@ -210,8 +210,8 @@
 }
 
 /* Buttons and inputs that used explicit white backgrounds */
-.dark .bg-gradient-to-br.from-white\:to-slate-100,
-.dark .bg-gradient-to-br.from-slate-50\:to-slate-100 {
+.dark .bg-linear-to-br.from-white\:to-slate-100,
+.dark .bg-linear-to-br.from-slate-50\:to-slate-100 {
 	--tw-gradient-from: var(--background);
 	--tw-gradient-to: var(--background);
 }
