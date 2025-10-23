@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
+import { jwtVerify } from "jose";
 import { NextResponse } from "next/server";
 import { getConfig } from "@/config";
 import { db_name } from "@/lib/constants";
@@ -88,8 +88,8 @@ export async function GET(request: NextRequest) {
 				const authTokenMatch = authCookie.match(/auth-token=([^;]+)/);
 				if (authTokenMatch) {
 					const jwtToken = authTokenMatch[1];
-					const secret = JWT_SECRET || "dev_secret_change_me";
-					const payload = jwt.verify(jwtToken, secret) as { email?: string };
+					const secret = new TextEncoder().encode(JWT_SECRET || "dev_secret_change_me");
+					const { payload } = await jwtVerify(jwtToken, secret) as { payload: { email?: string } };
 					existingUserEmail = payload.email || null;
 				}
 			} catch (error) {

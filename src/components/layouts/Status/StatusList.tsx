@@ -64,7 +64,7 @@ export default function StatusList({ logs, loading = false }: StatusListProps) {
 	}
 
 	return (
-		<Card className="border-0 shadow-lg overflow-hidden from-white to-slate-50 bg-gradient-to-br dark:from-slate-800/60 dark:to-slate-900/40">
+		<Card className="border-0 shadow-lg overflow-hidden from-white to-slate-50 bg-linear-to-br dark:from-slate-800/60 dark:to-slate-900/40">
 			<CardHeader>
 				<CardTitle className="text-slate-800 flex gap-2 items-center dark:text-slate-100">
 					<Database className="text-emerald-600 h-5 w-5 dark:text-emerald-400" />
@@ -97,7 +97,7 @@ export default function StatusList({ logs, loading = false }: StatusListProps) {
 									<TableRow
 										key={log.created_at}
 										className={`transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
-											isRecent ? "bg-gradient-to-r from-emerald-50/50 dark:from-emerald-900/20 to-transparent" : ""
+											isRecent ? "bg-linear-to-r from-emerald-50/50 dark:from-emerald-900/20 to-transparent" : ""
 										}`}
 									>
 										<TableCell className="text-sm font-mono whitespace-nowrap">
@@ -140,8 +140,8 @@ export default function StatusList({ logs, loading = false }: StatusListProps) {
 											<span
 												className={`text-xs font-semibold px-3 py-1 rounded-full inline-flex gap-1 transition-all duration-200 items-center ${
 													isSuccess
-														? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200 dark:from-green-900/20 dark:to-emerald-900/20 dark:text-green-300 dark:border-green-800"
-														: "bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-200 dark:from-red-900/20 dark:to-rose-900/20 dark:text-red-300 dark:border-red-800"
+														? "bg-linear-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200 dark:from-green-900/20 dark:to-emerald-900/20 dark:text-green-300 dark:border-green-800"
+														: "bg-linear-to-r from-red-100 to-rose-100 text-red-800 border border-red-200 dark:from-red-900/20 dark:to-rose-900/20 dark:text-red-300 dark:border-red-800"
 												}`}
 											>
 												{isSuccess

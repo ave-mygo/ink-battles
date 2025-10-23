@@ -3,7 +3,7 @@
 import type { AuthUserInfo, AuthUserInfoSafe } from "@/types/users/user";
 import process from "node:process";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { getConfig } from "@/config";
 import { db_name } from "@/lib/constants";
@@ -64,11 +64,11 @@ export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean;
 			user = newUser;
 		}
 
-		const secret = JWT_SECRET || "dev_secret_change_me";
-		const tokenPayload = {
-			uid: user.uid,
-		};
-		const token = jwt.sign(tokenPayload, secret, { expiresIn: "7d" });
+		const secret = new TextEncoder().encode(JWT_SECRET || "dev_secret_change_me");
+		const token = await new SignJWT({ uid: user.uid })
+			.setProtectedHeader({ alg: "HS256" })
+			.setExpirationTime("7d")
+			.sign(secret);
 
 		const cookieStore = await cookies();
 		cookieStore.set("auth-token", token, {

@@ -1,7 +1,6 @@
 import antfu from "@antfu/eslint-config";
 
 const atf = antfu({
-	// Flat Config 忽略项（ESLint v9）
 	ignores: [
 		"src/components/ui/**",
 		".next/**",

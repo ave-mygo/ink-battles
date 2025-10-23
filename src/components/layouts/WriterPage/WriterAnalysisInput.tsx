@@ -202,7 +202,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 			} else if (userType === UserType.MEMBER) {
 				displayName = "会员用户";
 				icon = <Crown className="h-4 w-4" />;
-				badgeColor = "text-yellow-700 bg-gradient-to-r from-yellow-100 to-orange-100 border-yellow-300 dark:text-yellow-300 dark:from-yellow-900/30 dark:to-orange-900/30 dark:border-yellow-800";
+				badgeColor = "text-yellow-700 bg-linear-to-r from-yellow-100 to-orange-100 border-yellow-300 dark:text-yellow-300 dark:from-yellow-900/30 dark:to-orange-900/30 dark:border-yellow-800";
 			}
 
 			setTierData({
@@ -304,7 +304,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 			</CardHeader>
 			<CardContent className="flex flex-col h-full">
 				{/* 用户分级信息（现代化设计） */}
-				<div className="mb-4 p-4 rounded-xl ring-1 ring-slate-200 from-indigo-50/60 to-white bg-gradient-to-r dark:ring-slate-700 dark:from-slate-800/60 dark:to-slate-900/40">
+				<div className="mb-4 p-4 rounded-xl ring-1 ring-slate-200 from-indigo-50/60 to-white bg-linear-to-r dark:ring-slate-700 dark:from-slate-800/60 dark:to-slate-900/40">
 					<div className="flex items-start justify-between">
 						<div className="flex gap-2 items-center">
 							{tierData.icon}

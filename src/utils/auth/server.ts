@@ -3,7 +3,7 @@
 import type { AuthUserInfo, AuthUserInfoSafe } from "@/types/users/user";
 import process from "node:process";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { getConfig } from "@/config";
 import { db_name } from "@/lib/constants";
@@ -63,8 +63,11 @@ export async function LoginUser(email: string, password: string): Promise<{ succ
 	if (!match) {
 		return { success: false, message: "密码错误" };
 	}
-	const secret = JWT_SECRET || "dev_secret_change_me";
-	const token = jwt.sign({ uid: user.uid }, secret, { expiresIn: "7d" });
+	const secret = new TextEncoder().encode(JWT_SECRET || "dev_secret_change_me");
+	const token = await new SignJWT({ uid: user.uid })
+		.setProtectedHeader({ alg: "HS256" })
+		.setExpirationTime("7d")
+		.sign(secret);
 	const cookieStore = await cookies();
 	cookieStore.set("auth-token", token, {
 		httpOnly: true,
@@ -86,8 +89,8 @@ export const getCurrentUserEmail = async (): Promise<string | null> => {
 	if (!token)
 		return null;
 	try {
-		const secret = JWT_SECRET || "dev_secret_change_me";
-		const payload = jwt.verify(token, secret) as { uid?: number; email?: string };
+		const secret = new TextEncoder().encode(JWT_SECRET || "dev_secret_change_me");
+		const { payload } = await jwtVerify(token, secret) as { payload: { uid?: number; email?: string } };
 		if (payload.uid) {
 			const user = await db_find(db_name, "users", { uid: payload.uid });
 			return user?.email ?? null;
@@ -109,8 +112,8 @@ export const getCurrentUserInfo = async (): Promise<AuthUserInfoSafe | null> => 
 		return null;
 
 	try {
-		const secret = JWT_SECRET || "dev_secret_change_me";
-		const payload = jwt.verify(token, secret) as { uid: number };
+		const secret = new TextEncoder().encode(JWT_SECRET || "dev_secret_change_me");
+		const { payload } = await jwtVerify(token, secret) as { payload: { uid: number } };
 		const doc = await db_find(db_name, "users", { uid: payload.uid }) as AuthUserInfo;
 		if (!doc)
 			return null;

@@ -152,9 +152,9 @@ export default function SponsorList() {
 							key={sponsor.user.user_id}
 							className={`border-2 transition-all duration-300 overflow-hidden hover:shadow-xl hover:-translate-y-1 ${
 								isMost
-									? "border-yellow-400 bg-gradient-to-br from-yellow-50 to-orange-50 dark:border-yellow-700 dark:from-yellow-900/20 dark:to-orange-900/10"
+									? "border-yellow-400 bg-linear-to-br from-yellow-50 to-orange-50 dark:border-yellow-700 dark:from-yellow-900/20 dark:to-orange-900/10"
 									: isLatest
-										? "border-blue-400 bg-gradient-to-br from-blue-50 to-cyan-50 dark:border-blue-700 dark:from-blue-900/20 dark:to-cyan-900/10"
+										? "border-blue-400 bg-linear-to-br from-blue-50 to-cyan-50 dark:border-blue-700 dark:from-blue-900/20 dark:to-cyan-900/10"
 										: "border-slate-100 hover:border-slate-200 dark:border-slate-800 dark:hover:border-slate-700"
 							}`}
 						>
@@ -167,12 +167,12 @@ export default function SponsorList() {
 										loading="lazy"
 									/>
 									{isMost && (
-										<span className="text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-yellow-400 to-orange-400 bg-gradient-to-r -right-2 -top-2">
+										<span className="text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-yellow-400 to-orange-400 bg-linear-to-r -right-2 -top-2">
 											💎 累计最多
 										</span>
 									)}
 									{isLatest && !isMost && (
-										<span className="text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-blue-400 to-cyan-400 bg-gradient-to-r -right-2 -top-2">
+										<span className="text-xs text-white font-bold px-2 py-1 rounded-full shadow-md absolute from-blue-400 to-cyan-400 bg-linear-to-r -right-2 -top-2">
 											⭐ 最新赞助
 										</span>
 									)}
@@ -183,12 +183,12 @@ export default function SponsorList() {
 									</h3>
 								</div>
 								<div className="flex flex-wrap gap-2 w-full items-center justify-center">
-									<span className="text-sm text-amber-800 font-semibold px-3 py-1.5 border border-amber-200 rounded-full from-amber-100 to-yellow-100 bg-gradient-to-r dark:text-amber-200 dark:border-amber-800 dark:from-amber-900/30 dark:to-yellow-900/20">
+									<span className="text-sm text-amber-800 font-semibold px-3 py-1.5 border border-amber-200 rounded-full from-amber-100 to-yellow-100 bg-linear-to-r dark:text-amber-200 dark:border-amber-800 dark:from-amber-900/30 dark:to-yellow-900/20">
 										💰 ¥
 										{sponsor.all_sum_amount}
 									</span>
 									{sponsor.current_plan.name && (
-										<span className="text-sm text-blue-800 font-semibold px-3 py-1.5 border border-blue-200 rounded-full from-blue-100 to-cyan-100 bg-gradient-to-r dark:text-blue-200 dark:border-blue-800 dark:from-blue-900/30 dark:to-cyan-900/20">
+										<span className="text-sm text-blue-800 font-semibold px-3 py-1.5 border border-blue-200 rounded-full from-blue-100 to-cyan-100 bg-linear-to-r dark:text-blue-200 dark:border-blue-800 dark:from-blue-900/30 dark:to-cyan-900/20">
 											🎯
 											{" "}
 											{sponsor.current_plan.name}

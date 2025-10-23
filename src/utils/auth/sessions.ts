@@ -1,4 +1,5 @@
-import crypto from "node:crypto";
+// eslint-disable-next-line unicorn/prefer-node-protocol
+import crypto from "crypto";
 
 export const generateSessionId = (length = 12) => {
 	const chars = `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz${Date.now().toString()}`;
