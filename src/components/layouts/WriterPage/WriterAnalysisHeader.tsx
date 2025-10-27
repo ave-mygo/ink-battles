@@ -19,7 +19,7 @@ export default function WriterAnalysisHeader() {
 		{ href: "/sponsors", icon: Heart, text: "赞助支持我们", color: "pink" },
 		{ href: "/status", icon: Activity, text: "前往状态页", color: "green" },
 		{ href: "https://qm.qq.com/q/D6AK1DEQtq", icon: MessageCircle, text: "加入QQ群", color: "purple", external: true },
-		{ href: "/about", icon: Info, text: "关于本项目", color: "blue" },
+		{ href: "/about", icon: Info, text: "关于本项目/使用说明", color: "blue" },
 	];
 
 	return (

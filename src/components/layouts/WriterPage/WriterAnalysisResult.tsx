@@ -101,7 +101,7 @@ export default function WriterAnalysisResult({
 	return (
 		<div className="gap-6 grid md:grid-cols-3">
 			{/* Score Card */}
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-white/5 dark:ring-1 dark:ring-white/10">
 				<CardHeader className="text-center">
 					<CardTitle className="flex gap-2 items-center justify-center">
 						<Star className="text-yellow-500 h-5 w-5" />
@@ -113,13 +113,13 @@ export default function WriterAnalysisResult({
 						{analysisResult.overallScore}
 					</div>
 					<div className="text-xs text-slate-400 mb-2">狸希Rikki</div>
-					<div className="text-lg font-semibold mb-2">{analysisResult.title}</div>
-					<div className="text-sm text-slate-600 mb-4">{analysisResult.ratingTag}</div>
+					<div className="text-lg font-semibold mb-2 dark:text-slate-100">{analysisResult.title}</div>
+					<div className="text-sm text-slate-600 mb-4 dark:text-slate-300">{analysisResult.ratingTag}</div>
 
 					<div
 						className={`text-sm font-medium px-4 py-2 rounded-full inline-flex ${getScoreBgColor(
 							analysisResult.overallScore,
-						)}  ${getScoreColor(analysisResult.overallScore)} mb-4`}
+						)}  ${getScoreColor(analysisResult.overallScore)} mb-4 dark:bg-white/5 dark:ring-1 dark:ring-white/10`}
 					>
 						{analysisResult.overallScore >= 80
 							? "优秀作品"
@@ -149,10 +149,10 @@ export default function WriterAnalysisResult({
 					)}
 
 					{percentile && (
-						<div className="text-sm text-slate-600 mt-4">
+						<div className="text-sm text-slate-600 mt-4 dark:text-slate-300">
 							你的作品评分超过了在本站评分记录中
 							{" "}
-							<span className="text-red-500 font-bold">
+							<span className="text-red-500 font-bold dark:text-red-400">
 								{percentile}
 								%
 							</span>
@@ -162,7 +162,7 @@ export default function WriterAnalysisResult({
 
 					<Separator className="my-4" />
 
-					<div className="text-sm text-slate-600 space-y-2">
+					<div className="text-sm text-slate-600 space-y-2 dark:text-slate-300">
 						<p>
 							作家战力系统对所有人永远免费开放。你现在所用的这一次评分，是前面某个用户匿名捐赠、共享或是开发者投入所留下的机会。
 						</p>
@@ -193,7 +193,7 @@ export default function WriterAnalysisResult({
 			</Card>
 
 			{/* Dimensions Card */}
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-white/5 dark:ring-1 dark:ring-white/10">
 				<CardHeader>
 					<CardTitle className="flex gap-2 items-center">
 						<BarChart3 className="text-blue-600 h-5 w-5" />
@@ -218,7 +218,7 @@ export default function WriterAnalysisResult({
 						return (
 							<div key={dim.name} className="space-y-2">
 								<div className="flex items-center justify-between">
-									<span className="text-slate-700 font-medium">{dim.name}</span>
+									<span className="text-slate-700 font-medium dark:text-slate-100">{dim.name}</span>
 									<span className={`font-bold ${getScoreColor(dim.score)}`}>
 										{dim.score}
 										/
@@ -226,7 +226,7 @@ export default function WriterAnalysisResult({
 									</span>
 								</div>
 								<Progress value={(dim.score / maxScore) * 100} className="h-2" />
-								<p className="text-sm text-slate-600">{dim.description}</p>
+								<p className="text-sm text-slate-600 dark:text-slate-300">{dim.description}</p>
 							</div>
 						);
 					})}
@@ -234,7 +234,7 @@ export default function WriterAnalysisResult({
 			</Card>
 
 			{/* Analysis Card */}
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-white/5 dark:ring-1 dark:ring-white/10">
 				<CardHeader>
 					<CardTitle className="flex gap-2 items-center">
 						<Lightbulb className="text-yellow-500 h-5 w-5" />
@@ -243,11 +243,11 @@ export default function WriterAnalysisResult({
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div>
-						<h4 className="text-slate-700 font-medium mb-2 flex gap-2 items-center">
+						<h4 className="text-slate-700 font-medium mb-2 flex gap-2 items-center dark:text-slate-100">
 							<BookOpen className="h-4 w-4" />
 							作品概述
 						</h4>
-						<p className="text-sm text-slate-600 leading-relaxed">{analysisResult.summary}</p>
+						<p className="text-sm text-slate-600 leading-relaxed dark:text-slate-300">{analysisResult.summary}</p>
 					</div>
 
 					{/* Tags */}
@@ -255,7 +255,7 @@ export default function WriterAnalysisResult({
 						<>
 							<Separator />
 							<div>
-								<h4 className="text-purple-700 font-medium mb-2 flex gap-2 items-center">
+								<h4 className="text-purple-700 font-medium mb-2 flex gap-2 items-center dark:text-purple-300">
 									<BadgeCheck className="h-4 w-4" />
 									文章标签
 								</h4>
@@ -263,7 +263,7 @@ export default function WriterAnalysisResult({
 									{analysisResult.tags.map((tag, index) => (
 										<span
 											key={index}
-											className="text-xs text-blue-700 px-2 py-1 border border-blue-200 rounded-md bg-blue-50 transition-colors hover:bg-blue-100"
+											className="text-xs text-blue-700 px-2 py-1 border border-blue-200 rounded-md bg-blue-50 transition-colors dark:text-blue-300 dark:border-blue-900 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40"
 										>
 											{tag}
 										</span>
@@ -275,14 +275,14 @@ export default function WriterAnalysisResult({
 
 					<Separator />
 					<div>
-						<h4 className="text-green-700 font-medium mb-2 flex gap-2 items-center">
+						<h4 className="text-green-700 font-medium mb-2 flex gap-2 items-center dark:text-green-300">
 							<Star className="h-4 w-4" />
 							优势亮点
 						</h4>
 						<ul className="space-y-1">
 							{analysisResult.strengths.map(strength => (
-								<li key={strength} className="text-sm text-slate-600 flex gap-2 items-start">
-									<span className="text-green-500 mt-1">•</span>
+								<li key={strength} className="text-sm text-slate-600 flex gap-2 items-start dark:text-slate-300">
+									<span className="text-green-500 mt-1 dark:text-green-400">•</span>
 									{strength}
 								</li>
 							))}
@@ -290,14 +290,14 @@ export default function WriterAnalysisResult({
 					</div>
 					<Separator />
 					<div>
-						<h4 className="text-blue-700 font-medium mb-2 flex gap-2 items-center">
+						<h4 className="text-blue-700 font-medium mb-2 flex gap-2 items-center dark:text-blue-300">
 							<Target className="h-4 w-4" />
 							改进建议
 						</h4>
 						<ul className="space-y-1">
 							{analysisResult.improvements.map(improvement => (
-								<li key={improvement} className="text-sm text-slate-600 flex gap-2 items-start">
-									<span className="text-blue-500 mt-1">•</span>
+								<li key={improvement} className="text-sm text-slate-600 flex gap-2 items-start dark:text-slate-300">
+									<span className="text-blue-500 mt-1 dark:text-blue-400">•</span>
 									{improvement}
 								</li>
 							))}
@@ -305,11 +305,11 @@ export default function WriterAnalysisResult({
 					</div>
 					<Separator />
 					<div>
-						<h4 className="text-purple-700 font-medium mb-2 flex gap-2 items-center">
-							<BadgeCheck className="text-purple-700 h-4 w-4" />
+						<h4 className="text-purple-700 font-medium mb-2 flex gap-2 items-center dark:text-purple-300">
+							<BadgeCheck className="text-purple-700 h-4 w-4 dark:text-purple-300" />
 							综合评价
 						</h4>
-						<p className="text-sm text-slate-600">{analysisResult.overallAssessment}</p>
+						<p className="text-sm text-slate-600 dark:text-slate-300">{analysisResult.overallAssessment}</p>
 					</div>
 				</CardContent>
 			</Card>

@@ -50,7 +50,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 						fill="none"
 						stroke="rgba(148, 163, 184, 0.4)" /* slate-400/40 for light, will be overridden by CSS */
 						strokeWidth={1}
-						className="stroke-slate-400/40 dark:stroke-slate-600/60"
+						className="stroke-slate-400/40 dark:stroke-slate-500/60"
 					/>
 				);
 			})}
@@ -67,7 +67,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 						y2={y}
 						stroke="rgba(148, 163, 184, 0.5)"
 						strokeWidth={1}
-						className="stroke-slate-400/50 dark:stroke-slate-600/70"
+						className="stroke-slate-400/50 dark:stroke-slate-500/70"
 					/>
 				);
 			})}
@@ -97,7 +97,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 						y={y}
 						textAnchor="middle"
 						dominantBaseline="middle"
-						className="text-[10px] fill-slate-600 dark:fill-slate-300"
+						className="text-[10px] fill-slate-600 dark:fill-slate-200"
 					>
 						{label}
 					</text>

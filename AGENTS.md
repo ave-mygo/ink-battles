@@ -187,7 +187,7 @@ feat(docker): 配置私有仓库和私有镜像支持
 
 #### 16. SEO
 
-- **内置管理：** 使用 `metadata` 或 `Head` (Next.js 15) 进行 SEO 管理。
+- **内置管理：** 使用 `metadata` 或 `Head` (Next.js 16) 进行 SEO 管理。
 - **元数据：** 在布局或页面配置中提供 `title`、`description`。
 - **高级 SEO：** 利用 Next.js SSG/SSR 元数据更新。
 

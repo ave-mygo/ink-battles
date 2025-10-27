@@ -7,7 +7,7 @@ import { buildSystemPrompt, calculateFinalScore, getModeInstructions } from "@/l
 
 import { db_name, db_table } from "@/lib/constants";
 
-import { db_find, db_insert } from "@/lib/db";
+import { db_delete, db_find, db_insert } from "@/lib/db";
 import { searchWebFromJina } from "@/lib/external";
 
 const NON_STREAM_TIMEOUT = 120 * 1000; // 非流式模式超时时间
@@ -76,14 +76,11 @@ export async function POST(request: NextRequest) {
 		// 校验session有效性
 		const sessionRecords = await db_find(db_name, "sessions", { session });
 		if (!sessionRecords) {
-			return Response.json({ error: "无效的会话标识，请刷新页面重试" }, { status: 400 });
-		}
-		if (sessionRecords.used) {
-			return Response.json({ error: "该会话标识已被使用，请刷新页面重试" }, { status: 400 });
+			return Response.json({ error: "该会话标识不存在或已被使用，请刷新页面重试" }, { status: 400 });
 		}
 
 		// 标记session为已使用
-		await db_insert(db_name, "sessions", { ...sessionRecords, used: true });
+		await db_delete(db_name, "sessions", {});
 
 		// 执行搜索并保存结果
 		let searchResult = null;
@@ -208,8 +205,7 @@ export async function POST(request: NextRequest) {
 						if (!hasError && resultContent.trim()) {
 							setImmediate(async () => {
 								try {
-									const jsonRegex = /```json([\s\S]*?)```/;
-									const match = resultContent.match(jsonRegex);
+									const match = resultContent.match(/```json\n?([\s\S]+?)\n?```/) || resultContent.match(/\{[\s\S]+\}/);
 									const jsonContent = match ? match[1].trim() : resultContent;
 
 									let parsedResult;
