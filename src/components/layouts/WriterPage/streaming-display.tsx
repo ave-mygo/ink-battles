@@ -74,10 +74,10 @@ export default function StreamingDisplay({
 	// 完成态优先于错误态，避免成功后仍显示红色
 	const getIcon = () => {
 		if (isCompleted)
-			return <CheckCircle2 className="text-green-600 h-5 w-5" />;
+			return <CheckCircle2 className="text-green-600 h-5 w-5 dark:text-green-400" />;
 		if (isError)
-			return <AlertCircle className="text-red-600 h-5 w-5" />;
-		return <Zap className="text-blue-600 h-5 w-5 animate-pulse" />;
+			return <AlertCircle className="text-red-600 h-5 w-5 dark:text-red-500" />;
+		return <Zap className="text-blue-600 h-5 w-5 animate-pulse dark:text-blue-400" />;
 	};
 
 	const getTitle = () => {
@@ -116,7 +116,7 @@ export default function StreamingDisplay({
 				<CardContent>
 					{!isCompleted && !isError && (
 						<div className="mb-4">
-							<div className="text-sm text-gray-600 mb-2 flex justify-between dark:text-gray-400">
+							<div className="text-sm text-gray-600 mb-2 flex justify-between dark:text-gray-300">
 								<span>分析进度</span>
 								<span>
 									{Math.round(progress)}
@@ -137,7 +137,7 @@ export default function StreamingDisplay({
 							</div>
 							<div
 								ref={scrollRef}
-								className={`text-sm font-mono p-4 rounded-lg whitespace-pre-wrap break-words ${
+								className={`text-sm font-mono p-4 rounded-lg whitespace-pre-wrap wrap-break-word ${
 									isError
 										? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200"
 										: "bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300"
@@ -150,11 +150,11 @@ export default function StreamingDisplay({
 							</div>
 
 							{isError && (
-								<div className="mt-4 p-3 border border-yellow-200 rounded-lg bg-yellow-50">
-									<p className="text-sm text-yellow-800">
+								<div className="mt-4 p-3 border border-yellow-200 rounded-lg bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/30">
+									<p className="text-sm text-yellow-800 dark:text-yellow-300">
 										如果问题持续出现，请尝试：
 									</p>
-									<ul className="text-sm text-yellow-700 mt-2 space-y-1">
+									<ul className="text-sm text-yellow-700 mt-2 space-y-1 dark:text-yellow-200">
 										<li>• 检查网络连接</li>
 										<li>• 减少文本长度</li>
 										<li>• 刷新页面重试</li>

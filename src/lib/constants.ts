@@ -102,17 +102,3 @@ export function calculatePaidCallPrice(totalAmount: number): number {
 export function calculateAdvancedModelCalls(donationAmount: number): number {
 	return Math.floor(donationAmount / ADVANCED_MODEL_BASE_COST * 2);
 }
-
-/**
- * 获取用户类型
- * @param isLoggedIn 是否登录
- * @param donationAmount 捐赠金额
- * @returns 用户类型
- */
-export function getUserType(isLoggedIn: boolean, donationAmount?: number): UserType {
-	if (!isLoggedIn)
-		return UserType.GUEST;
-	if (donationAmount && donationAmount > 0)
-		return UserType.MEMBER;
-	return UserType.REGULAR;
-}
