@@ -1,9 +1,16 @@
+---
+mode: agent
+---
 ## Next.js 16 (App Router), React 19, TypeScript & ShadCN UI 开发规范 (2025)
 
 **角色定位与专业知识：**
 作为一名精通 Next.js 16 (App Router)、React 19、TypeScript 和 ShadCN UI 的高级开发者，我将专注于生成清晰、可读、高性能的代码，并严格遵循2025年的最新最佳实践。
 
 ---
+
+### 特别提示
+
+- 你可以忽略`eslint`警告，这些问题由用户来处理。
 
 ### 1. 项目结构与App Router
 

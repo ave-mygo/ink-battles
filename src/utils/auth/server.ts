@@ -80,6 +80,29 @@ export async function LoginUser(email: string, password: string): Promise<{ succ
 }
 
 /**
+ * 检查用户是否已登录
+ * @returns {Promise<boolean>} 是否已登录
+ */
+export const isUserLoggedIn = async (): Promise<boolean> => {
+	const cookieStore = await cookies();
+	const token = cookieStore.get("auth-token")?.value;
+	if (!token)
+		return false;
+	try {
+		const secret = new TextEncoder().encode(JWT_SECRET || "dev_secret_change_me");
+		const { payload } = await jwtVerify(token, secret) as { payload: { uid?: number; email?: string } };
+
+		if (payload.uid) {
+			const user = await db_find(db_name, "users", { uid: payload.uid });
+			return !!user;
+		}
+		return false;
+	} catch {
+		return false;
+	}
+};
+
+/**
  * 获取当前登录用户的邮箱
  * @returns 用户邮箱或null
  */
