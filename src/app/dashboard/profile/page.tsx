@@ -28,13 +28,14 @@ const formatDate = (dateString: string | null | undefined): string => {
 /**
  * 获取登录方式标签
  */
-const getLoginMethodBadge = (method?: "email" | "qq" | null) => {
+const getLoginMethodBadge = (method?: "email" | "qq" | "afd" | null) => {
 	if (!method)
 		return null;
 
 	const configs = {
 		email: { label: "邮箱登录", variant: "default" as const },
 		qq: { label: "QQ 登录", variant: "secondary" as const },
+		afd: { label: "爱发电 登录", variant: "secondary" as const },
 	};
 
 	const config = configs[method];

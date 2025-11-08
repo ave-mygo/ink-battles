@@ -7,7 +7,8 @@ export interface AuthUserInfo {
 	uid: number;
 	email?: string | null;
 	qqOpenid?: string | null;
-	loginMethod?: "email" | "qq";
+	afdId?: string | null;
+	loginMethod?: "email" | "qq" | "afd";
 	passwordHash?: string;
 	createdAt: Date;
 	updatedAt?: Date;
@@ -24,7 +25,8 @@ export interface AuthUserInfoSafe {
 	uid: number;
 	email?: string | null;
 	qqOpenid?: string | null;
-	loginMethod?: "email" | "qq";
+	afdId?: string | null;
+	loginMethod?: "email" | "qq" | "afd";
 	isActive?: boolean;
 	createdAt?: string | null;
 	updatedAt?: string | null;

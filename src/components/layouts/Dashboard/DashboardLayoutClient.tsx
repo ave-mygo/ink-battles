@@ -1,29 +1,19 @@
 "use client";
 
 import type { AuthUserInfoSafe } from "@/types/users/user";
-import { ChevronLeft, ChevronRight, Link as LinkIcon, User } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { DASHBOARD_NAV_ITEMS } from "@/config";
 import { useDashboardSidebarActions, useDashboardSidebarOpen } from "@/store/ui";
 
 interface DashboardLayoutClientProps {
 	user: AuthUserInfoSafe;
 	children: React.ReactNode;
 }
-
-interface NavItem {
-	label: string;
-	href: string;
-	icon: React.ComponentType<{ className?: string }>;
-}
-
-const NAV_ITEMS: NavItem[] = [
-	{ label: "用户信息", href: "/dashboard/profile", icon: User },
-	{ label: "账号绑定与管理", href: "/dashboard/accounts", icon: LinkIcon },
-];
 
 /**
  * 仪表盘布局客户端组件
@@ -40,14 +30,14 @@ export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) 
 		<div className="flex min-h-screen">
 			<aside
 				style={{ overscrollBehaviorY: "contain" }}
-				className={`border-r border-t border-white/40 bg-white w-64 shadow-sm transition-transform duration-300 bottom-0 left-0 top-[calc(3.5rem-1px)] fixed z-40 overflow-y-auto dark:border-white/10 dark:bg-slate-900 ${
+				className={`border-r bg-white w-64 shadow-sm transition-transform duration-300 bottom-0 left-0 top-14 fixed z-40 overflow-y-auto dark:border-white/10 dark:bg-slate-900 ${
 					mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
 				}  ${isSidebarCollapsed ? "lg:w-16" : "lg:w-64"}`}
 			>
 				<nav className="p-4 flex flex-col h-full">
 					{/* 导航项 */}
 					<ul className="space-y-2">
-						{NAV_ITEMS.map((item) => {
+						{DASHBOARD_NAV_ITEMS.map((item) => {
 							const Icon = item.icon;
 							const isActive = pathname === item.href;
 
@@ -97,14 +87,14 @@ export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) 
 			</aside>
 			{mobileOpen && (
 				<div
-					className="bg-transparent inset-x-0 bottom-0 top-14 fixed z-30 lg:hidden"
+					className="bg-black/20 inset-x-0 bottom-0 top-14 fixed z-30 backdrop-blur-sm lg:hidden"
 					onClick={close}
 					aria-hidden="true"
 				/>
 			)}
 
-			{/* 主内容：移除背景色以继承全局渐变背景 */}
-			<main className={`p-4 flex-1 transition-all duration-300 lg:p-8 sm:p-6 ${mainOffsetClass}`}>
+			{/* 主内容:为顶部留出空间,避免被header遮挡 */}
+			<main className={`p-4 pt-20 flex-1 transition-all duration-300 lg:p-8 sm:p-6 lg:pt-20 sm:pt-20 ${mainOffsetClass}`}>
 				{children}
 			</main>
 		</div>
