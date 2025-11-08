@@ -40,7 +40,7 @@ export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) 
 		<div className="flex min-h-screen">
 			<aside
 				style={{ overscrollBehaviorY: "contain" }}
-				className={`supports-backdrop-filter:bg-white/60 dark:supports-backdrop-filter:bg-slate-900/60 border-r border-t border-white/40 bg-white/60 w-64 shadow-sm transition-transform duration-300 bottom-0 left-0 top-[calc(3.5rem-1px)] fixed z-40 overflow-y-auto backdrop-blur dark:border-white/10 dark:bg-slate-900/60 ${
+				className={`border-r border-t border-white/40 bg-white w-64 shadow-sm transition-transform duration-300 bottom-0 left-0 top-[calc(3.5rem-1px)] fixed z-40 overflow-y-auto dark:border-white/10 dark:bg-slate-900 ${
 					mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
 				}  ${isSidebarCollapsed ? "lg:w-16" : "lg:w-64"}`}
 			>
