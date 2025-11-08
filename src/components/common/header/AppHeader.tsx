@@ -18,10 +18,14 @@ export const AppHeader = () => {
 
 	const inDashboard = pathname?.startsWith("/dashboard");
 
+	const headerClass = inDashboard
+		? "bg-white dark:bg-slate-900 border-b border-white/40 top-0 sticky z-40 dark:border-white/10"
+		: "supports-backdrop-filter:bg-white/60 dark:supports-backdrop-filter:bg-slate-900/60 border-b border-white/40 bg-white/60 top-0 sticky z-40 backdrop-blur dark:border-white/10 dark:bg-slate-900/60";
+
 	return (
 		<div
 			style={{ isolation: "isolate" }}
-			className="supports-backdrop-filter:bg-white/60 dark:supports-backdrop-filter:bg-slate-900/60 border-b border-white/40 bg-white/60 top-0 sticky z-40 backdrop-blur dark:border-white/10 dark:bg-slate-900/60"
+			className={headerClass}
 		>
 			<div className="mx-auto px-3 container flex h-14 max-w-6xl items-center justify-between sm:px-4">
 				<div className="flex gap-2 items-center">
