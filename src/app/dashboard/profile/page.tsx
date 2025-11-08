@@ -8,8 +8,8 @@ import { getDashboardUserInfo } from "@/utils/dashboard";
  * 用户信息页面元数据
  */
 export const metadata: Metadata = {
-	title: "用户信息",
-	description: "查看和管理您的个人资料",
+	title: "个人资料",
+	description: "查看和管理您的个人资料、账户信息、登录方式与安全设置。",
 };
 
 /**

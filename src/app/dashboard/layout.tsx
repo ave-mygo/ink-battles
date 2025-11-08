@@ -7,8 +7,8 @@ import { getCurrentUserInfo } from "@/utils/auth/server";
  * 仪表盘页面元数据
  */
 export const metadata: Metadata = {
-	title: "仪表盘",
-	description: "管理您的账号信息和设置",
+	title: "用户仪表盘",
+	description: "管理您的账号信息、查看分析历史、获取API Token、配置账户设置。",
 };
 
 /**
