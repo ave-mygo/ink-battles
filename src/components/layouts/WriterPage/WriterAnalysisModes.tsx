@@ -76,8 +76,14 @@ export default function WriterAnalysisModes({
 													</Badge>
 												)}
 												<HoverCard>
-													<HoverCardTrigger className="shrink-0">
-														<CircleQuestionMark className="text-slate-500 h-3 w-3 dark:text-slate-400" />
+													<HoverCardTrigger asChild>
+														<button
+															type="button"
+															className="p-0.5 outline-none rounded inline-flex shrink-0 transition-colors items-center justify-center hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:text-slate-300"
+															aria-label="查看此评分模式的详细说明"
+														>
+															<CircleQuestionMark className="text-slate-500 h-3 w-3 dark:text-slate-400" />
+														</button>
 													</HoverCardTrigger>
 													<HoverCardContent className="text-sm max-w-xs dark:text-slate-200 dark:border-slate-700 dark:bg-slate-900">
 														<ul className="pl-6 list-disc space-y-2">
@@ -165,8 +171,14 @@ export default function WriterAnalysisModes({
 														</Badge>
 													)}
 													<HoverCard>
-														<HoverCardTrigger className="shrink-0">
-															<CircleQuestionMark className="text-slate-500 h-3 w-3 dark:text-slate-400" />
+														<HoverCardTrigger asChild>
+															<button
+																type="button"
+																className="p-0.5 outline-none rounded inline-flex shrink-0 transition-colors items-center justify-center hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:text-slate-300"
+																aria-label="查看此评分模式的详细说明"
+															>
+																<CircleQuestionMark className="text-slate-500 h-3 w-3 dark:text-slate-400" />
+															</button>
 														</HoverCardTrigger>
 														<HoverCardContent className="text-sm max-w-xs dark:text-slate-200 dark:border-slate-700 dark:bg-slate-900">
 															<ul className="pl-6 list-disc space-y-2">
