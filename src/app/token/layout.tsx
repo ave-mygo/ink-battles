@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
-		title: "API Token管理 - 作家战力分析系统",
-		description: "管理您的API Token，了解API使用规则与配额限制。集成文本分析API，为您的应用添加专业评分功能。",
+		title: "Token管理",
+		description: "API Token功能说明和当前系统使用规则",
 	};
 }
 

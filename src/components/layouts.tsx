@@ -538,7 +538,7 @@ export default function WriterAnalysisSystem() {
 	};
 
 	return (
-		<main className="min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">
+		<div className="min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">
 			<div className="mx-auto px-4 py-6 container max-w-7xl sm:py-8">
 				{/* Header */}
 				<WriterAnalysisHeader />
@@ -646,6 +646,6 @@ export default function WriterAnalysisSystem() {
 					progress={progress}
 				/>
 			</div>
-		</main>
+		</div>
 	);
 }
