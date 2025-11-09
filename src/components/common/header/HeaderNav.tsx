@@ -3,11 +3,13 @@
 import { Activity, Heart, Home, Info, LayoutDashboard, LogIn, LogOut, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/common/theme/toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAuthActions, useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
+import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
+import { loginSetState, logoutSetState } from "@/utils/auth/client";
 
 interface NavItem {
 	href: string;
@@ -24,12 +26,32 @@ export const HeaderNav = () => {
 	const pathname = usePathname();
 	const isLoggedIn = useIsAuthenticated();
 	const loading = useAuthLoading();
-	const { logout } = useAuthActions();
+	const [isLoggingOut, setIsLoggingOut] = useState(false);
 
 	// 确保客户端水合完成
 	useAuthHydration();
 
-	// 开发调试请改用 console.warn 或 console.error 避免 lint 报错
+	// 水合完成后，根据服务端 Cookie 同步一次登录状态，避免登录后头部未刷新
+	useEffect(() => {
+		if (!loading && !isLoggedIn) {
+			void loginSetState();
+		}
+	}, [loading, isLoggedIn]);
+
+	/**
+	 * 处理登出逻辑
+	 * 调用 logoutSetState 完成服务端登出和客户端状态清理
+	 */
+	const handleLogout = async () => {
+		setIsLoggingOut(true);
+		try {
+			await logoutSetState();
+		} catch (error) {
+			console.error("登出失败:", error);
+		} finally {
+			setIsLoggingOut(false);
+		}
+	};
 
 	const baseBtn = (variant: NavItem["variant"] = "default") =>
 		buttonVariants({ size: "sm", variant });
@@ -159,11 +181,12 @@ export const HeaderNav = () => {
 									<Button
 										size="sm"
 										variant="outline"
+										disabled={isLoggingOut}
 										className="text-red-600 px-2 border-red-200 rounded-full dark:text-red-300 sm:px-3 focus-visible:outline-none dark:border-red-700 hover:bg-red-50 focus-visible:ring-1 focus-visible:ring-red-300 dark:hover:bg-red-500/10 dark:focus-visible:ring-red-800"
-										onClick={logout}
+										onClick={handleLogout}
 									>
 										<LogOut className="h-4 w-4 sm:mr-1" />
-										<span className="hidden sm:inline">退出</span>
+										<span className="hidden sm:inline">{isLoggingOut ? "退出中..." : "退出"}</span>
 									</Button>
 								</>
 							)

@@ -1,4 +1,3 @@
-"use client";
 import type { Metadata } from "next";
 import TokenContent from "@/components/layouts/Token/TokenContent";
 import TokenHeader from "@/components/layouts/Token/TokenHeader";
