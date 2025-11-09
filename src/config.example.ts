@@ -19,7 +19,10 @@
 // 导航与 FAQ 配置类型与常量（从组件拆分集中管理）
 // -------------------------------------------------------------
 import type { ComponentType } from "react";
+import process from "node:process";
 import { Link as LinkIcon, User } from "lucide-react";
+
+const isDev = process.env.NODE_ENV === "development";
 
 interface SystemModelConfig {
 	api_key: string;
@@ -167,11 +170,12 @@ const config: Config = {
 	},
 	app: {
 		app_name: "Ink Battles", // 应用程序名称
-		base_url: "https://your-app.com", // 应用程序的根URL
+		// 根据环境选择 base_url：开发环境使用 http://localhost:3000，其他环境使用 https://ink-battles.rikki.top
+		base_url: isDev ? "http://localhost:3000" : "https://ink-battles.rikki.top",
 		notice: {
 			enabled: true, // 是否启用网站公告
 			content: "欢迎使用 Ink Battles！请查看最新公告。", // 公告内容
-			link: "https://your-app.com/notice", // 公告链接
+			link: isDev ? "http://localhost:3000" : "https://ink-battles.rikki.top", // 公告链接
 		},
 	},
 };
