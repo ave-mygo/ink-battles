@@ -1,4 +1,3 @@
-"use client";
 import type { Metadata } from "next";
 import SponsorHeader from "@/components/layouts/Sponsor/SponsorHeader";
 import SponsorList from "@/components/layouts/Sponsor/SponsorList";

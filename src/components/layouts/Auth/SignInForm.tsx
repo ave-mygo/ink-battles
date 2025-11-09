@@ -3,13 +3,12 @@
 import { Icon } from "@iconify/react";
 import { ArrowRight, Lock, LogIn, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { cleanupOAuthParams, initiateQQLogin, isQQOAuthCallback, parseQQCallback } from "@/utils/auth";
 import { loginSetState } from "@/utils/auth/client";
 
 /**
@@ -21,57 +20,10 @@ const SignInForm = () => {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
-	const [qqLoading, setQQLoading] = useState(false);
-
-	const handleQQLogin = async (code: string) => {
-		try {
-			setQQLoading(true);
-			const res = await fetch("/api/auth/qq-login", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ code }),
-			});
-
-			const data = await res.json();
-
-			if (data.success) {
-				toast.success("QQ登录成功");
-				// 同步登录状态到状态管理
-				await loginSetState();
-				cleanupOAuthParams();
-				router.push("/dashboard");
-			} else {
-				toast.error(data.message || "QQ登录失败");
-				cleanupOAuthParams();
-			}
-		} catch (error) {
-			console.error(error);
-			toast.error("QQ登录失败，请稍后再试");
-			cleanupOAuthParams();
-		} finally {
-			setQQLoading(false);
-		}
-	};
-
-	// 处理QQ OAuth回调
-	useEffect(() => {
-		if (isQQOAuthCallback()) {
-			const { code, error, errorDescription } = parseQQCallback();
-
-			if (error) {
-				toast.error(`QQ登录失败: ${errorDescription || error}`);
-				cleanupOAuthParams();
-				return;
-			}
-
-			if (code) {
-				handleQQLogin(code);
-			}
-		}
-	}, []);
 
 	const handleQQLoginClick = () => {
-		initiateQQLogin(window.location.href, `qq_login_${Date.now()}`);
+		// 跳转到统一 QQ OAuth 入口，携带 method=signin
+		window.location.href = "/oauth/qq?method=signin";
 	};
 
 	const handleSubmit = async () => {
@@ -146,19 +98,15 @@ const SignInForm = () => {
 						<div className="space-y-2">
 							<div className="text-muted-foreground text-xs text-center">或</div>
 							<Button
-								disabled={qqLoading || loading}
+								disabled={loading}
 								onClick={handleQQLoginClick}
 								variant="outline"
 								className="text-[#12B7F5] border-[#12B7F5] w-full hover:text-white hover:bg-[#12B7F5]"
 							>
-								{qqLoading
-									? "QQ登录中..."
-									: (
-											<span className="flex gap-2 items-center justify-center">
-												<Icon icon="mingcute:qq-fill" className="h-4 w-4" />
-												QQ登录
-											</span>
-										)}
+								<span className="flex gap-2 items-center justify-center">
+									<Icon icon="mingcute:qq-fill" className="h-4 w-4" />
+									QQ登录
+								</span>
 							</Button>
 						</div>
 
