@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getConfig } from "@/config";
 import { bindEmailAccount, unbindEmailAccount, unbindQQAccount } from "@/utils/dashboard/account-bindings";
 
 interface AccountBindingsProps {
@@ -37,14 +36,12 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 	const [showEmailDialog, setShowEmailDialog] = useState(false);
 	const [emailForm, setEmailForm] = useState({ email: "", password: "" });
 
-	const config = getConfig();
-	const qqOAuthUrl = `https://oauth.tnxg.top/qq?redirect_uri=${encodeURIComponent(`${config.app.base_url}/dashboard/accounts?bind=qq`)}`;
-
 	/**
 	 * 处理 QQ 绑定
 	 */
 	const handleQQBind = () => {
-		window.location.href = qqOAuthUrl;
+		// 跳转到统一 QQ OAuth 入口，携带 method=bind
+		window.location.href = "/oauth/qq?method=bind";
 	};
 
 	/**
