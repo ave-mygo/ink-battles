@@ -19,17 +19,19 @@ const {
 } = getConfig();
 
 /**
- * QQ登录：使用临时代码获取用户信息并创建/更新用户
- * @param tempCode 临时授权码
- * @returns 登录结果
+ * 统一的 QQ 登录或注册 Action
+ * 使用 code 获取 openid，自动判断是登录还是注册
+ * @param code QQ 授权码
+ * @returns 登录或注册结果
  */
-export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfoSafe }> => {
-	if (!tempCode) {
+export const loginOrRegisterWithQQ = async (code: string): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfoSafe }> => {
+	if (!code) {
 		return { success: false, message: "授权码不能为空" };
 	}
 
 	try {
-		const response = await fetch(`https://api-space.tnxg.top/user/get?code=${tempCode}`);
+		// 使用 code 获取 QQ 用户信息
+		const response = await fetch(`https://api-space.tnxg.top/user/get?code=${code}`);
 		const data = await response.json();
 
 		if (data.status !== "success") {
@@ -43,9 +45,11 @@ export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean;
 			return { success: false, message: "QQ用户信息不完整" };
 		}
 
+		// 查找用户
 		let user = await db_find(db_name, "users", { qqOpenid: qq_openid });
 		const now = new Date();
 
+		// 如果用户不存在，创建新用户
 		if (!user) {
 			const uid = await generateNextUID();
 			const newUser: AuthUserInfo = {
@@ -64,12 +68,14 @@ export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean;
 			user = newUser;
 		}
 
+		// 生成 JWT token
 		const secret = new TextEncoder().encode(JWT_SECRET || "dev_secret_change_me");
 		const token = await new SignJWT({ uid: user.uid })
 			.setProtectedHeader({ alg: "HS256" })
 			.setExpirationTime("7d")
 			.sign(secret);
 
+		// 设置 cookie
 		const cookieStore = await cookies();
 		cookieStore.set("auth-token", token, {
 			httpOnly: true,
@@ -96,6 +102,82 @@ export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean;
 		console.error("QQ登录错误:", error);
 		return { success: false, message: "登录失败，请重试" };
 	}
+};
+
+/**
+ * 使用 code 绑定 QQ 账号（需要已登录）
+ * @param code QQ 授权码
+ * @returns 绑定结果
+ */
+export const bindQQAccountWithCode = async (code: string): Promise<{ success: boolean; message: string }> => {
+	if (!code) {
+		return { success: false, message: "授权码不能为空" };
+	}
+
+	try {
+		// 获取当前登录用户
+		const { getCurrentUserInfo } = await import("@/utils/auth/server");
+		const currentUser = await getCurrentUserInfo();
+		if (!currentUser) {
+			return { success: false, message: "用户未登录" };
+		}
+
+		// 使用 code 获取 QQ 用户信息
+		const response = await fetch(`https://api-space.tnxg.top/user/get?code=${code}`);
+		const data = await response.json();
+
+		if (data.status !== "success") {
+			return { success: false, message: data.message || "获取QQ用户信息失败" };
+		}
+
+		const qqUserInfo = data.data;
+		const { qq_openid } = qqUserInfo;
+
+		if (!qq_openid) {
+			return { success: false, message: "QQ用户信息不完整" };
+		}
+
+		// 检查该 QQ 是否已被其他账号绑定
+		const existingUser = await db_find(db_name, "users", { qqOpenid: qq_openid }) as AuthUserInfo | null;
+		if (existingUser && existingUser.uid !== currentUser.uid) {
+			return { success: false, message: "该 QQ 账号已被其他用户绑定" };
+		}
+
+		// 检查当前用户是否已绑定 QQ
+		if (currentUser.qqOpenid) {
+			return { success: false, message: "您已绑定 QQ 账号，请先解绑" };
+		}
+
+		// 更新用户信息
+		const success = await db_update(
+			db_name,
+			"users",
+			{ uid: currentUser.uid },
+			{
+				qqOpenid: qq_openid,
+				updatedAt: new Date(),
+			},
+		);
+
+		if (!success) {
+			return { success: false, message: "绑定失败，请稍后重试" };
+		}
+
+		return { success: true, message: "QQ 账号绑定成功" };
+	} catch (error) {
+		console.error("绑定 QQ 账号失败:", error);
+		return { success: false, message: "绑定失败，系统错误" };
+	}
+};
+
+/**
+ * QQ登录：使用临时代码获取用户信息并创建/更新用户
+ * @deprecated 请使用 loginOrRegisterWithQQ
+ * @param tempCode 临时授权码
+ * @returns 登录结果
+ */
+export const LoginWithQQ = async (tempCode: string): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfoSafe }> => {
+	return loginOrRegisterWithQQ(tempCode);
 };
 
 /**
