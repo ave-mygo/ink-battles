@@ -36,10 +36,10 @@ export const loginSetState = async () => {
  * 登出清理状态
  * 清理客户端 Store 和服务端 Session
  */
-export const logoutSetState = () => {
+export const logoutSetState = async () => {
 	try {
 		clearAuthStore();
-		void logoutUser();
+		await logoutUser();
 	} catch (error) {
 		console.error("登出状态清理失败:", error);
 	}
