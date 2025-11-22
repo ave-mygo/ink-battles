@@ -146,6 +146,48 @@ export const unbindEmailAccount = async (): Promise<{ success: boolean; message:
 };
 
 /**
+ * 解绑爱发电账号
+ * @returns 解绑结果
+ */
+export const unbindAfdianAccount = async (): Promise<{ success: boolean; message: string }> => {
+	try {
+		const currentUser = await getCurrentUserInfo();
+		if (!currentUser) {
+			return { success: false, message: "用户未登录" };
+		}
+
+		if (!currentUser.afdId) {
+			return { success: false, message: "您尚未绑定爱发电账号" };
+		}
+
+		// 检查是否至少保留一种登录方式
+		if (!currentUser.email && !currentUser.qqOpenid && currentUser.loginMethod === "afd") {
+			return { success: false, message: "至少需要保留一种登录方式" };
+		}
+
+		// 更新用户信息
+		const success = await db_update(
+			db_name,
+			"users",
+			{ uid: currentUser.uid },
+			{
+				afdId: null,
+				updatedAt: new Date(),
+			},
+		);
+
+		if (!success) {
+			return { success: false, message: "解绑失败，请稍后重试" };
+		}
+
+		return { success: true, message: "爱发电账号解绑成功" };
+	} catch (error) {
+		console.error("解绑爱发电账号失败:", error);
+		return { success: false, message: "解绑失败，系统错误" };
+	}
+};
+
+/**
  * 获取账号绑定详情
  * @returns 账号绑定详情
  */

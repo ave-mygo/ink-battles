@@ -2,13 +2,14 @@
 
 import type { AuthUserInfoSafe, UserStore } from "@/types/users";
 import { clearAuthStore, syncAuthStoreAfterLogin } from "@/store";
-import { getCurrentUserInfo, logoutUser } from "./server";
+import { getCurrentUserInfo, getUserAvatarUrl, logoutUser } from "./server";
 
-const mapAuthToUserStore = (user: AuthUserInfoSafe): UserStore => {
+const mapAuthToUserStore = async (user: AuthUserInfoSafe): Promise<UserStore> => {
+	const avatar = await getUserAvatarUrl(user.uid);
 	return {
 		uid: String(user.uid),
 		nickname: user.email?.split("@")[0] || "用户",
-		avatar: "",
+		avatar,
 		isLoggedIn: true,
 	};
 };
@@ -21,7 +22,7 @@ export const loginSetState = async () => {
 	try {
 		const info = await getCurrentUserInfo();
 		if (info) {
-			syncAuthStoreAfterLogin(mapAuthToUserStore(info));
+			syncAuthStoreAfterLogin(await mapAuthToUserStore(info));
 		} else {
 			clearAuthStore();
 		}

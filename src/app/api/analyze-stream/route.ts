@@ -10,9 +10,6 @@ import { db_name, db_table } from "@/lib/constants";
 import { db_delete, db_find, db_insert } from "@/lib/db";
 import { searchWebFromJina } from "@/lib/external";
 
-const NON_STREAM_TIMEOUT = 120 * 1000; // 非流式模式超时时间
-const FIRST_CHUNK_TIMEOUT = 60 * 1000; // 首个chunk超时时间
-
 // 格式化搜索结果为适合AI对话的文本
 function formatSearchResultsForAI(searchResult: JinaSearchResponse): string {
 	if (!searchResult || !searchResult.data || searchResult.data.length === 0) {
@@ -32,9 +29,6 @@ function formatSearchResultsForAI(searchResult: JinaSearchResponse): string {
 }
 
 export async function POST(request: NextRequest) {
-	let resultContent = "";
-	let hasError = false;
-
 	try {
 		const { articleText, mode, modelId, needSearch, searchKeywords } = await request.json();
 
@@ -52,7 +46,7 @@ export async function POST(request: NextRequest) {
 		const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
 		const sha1 = crypto.SHA1(normalizedText).toString();
 
-		// 检查数据库缓存
+		// 1. 检查数据库缓存
 		const cached = await db_find(db_name, db_table, {
 			"metadata.sha1": sha1,
 			"article.input.mode": mode,
@@ -61,10 +55,11 @@ export async function POST(request: NextRequest) {
 
 		if (cached && cached.article.output.result) {
 			const resultStr = typeof cached.article.output.result === "string" ? cached.article.output.result : JSON.stringify(cached.article.output.result);
-			return createStreamResponse(resultStr, "cached");
+			// 缓存命中直接模拟流式返回
+			return createTextStreamResponse(resultStr);
 		}
 
-		// 新限额逻辑：基于登录状态、IP、指纹
+		// 2. 权限与Session校验
 		const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null;
 		const fingerprint = request.headers.get("x-fingerprint");
 		const session = request.headers.get("x-session");
@@ -73,247 +68,182 @@ export async function POST(request: NextRequest) {
 			return Response.json({ error: "缺少会话标识，请刷新页面重试" }, { status: 400 });
 		}
 
-		// 校验session有效性
 		const sessionRecords = await db_find(db_name, "sessions", { session });
 		if (!sessionRecords) {
 			return Response.json({ error: "该会话标识不存在或已被使用，请刷新页面重试" }, { status: 400 });
 		}
-
-		// 标记session为已使用
 		await db_delete(db_name, "sessions", {});
 
-		// 执行搜索并保存结果
+		// 3. 执行搜索 (如果需要)
 		let searchResult = null;
 		if (needSearch && searchKeywords) {
 			searchResult = await searchWebFromJina(searchKeywords);
 		}
 
+		// 4. 准备 OpenAI 请求
 		const openAI = new OpenAI({
 			apiKey: gradingModel.api_key,
 			baseURL: gradingModel.base_url,
 		});
 
-		const model: string = gradingModel.model;
-
-		// 拼接模式指令
 		const modeInstruction = await getModeInstructions(mode);
-
-		// 构建严格基于文档的系统提示词
 		const systemPrompt = await buildSystemPrompt(modeInstruction);
 
-		// 直接尝试建立流式连接
-		const abortController = new AbortController();
-		const timeoutId = setTimeout(() => {
-			abortController.abort();
-		}, NON_STREAM_TIMEOUT);
+		const messages: Array<{ role: "system" | "user"; content: string }> = [
+			{ role: "system", content: systemPrompt },
+		];
 
-		try {
-			// 动态构建 messages，将搜索结果插入到系统提示之后
-			const messages: Array<{ role: "system" | "user"; content: string }> = [
-				{ role: "system", content: systemPrompt },
-			];
-
-			// 如果存在搜索结果，则将其作为一条独立的用户消息附加
-			const formattedSearch = searchResult ? formatSearchResultsForAI(searchResult as JinaSearchResponse) : "";
-			if (formattedSearch && formattedSearch.trim().length > 0) {
-				messages.push({
-					role: "user",
-					content: `以下是与主题相关的检索资料（供参考）：\n${formattedSearch}`,
-				});
-			}
-
-			messages.push({ role: "user", content: articleText });
-
-			const stream = await openAI.chat.completions.create({
-				model,
-				messages,
-				temperature: model.includes("gpt-5-nano") ? 1 : 0.3,
-				stream: true,
-				response_format: { type: "json_object" },
-				seed: fingerprint ? Number.parseInt(fingerprint) : undefined,
-			}, {
-				signal: abortController.signal,
+		const formattedSearch = searchResult ? formatSearchResultsForAI(searchResult as JinaSearchResponse) : "";
+		if (formattedSearch && formattedSearch.trim().length > 0) {
+			messages.push({
+				role: "user",
+				content: `以下是与主题相关的检索资料（供参考）：\n${formattedSearch}`,
 			});
-
-			// 创建一个可读流
-			const encoder = new TextEncoder();
-			let isStreamingMode = true;
-
-			const readable = new ReadableStream({
-				async start(controller) {
-					try {
-						let firstChunkReceived = false;
-						const firstChunkTimeout = setTimeout(() => {
-							if (!firstChunkReceived) {
-								console.warn("首个chunk超时，可能不支持流式响应");
-								isStreamingMode = false;
-							}
-						}, FIRST_CHUNK_TIMEOUT);
-
-						for await (const chunk of stream) {
-							if (!firstChunkReceived) {
-								firstChunkReceived = true;
-								clearTimeout(firstChunkTimeout);
-
-								// 检查chunk的结构来判断是否真正支持流式
-								if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta) {
-									isStreamingMode = true;
-									console.warn("检测到原生流式模式");
-									controller.enqueue(encoder.encode("<!--STREAM_MODE:native-->"));
-								} else {
-									isStreamingMode = false;
-									console.warn("检测到非流式模式，将等待完整响应");
-									controller.enqueue(encoder.encode("<!--STREAM_MODE:simulated-->"));
-								}
-							}
-
-							const content = chunk.choices[0]?.delta?.content || "";
-							if (content && !hasError) {
-								resultContent += content;
-
-								if (isStreamingMode) {
-									// 流式模式：立即发送内容
-									controller.enqueue(encoder.encode(content));
-								}
-							}
-						}
-
-						// 处理剩余内容
-						if (!hasError) {
-							if (!isStreamingMode && resultContent.trim()) {
-								// 非流式模式：模拟流式发送完整内容
-								const chunkSize = 50;
-								let pos = 0;
-								const sendChunks = () => {
-									if (pos >= resultContent.length) {
-										controller.close();
-										return;
-									}
-									const chunk = resultContent.slice(pos, pos + chunkSize);
-									controller.enqueue(encoder.encode(chunk));
-									pos += chunkSize;
-									setTimeout(sendChunks, 10);
-								};
-								sendChunks();
-								return;
-							}
-						}
-
-						controller.close();
-
-						// 异步处理数据库缓存，不影响响应速度
-						if (!hasError && resultContent.trim()) {
-							setImmediate(async () => {
-								try {
-									const match = resultContent.match(/```json\n?([\s\S]+?)\n?```/) || resultContent.match(/\{[\s\S]+\}/);
-									const jsonContent = match ? match[1].trim() : resultContent;
-
-									let parsedResult;
-									try {
-										parsedResult = JSON.parse(jsonContent);
-										if (!parsedResult || typeof parsedResult !== "object") {
-											throw new Error("Invalid JSON result");
-										}
-									} catch (parseError) {
-										console.error("JSON解析失败，以文本形式保存", parseError);
-										parsedResult = resultContent;
-									}
-
-									const tags = parsedResult.tags || [];
-
-									await db_insert(
-										db_name,
-										db_table,
-										{
-											uid: null,
-											article: {
-												input: {
-													articleText,
-													mode: mode || "default",
-													search: {
-														needSearch,
-														searchKeywords: searchKeywords || [],
-														searchResult: searchResult || "",
-													},
-												},
-												output: { result: jsonContent, overallScore: await calculateFinalScore(parsedResult), tags },
-											},
-											metadata: {
-												sha1,
-												ip,
-												fingerprint,
-												modelId,
-											},
-											timestamp: new Date().toISOString(),
-										},
-									);
-								} catch (e) {
-									console.error("缓存AI结果失败", e);
-								}
-							});
-						}
-					} catch (error) {
-						hasError = true;
-						controller.error(error);
-					} finally {
-						clearTimeout(timeoutId);
-					}
-				},
-			});
-
-			return new Response(readable, {
-				headers: {
-					"Content-Type": "text/plain; charset=utf-8",
-					"Cache-Control": "no-cache",
-					"Connection": "keep-alive",
-					"X-Stream-Mode": "auto-detect",
-					"X-Response-Mode": "adaptive",
-				},
-			});
-		} finally {
-			clearTimeout(timeoutId);
 		}
-	} catch (error) {
-		console.error("流式分析出错:", error);
-		return Response.json({ error: "分析出错", detail: (error as Error).message }, { status: 500 });
-	}
-}
 
-// 辅助函数：创建流式响应
-function createStreamResponse(resultStr: string, mode: "cached") {
-	const encoder = new TextEncoder();
-	const chunkSize = 50;
-	let pos = 0;
+		messages.push({ role: "user", content: articleText });
 
-	const readable = new ReadableStream({
-		start(controller) {
-			// 首先发送模式标识
-			controller.enqueue(encoder.encode(`<!--STREAM_MODE:${mode}-->`));
+		// 5. 发起流式请求
+		const stream = await openAI.chat.completions.create({
+			model: gradingModel.model,
+			messages,
+			temperature: gradingModel.model.includes("gpt-5-nano") ? 1 : 0.3,
+			stream: true,
+			response_format: { type: "json_object" },
+			seed: fingerprint ? Number.parseInt(fingerprint) : undefined,
+		});
 
-			const sendChunks = () => {
+		// 6. 构建流式响应
+		const encoder = new TextEncoder();
+		let accumulatedContent = ""; // 用于存储完整内容以便存库
+
+		const readable = new ReadableStream({
+			async start(controller) {
 				try {
-					if (pos >= resultStr.length) {
-						controller.close();
-						return;
+					for await (const chunk of stream) {
+						const content = chunk.choices[0]?.delta?.content || "";
+						if (content) {
+							accumulatedContent += content;
+							controller.enqueue(encoder.encode(content));
+						}
 					}
+					controller.close();
 
-					const chunk = resultStr.slice(pos, pos + chunkSize);
-					controller.enqueue(encoder.encode(chunk));
-					pos += chunkSize;
-					setTimeout(sendChunks, 5);
+					// 7. 异步保存结果到数据库 (流结束后执行)
+					if (accumulatedContent.trim()) {
+						// 使用 setImmediate 或不 await 保证不阻塞流关闭
+						saveToDatabase({
+							accumulatedContent,
+							articleText,
+							mode,
+							needSearch,
+							searchKeywords,
+							searchResult,
+							sha1,
+							ip,
+							fingerprint,
+							modelId,
+						}).catch(err => console.error("异步保存数据库失败:", err));
+					}
 				} catch (error) {
 					controller.error(error);
 				}
+			},
+		});
+
+		return new Response(readable, {
+			headers: {
+				"Content-Type": "text/plain; charset=utf-8",
+				"Cache-Control": "no-cache",
+				"Connection": "keep-alive",
+			},
+		});
+	} catch (error) {
+		console.error("分析请求出错:", error);
+		return Response.json({ error: "服务器内部错误", detail: (error as Error).message }, { status: 500 });
+	}
+}
+
+// 辅助：简单的文本流式响应 (用于缓存)
+function createTextStreamResponse(text: string) {
+	const encoder = new TextEncoder();
+	const readable = new ReadableStream({
+		start(controller) {
+			// 模拟流式输出，提升用户体验
+			const chunkSize = 100;
+			let pos = 0;
+
+			const push = () => {
+				if (pos >= text.length) {
+					controller.close();
+					return;
+				}
+				const chunk = text.slice(pos, pos + chunkSize);
+				controller.enqueue(encoder.encode(chunk));
+				pos += chunkSize;
+				setTimeout(push, 10); // 10ms 延迟模拟打字机效果
 			};
-			sendChunks();
+
+			push();
 		},
 	});
 
-	const headers: Record<string, string> = {
-		"Content-Type": "text/plain; charset=utf-8",
-		"Cache-Control": "no-cache",
-		"Connection": "keep-alive",
-	};
+	return new Response(readable, {
+		headers: {
+			"Content-Type": "text/plain; charset=utf-8",
+			"Cache-Control": "no-cache",
+			"Connection": "keep-alive",
+		},
+	});
+}
 
-	return new Response(readable, { headers });
+// 辅助：数据库保存逻辑抽离
+async function saveToDatabase(params: any) {
+	const { accumulatedContent, articleText, mode, needSearch, searchKeywords, searchResult, sha1, ip, fingerprint, modelId } = params;
+
+	try {
+		// 尝试提取 JSON
+		const match = accumulatedContent.match(/```json\n?([\s\S]+?)\n?```/) || accumulatedContent.match(/\{[\s\S]+\}/);
+		const jsonContent = match ? match[1].trim() : accumulatedContent;
+
+		let parsedResult;
+		try {
+			parsedResult = JSON.parse(jsonContent);
+		} catch {
+			// 解析失败也保存原始内容
+			parsedResult = { raw: accumulatedContent };
+		}
+
+		const tags = parsedResult.tags || [];
+		const overallScore = await calculateFinalScore(parsedResult);
+
+		await db_insert(
+			db_name,
+			db_table,
+			{
+				uid: null,
+				article: {
+					input: {
+						articleText,
+						mode: mode || "default",
+						search: {
+							needSearch,
+							searchKeywords: searchKeywords || [],
+							searchResult: searchResult || "",
+						},
+					},
+					output: { result: jsonContent, overallScore, tags },
+				},
+				metadata: {
+					sha1,
+					ip,
+					fingerprint,
+					modelId,
+				},
+				timestamp: new Date().toISOString(),
+			},
+		);
+	} catch (e) {
+		console.error("保存数据库逻辑异常:", e);
+	}
 }

@@ -34,6 +34,11 @@ const SignUpForm = () => {
 		window.location.href = "/oauth/qq?method=signup";
 	};
 
+	const handleAfdianLoginClick = () => {
+		// 跳转到爱发电 OAuth 入口，携带 method=signup
+		window.location.href = "/oauth/afdian?method=signup";
+	};
+
 	useEffect(() => {
 		if (countdown > 0) {
 			timerRef.current = setTimeout(() => setCountdown(prev => prev - 1), 1000);
@@ -208,6 +213,16 @@ const SignUpForm = () => {
 								<span className="flex gap-2 items-center justify-center">
 									<Icon icon="mingcute:qq-fill" className="h-4 w-4" />
 									QQ登录
+								</span>
+							</Button>
+							<Button
+								onClick={handleAfdianLoginClick}
+								variant="outline"
+								className="text-[#946ce6] border-[#946ce6] w-full hover:text-white hover:bg-[#946ce6]"
+							>
+								<span className="flex gap-2 items-center justify-center">
+									<Icon icon="simple-icons:afdian" className="h-4 w-4" />
+									爱发电登录
 								</span>
 							</Button>
 						</div>

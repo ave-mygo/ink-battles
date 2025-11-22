@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { bindEmailAccount, unbindEmailAccount, unbindQQAccount } from "@/utils/dashboard/account-bindings";
+import { bindEmailAccount, unbindEmailAccount, unbindQQAccount, unbindAfdianAccount } from "@/utils/dashboard/account-bindings";
 
 interface AccountBindingsProps {
 	bindings: {
@@ -121,6 +121,40 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 			toast.error("解绑失败，请稍后重试");
 		} finally {
 			setLoading({ ...loading, email: false });
+		}
+	};
+
+	/**
+	 * 处理爱发电绑定
+	 */
+	const handleAfdianBind = () => {
+		// 跳转到爱发电 OAuth 入口，携带 method=bind
+		window.location.href = "/oauth/afdian?method=bind";
+	};
+
+	/**
+	 * 处理爱发电解绑
+	 */
+	const handleAfdianUnbind = async () => {
+		// eslint-disable-next-line no-alert
+		if (!window.confirm("确定要解绑爱发电账号吗？")) {
+			return;
+		}
+
+		setLoading({ ...loading, afdian: true });
+		try {
+			const result = await unbindAfdianAccount();
+			if (result.success) {
+				toast.success(result.message);
+				// 刷新页面以更新绑定状态
+				window.location.reload();
+			} else {
+				toast.error(result.message);
+			}
+		} catch {
+			toast.error("解绑失败，请稍后重试");
+		} finally {
+			setLoading({ ...loading, afdian: false });
 		}
 	};
 
@@ -239,45 +273,57 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 				</div>
 
 				{/* 爱发电绑定 */}
-				<div className="p-4 border border-slate-200/40 rounded-xl bg-white/5 backdrop-blur-sm dark:border-slate-700/50 dark:bg-white/5">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-1 gap-3 items-center">
-							<div className="text-xs text-white font-bold rounded-full bg-pink-500 flex h-5 w-5 items-center justify-center">
-								A
-							</div>
-							<div className="flex-1">
-								<div className="flex gap-2 items-center">
-									<p className="text-sm text-slate-900 font-medium dark:text-slate-100">
-										爱发电账号
-									</p>
-									{bindings.loginMethod === "afd" && (
-										<Badge variant="outline" className="text-xs">
-											主登录方式
-										</Badge>
-									)}
-								</div>
-								<p className="text-sm text-slate-600 dark:text-slate-400">
-									{bindings.afdian.bound
-										? `已绑定爱发电`
-										: "绑定后可享受赞助者专属权益"}
-								</p>
-							</div>
+			<div className="p-4 border border-slate-200/40 rounded-xl bg-white/5 backdrop-blur-sm dark:border-slate-700/50 dark:bg-white/5">
+				<div className="flex items-center justify-between">
+					<div className="flex flex-1 gap-3 items-center">
+						<div className="text-xs text-white font-bold rounded-full bg-pink-500 flex h-5 w-5 items-center justify-center">
+							A
 						</div>
-						<div className="flex gap-2">
-							{bindings.afdian.bound
-								? (
-										<Badge variant="default" className="text-xs">
-											已绑定
-										</Badge>
-									)
-								: (
-										<Badge variant="secondary" className="text-xs">
-											敬请期待
-										</Badge>
-									)}
+						<div className="flex-1">
+							<div className="flex gap-2 items-center">
+								<p className="text-sm text-slate-900 font-medium dark:text-slate-100">
+									爱发电账号
+								</p>
+								{bindings.loginMethod === "afd" && (
+									<Badge variant="outline" className="text-xs">
+										主登录方式
+									</Badge>
+								)}
+							</div>
+							<p className="text-sm text-slate-600 dark:text-slate-400">
+								{bindings.afdian.bound
+									? "绑定后可享受赞助者专属权益"
+									: "绑定后可享受赞助者专属权益"}
+							</p>
 						</div>
 					</div>
+					<div className="flex gap-2">
+						{bindings.afdian.bound
+							? (
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={handleAfdianUnbind}
+										disabled={loading.afdian}
+									>
+										<Unlink className="mr-2 h-4 w-4" />
+										解绑
+									</Button>
+								)
+							: (
+									<Button
+										variant="default"
+										size="sm"
+										onClick={handleAfdianBind}
+										disabled={loading.afdian}
+									>
+										<LinkIcon className="mr-2 h-4 w-4" />
+										绑定
+									</Button>
+								)}
+					</div>
 				</div>
+			</div>
 			</CardContent>
 
 			{/* 邮箱绑定对话框 */}

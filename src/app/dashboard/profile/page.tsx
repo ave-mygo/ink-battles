@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Calendar, Mail, Shield, User } from "lucide-react";
+import ProfileAvatar from "@/components/dashboard/ProfileAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardUserInfo } from "@/utils/dashboard";
@@ -70,13 +71,6 @@ export default async function ProfilePage() {
 		return `用户 ${user.uid}`;
 	};
 
-	/**
-	 * 获取用户头像 URL
-	 */
-	const getUserAvatar = () => {
-		return `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`;
-	};
-
 	return (
 		<div className="mx-auto max-w-4xl space-y-6">
 			{/* 页面标题 */}
@@ -94,9 +88,9 @@ export default async function ProfilePage() {
 			<Card className="border-0 rounded-2xl bg-white/80 shadow-lg backdrop-blur-lg">
 				<CardContent className="pt-6">
 					<div className="flex flex-col gap-4 items-center sm:flex-row sm:gap-6">
-						<img
-							src={getUserAvatar()}
+						<ProfileAvatar
 							alt={getUserDisplayName()}
+							fallbackName={getUserDisplayName()}
 							className="rounded-full h-24 w-24 ring-4 ring-slate-200 dark:ring-slate-700"
 						/>
 						<div className="flex flex-col gap-2 items-center sm:items-start">

@@ -1,6 +1,7 @@
 /**
  * 认证系统用户信息类型
  * 来源：auth-server.ts
+ * 作为ai，你完全不能修改这个字段，这是数据库返回规范
  */
 export interface AuthUserInfo {
 	_id?: string | null; // MongoDB ObjectId
