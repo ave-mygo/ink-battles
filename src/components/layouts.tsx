@@ -115,21 +115,20 @@ export default function WriterAnalysisSystem() {
 	const [progress, setProgress] = useState(0);
 	const [retryCount, setRetryCount] = useState(0);
 	const [abortController, setAbortController] = useState<AbortController | null>(null);
-	// 控制自动重试与关闭后的取消
+
 	const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isCancelledRef = useRef(false);
 	const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
 	const availableGradingModels = getAvailableGradingModels();
-	// SSR 安全的默认模型：group[2]，不存在则回退第一个
 	const validIds = availableGradingModels.map(m => m.model);
 	const DEFAULT_INDEX = 2;
 	const defaultModelId = validIds[DEFAULT_INDEX] ?? validIds[0] ?? "";
 
-	// 使用 useSyncExternalStore 订阅本地存储，避免水合不一致
 	const STORAGE_KEY = "writer.selectedModelId";
 	const subscribe = (callback: () => void) => {
 		if (typeof window === "undefined")
-			return () => {};
+			return () => { };
 		const onStorage = (e: StorageEvent) => {
 			if (e.key === STORAGE_KEY)
 				callback();
@@ -149,34 +148,26 @@ export default function WriterAnalysisSystem() {
 				if (saved && validIds.includes(saved))
 					return saved;
 			}
-		} catch {
-			// 忽略读取异常
-		}
+		} catch { }
 		return defaultModelId;
 	};
 	const getServerSnapshot = () => defaultModelId;
 	const selectedModelId = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-	// 提供一个变更处理，写入本地并广播变更事件
 	const setSelectedModelId = (id: string) => {
 		try {
 			if (typeof window !== "undefined") {
 				window.localStorage.setItem(STORAGE_KEY, id);
-				// 通知订阅者（当前标签页）
 				window.dispatchEvent(new Event("writer-model-change"));
 			}
-		} catch {
-			// 忽略写入异常
-		}
+		} catch { }
 	};
+
 	const handleModeChange = (modeId: string, checked: boolean, modeName: string) => {
-		// 阻止AI鉴别师被选中
-		if (modeId === "ai-detection") {
+		if (modeId === "ai-detection")
 			return;
-		}
 
 		if (modeId === "fragment") {
-			// 并行激活碎片主义护法
 			if (checked) {
 				setSelectedMode(prev => prev.includes(modeId) ? prev : [...prev, modeId]);
 				setSelectedModeName(prev => prev.includes(modeName) ? prev : [...prev, modeName]);
@@ -186,7 +177,6 @@ export default function WriterAnalysisSystem() {
 			}
 		} else {
 			if (checked) {
-				// 保留现有的并行模式，添加新选择的主模式
 				const parallelModes = selectedMode.filter(id => id === "fragment");
 				const parallelModeNames = selectedModeName.filter(name => name === "碎片主义护法");
 
@@ -200,13 +190,10 @@ export default function WriterAnalysisSystem() {
 	};
 
 	const handleClear = () => {
-		// 取消正在进行的请求
 		if (abortController) {
 			abortController.abort();
 			setAbortController(null);
 		}
-
-		// 取消计划中的重试
 		if (retryTimeoutRef.current) {
 			clearTimeout(retryTimeoutRef.current);
 			retryTimeoutRef.current = null;
@@ -237,13 +224,11 @@ export default function WriterAnalysisSystem() {
 		setStreamContent("");
 	};
 
+	// 简化的结果解析，不再需要处理流式标记
 	const parseStreamedResult = (content: string): AnalysisResult | null => {
 		try {
-			// 首先移除所有模式标识
-			const cleanContent = content.replace(/<!--STREAM_MODE:\w+-->/g, "");
-
-			// 优化正则，避免 \s* 和 [\s\S]*? 组合导致的回溯
-			const jsonMatch = cleanContent.match(/```json\n?([\s\S]+?)\n?```/) || cleanContent.match(/\{[\s\S]+\}/);
+			// 尝试匹配 Markdown JSON 代码块
+			const jsonMatch = content.match(/```json\n?([\s\S]+?)\n?```/) || content.match(/\{[\s\S]+\}/);
 
 			if (jsonMatch) {
 				const jsonStr = jsonMatch[1] || jsonMatch[0];
@@ -254,14 +239,14 @@ export default function WriterAnalysisSystem() {
 				return parsed as AnalysisResult;
 			}
 
-			// 如果没有找到JSON标记，尝试直接解析整个内容
-			const fallback = JSON.parse(cleanContent.trim());
+			// 尝试直接解析
+			const fallback = JSON.parse(content.trim());
 			if (fallback && (fallback.overallScore == null || fallback.overallScore === 0)) {
 				fallback.overallScore = calculateFinalScore(fallback);
 			}
 			return fallback as AnalysisResult;
 		} catch (error) {
-			console.error("解析流式结果失败:", error);
+			console.error("解析结果失败，内容可能不完整:", error);
 			return null;
 		}
 	};
@@ -269,7 +254,8 @@ export default function WriterAnalysisSystem() {
 	const simulateProgress = (startTime: number) => {
 		const interval = setInterval(() => {
 			const elapsed = Date.now() - startTime;
-			const expectedDuration = 60000; // 预计60秒完成
+			const expectedDuration = 60000;
+			// 限制进度最大到 90%，剩余由真实流驱动
 			const progressValue = Math.min(90, (elapsed / expectedDuration) * 100);
 			setProgress(progressValue);
 
@@ -277,19 +263,16 @@ export default function WriterAnalysisSystem() {
 				clearInterval(interval);
 			}
 		}, 1000);
-
 		return interval;
 	};
 
 	const performAnalysis = async (isRetry = false): Promise<void> => {
-		// 若已关闭或取消，不再继续
 		if (isCancelledRef.current)
 			return;
 
 		const controller = new AbortController();
 		setAbortController(controller);
 
-		// 重试时也需要清理错误/完成态
 		if (!isRetry) {
 			resetAnalysisState();
 		} else {
@@ -299,30 +282,22 @@ export default function WriterAnalysisSystem() {
 
 		const startTime = Date.now();
 		const progressInterval = simulateProgress(startTime);
-		// 记录到ref，便于外部（关闭/清理）中止
 		progressIntervalRef.current = progressInterval as unknown as ReturnType<typeof setInterval>;
 
 		try {
 			setStreamContent(prev => `${prev}${isRetry ? "重试" : "开始"}分析，校验文章内容...\n`);
 
-			// 生成浏览器指纹
 			const fingerprint = await getFingerprintId();
-
-			// 验证文章内容
 			const verifyResult = await verifyArticleValue(articleText, selectedModeName.join(","), selectedModelId, fingerprint);
 
 			if (!verifyResult.success) {
-				const errorMessage = verifyResult.error || "文章内容不符合分析标准";
-				throw new Error(`校验失败: ${errorMessage}`);
+				throw new Error(`校验失败: ${verifyResult.error || "文章内容不符合分析标准"}`);
 			}
 
 			setStreamContent(prev => `${prev}校验通过，正在分析中...\n`);
 			setProgress(10);
 
-			// 创建请求超时
-			const timeoutId = setTimeout(() => {
-				controller.abort();
-			}, 120000); // 2分钟超时
+			const timeoutId = setTimeout(() => controller.abort(), 120000); // 2分钟总超时
 
 			const response = await fetch("/api/analyze-stream", {
 				method: "POST",
@@ -348,86 +323,41 @@ export default function WriterAnalysisSystem() {
 				throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
 			}
 
-			if (!response.body) {
+			if (!response.body)
 				throw new Error("响应体为空");
-			}
 
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let fullContent = "";
-			let streamModeDetected = false;
 
 			setProgress(20);
 
 			while (true) {
-				const readPromise = reader.read();
-				const timeoutPromise = new Promise<never>((_, reject) => {
-					setTimeout(() => reject(new Error("读取超时")), 30000); // 30秒读取超时
-				});
-
-				const { done, value } = await Promise.race([readPromise, timeoutPromise]);
-
-				// 若已取消（关闭窗口或清除），停止继续读取
+				const { done, value } = await reader.read();
 				if (isCancelledRef.current) {
 					try {
-						await reader.cancel?.();
+						await reader.cancel();
 					} catch {}
 					break;
 				}
-
-				if (done) {
+				if (done)
 					break;
-				}
 
 				const chunk = decoder.decode(value, { stream: true });
-
-				// 检查流式模式标识
-				if (!streamModeDetected) {
-					const modeMatch = chunk.match(/<!--STREAM_MODE:(\w+)-->/);
-					if (modeMatch) {
-						streamModeDetected = true;
-						const detectedMode = modeMatch[1];
-
-						let modeMessage = "";
-						switch (detectedMode) {
-							case "native":
-								modeMessage = "✅ 检测到原生流式模式 - API完全支持流式响应";
-								break;
-							case "simulated":
-								modeMessage = "⚠️ 检测到接口无法正常使用流式 - 接口将以默认方式返回";
-								break;
-							default:
-								modeMessage = "✅ 检测到默认模式 - API完全支持正常响应";
-						}
-
-						setStreamContent(prev => `${prev}${modeMessage}\n`);
-
-						// 移除模式标识，只保留实际内容
-						const cleanChunk = chunk.replace(/<!--STREAM_MODE:\w+-->/, "");
-						if (cleanChunk.trim()) {
-							fullContent += cleanChunk;
-							setStreamContent(prev => `${prev}${cleanChunk}`);
-						}
-						continue;
-					}
-				}
-
 				fullContent += chunk;
-				setStreamContent(prev => `${prev}${chunk}`);
+				setStreamContent(prev => prev + chunk);
 
-				// 动态更新进度
-				const progressValue = Math.min(80, 20 + (fullContent.length / 1000) * 2);
-				setProgress(progressValue);
+				// 基于内容长度给一点额外的进度反馈，增加活跃感
+				const progressValue = Math.min(95, 20 + (fullContent.length / 2000) * 60);
+				setProgress(prev => Math.max(prev, progressValue));
 			}
 
-			clearInterval(progressInterval);
 			if (progressIntervalRef.current) {
 				clearInterval(progressIntervalRef.current);
 				progressIntervalRef.current = null;
 			}
-			setProgress(95);
+			setProgress(98);
 
-			// 解析结果
 			const parsedResult = parseStreamedResult(fullContent);
 
 			if (parsedResult) {
@@ -444,10 +374,9 @@ export default function WriterAnalysisSystem() {
 					setProgress(0);
 				}, 3000);
 			} else {
-				throw new Error("无法解析分析结果");
+				throw new Error("AI返回结果格式无法解析");
 			}
 		} catch (error: any) {
-			clearInterval(progressInterval);
 			if (progressIntervalRef.current) {
 				clearInterval(progressIntervalRef.current);
 				progressIntervalRef.current = null;
@@ -456,39 +385,26 @@ export default function WriterAnalysisSystem() {
 			setProgress(0);
 
 			let errorMessage = "分析过程中发生错误";
-
-			if (error.name === "AbortError") {
+			if (error.name === "AbortError")
 				errorMessage = "请求被取消或超时";
-			} else if (error.message.includes("Failed to fetch")) {
-				errorMessage = "网络连接失败，请检查网络状态";
-			} else if (error.message.includes("校验失败")) {
-				errorMessage = error.message;
-			} else {
-				errorMessage = error.message || errorMessage;
-			}
+			else errorMessage = error.message || errorMessage;
 
 			setStreamContent(prev => `${prev}\n❌ ${errorMessage}\n`);
 
-			// 移动端网络环境更不稳定，提供重试选项
 			const isMobile = window.innerWidth < 768;
-			if (retryCount < (isMobile ? 3 : 2) && !error.message.includes("校验失败")) {
+			if (retryCount < (isMobile ? 3 : 2) && !errorMessage.includes("校验失败") && !errorMessage.includes("取消")) {
 				const nextRetryCount = retryCount + 1;
 				setRetryCount(nextRetryCount);
 				setStreamContent(prev => `${prev}准备第 ${nextRetryCount} 次重试...\n`);
 
-				// 先清除上一轮定时器，避免关闭后仍然重试
-				if (retryTimeoutRef.current) {
+				if (retryTimeoutRef.current)
 					clearTimeout(retryTimeoutRef.current);
-					retryTimeoutRef.current = null;
-				}
 				retryTimeoutRef.current = setTimeout(() => {
-					if (!isCancelledRef.current) {
+					if (!isCancelledRef.current)
 						performAnalysis(true);
-					}
 				}, 2000);
 			} else {
 				toast.error(errorMessage);
-				console.error("分析失败:", error);
 			}
 		} finally {
 			setAbortController(null);
@@ -501,7 +417,6 @@ export default function WriterAnalysisSystem() {
 			return;
 		}
 
-		// 开始新会话，解除取消标记，并清理潜在的重试定时器
 		isCancelledRef.current = false;
 		if (retryTimeoutRef.current) {
 			clearTimeout(retryTimeoutRef.current);
@@ -540,17 +455,12 @@ export default function WriterAnalysisSystem() {
 	return (
 		<div className="min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">
 			<div className="mx-auto px-4 py-6 container max-w-7xl sm:py-8">
-				{/* Header */}
 				<WriterAnalysisHeader />
 
-				{/* 主要内容区域 - 优化布局比例 */}
 				<div className="mb-6 gap-6 grid lg:gap-8 lg:grid-cols-8">
-					{/* 左侧：文章输入区 - 增加宽度 */}
 					<div className="lg:col-span-5">
 						<WriterAnalysisInput articleText={articleText} setArticleText={setArticleText} />
 					</div>
-
-					{/* 右侧：AI模型选择 - 减少宽度 */}
 					<div className="lg:col-span-3">
 						<WriterModelSelector
 							availableModels={availableGradingModels}
@@ -561,7 +471,6 @@ export default function WriterAnalysisSystem() {
 					</div>
 				</div>
 
-				{/* 评分模式区域 - 独立一行（原先为模型选择） */}
 				<div className="mb-6">
 					<WriterAnalysisModes
 						evaluationModes={evaluationModes}
@@ -572,7 +481,6 @@ export default function WriterAnalysisSystem() {
 					/>
 				</div>
 
-				{/* 操作按钮区 - 优化UX体验 */}
 				<div className="mb-8 flex flex-col gap-4 items-center sm:flex-row sm:justify-center">
 					<Button
 						onClick={handleAnalyze}
@@ -607,7 +515,6 @@ export default function WriterAnalysisSystem() {
 					</Button>
 				</div>
 
-				{/* Analysis Results */}
 				{analysisResult
 					? (
 							<WriterAnalysisResult
@@ -620,15 +527,12 @@ export default function WriterAnalysisSystem() {
 							<WriterAnalysisResultPlaceholder />
 						)}
 
-				{/* Streaming Display Modal */}
 				<StreamingDisplay
 					streamContent={streamContent}
 					isVisible={showStreamingDisplay}
 					onClose={() => {
-						if (abortController) {
+						if (abortController)
 							abortController.abort();
-						}
-						// 关闭时标记取消并清理计划中的重试
 						isCancelledRef.current = true;
 						if (retryTimeoutRef.current) {
 							clearTimeout(retryTimeoutRef.current);

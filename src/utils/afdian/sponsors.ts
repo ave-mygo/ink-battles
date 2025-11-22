@@ -1,5 +1,6 @@
 import md5 from "md5";
 import { getConfig } from "@/config";
+import "server-only";
 
 const { afdian: { api_token, user_id } } = getConfig();
 

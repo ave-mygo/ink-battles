@@ -36,7 +36,7 @@ export default async function OGImage() {
 				</div>
 				<div style={{ fontSize: 28, marginTop: 16, opacity: 0.92 }}>{sub}</div>
 				<div style={{ fontSize: 20, marginTop: 24, opacity: 0.7 }}>
-					即时评估 · 结构化建议 · GEO 优化
+					即时评估 · 结构化建议
 				</div>
 			</div>
 		),

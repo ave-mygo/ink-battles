@@ -4,6 +4,7 @@ import type { AuthUserInfo, AuthUserInfoSafe } from "@/types/users/user";
 import process from "node:process";
 import bcrypt from "bcryptjs";
 import { jwtVerify, SignJWT } from "jose";
+import md5 from "md5";
 import { cookies } from "next/headers";
 import { getConfig } from "@/config";
 import { db_name } from "@/lib/constants";
@@ -162,3 +163,34 @@ export const logoutUser = async (): Promise<{ success: boolean; message: string 
 	cookieStore.delete("auth-token");
 	return { success: true, message: "注销成功" };
 };
+
+/**
+ * 获取用户头像 URL
+ * 优先级：QQ > 爱发电 > Email
+ * @param uid 用户UID
+ * @returns 头像URL
+ */
+export async function getUserAvatarUrl(uid: number): Promise<string> {
+	const user = await db_find(db_name, "users", { uid }) as any;
+	// 1. QQ (优先使用数据库中存储的 avatar)
+	if (user.qqOpenid && user.avatar) {
+		return user.avatar;
+	}
+
+	// 2. 爱发电
+	if (user.afdId) {
+		const afdAvatar = await db_find(db_name, "afd_users", { uid });
+		if (afdAvatar) {
+			return afdAvatar.avatar;
+		}
+	}
+
+	// 3. Email (Gravatar)
+	if (user.email) {
+		const hash = md5(user.email.trim().toLowerCase());
+		return `https://www.gravatar.com/avatar/${hash}?d=mp`;
+	}
+
+	// 4. 默认
+	return `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+}

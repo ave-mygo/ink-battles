@@ -26,6 +26,11 @@ const SignInForm = () => {
 		window.location.href = "/oauth/qq?method=signin";
 	};
 
+	const handleAfdianLoginClick = () => {
+		// 跳转到爱发电 OAuth 入口，携带 method=signin
+		window.location.href = "/oauth/afdian?method=signin";
+	};
+
 	const handleSubmit = async () => {
 		if (!email || !password) {
 			toast.error("请填写邮箱和密码");
@@ -106,6 +111,17 @@ const SignInForm = () => {
 								<span className="flex gap-2 items-center justify-center">
 									<Icon icon="mingcute:qq-fill" className="h-4 w-4" />
 									QQ登录
+								</span>
+							</Button>
+							<Button
+								disabled={loading}
+								onClick={handleAfdianLoginClick}
+								variant="outline"
+								className="text-[#946ce6] border-[#946ce6] w-full hover:text-white hover:bg-[#946ce6]"
+							>
+								<span className="flex gap-2 items-center justify-center">
+									<Icon icon="simple-icons:afdian" className="h-4 w-4" />
+									爱发电登录
 								</span>
 							</Button>
 						</div>
