@@ -170,7 +170,7 @@ export const HeaderNav = () => {
 											"px-2 sm:px-3 rounded-full shadow-sm hover:bg-primary/90",
 											"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40",
 											"dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-50 dark:focus-visible:ring-slate-600",
-											pathname === "/dashboard" && "bg-primary/90 dark:bg-slate-600",
+											pathname === "/dashboard" && "bg-primary/90 hover:bg-primary dark:bg-slate-600 dark:hover:bg-slate-500",
 										)}
 									>
 										<Link href="/dashboard" className="flex gap-1 items-center sm:gap-2">
@@ -216,7 +216,7 @@ export const HeaderNav = () => {
 											"px-2 sm:px-3 rounded-full shadow-sm hover:bg-primary/90",
 											"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40",
 											"dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-50 dark:focus-visible:ring-slate-600",
-											pathname === "/signup" && "bg-secondary dark:bg-slate-800/60",
+											pathname === "/signup" && "bg-primary/90 hover:bg-primary dark:bg-slate-600 dark:hover:bg-slate-500",
 										)}
 									>
 										<Link href="/signup" className="flex gap-1 items-center sm:gap-2">

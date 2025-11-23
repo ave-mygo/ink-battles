@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { toast } from "sonner";
-import { PasswordStrengthIndicator, PasswordStrengthMeter } from "@/components/common/password-strength";
+import { PasswordStrengthIndicator } from "@/components/common/password-strength";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { isPasswordValid } from "@/lib/password-strength";
 import { loginSetState } from "@/utils/auth/client";
 
@@ -31,12 +32,12 @@ const SignUpForm = () => {
 
 	const handleQQLoginClick = () => {
 		// 跳转到统一 QQ OAuth 入口，携带 method=signup
-		window.location.href = "/oauth/qq?method=signup";
+		router.push("/oauth/qq?method=signup");
 	};
 
 	const handleAfdianLoginClick = () => {
 		// 跳转到爱发电 OAuth 入口，携带 method=signup
-		window.location.href = "/oauth/afdian?method=signup";
+		router.push("/oauth/afdian?method=signup");
 	};
 
 	useEffect(() => {
@@ -129,115 +130,153 @@ const SignUpForm = () => {
 	};
 
 	return (
-		<div className="flex min-h-[calc(100vh-57px)] items-center from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">
-			<div className="mx-auto px-4 py-6 container max-w-md sm:py-8">
-				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60">
-					<CardHeader>
-						<CardTitle className="text-xl flex gap-2 items-center">
-							<UserPlus className="text-blue-600 h-5 w-5" />
-							{" "}
-							注册
-						</CardTitle>
-						<CardDescription>使用邮箱注册并完成验证码验证</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-4">
+		<div className="p-4 flex min-h-[calc(100vh-4rem)] items-center justify-center">
+			<Card className="border-0 bg-white/80 max-w-md w-full shadow-2xl backdrop-blur-sm dark:bg-slate-900/60">
+				<CardHeader className="text-center space-y-1">
+					<CardTitle className="text-2xl tracking-tight font-bold flex gap-2 items-center justify-center">
+						<UserPlus className="text-primary h-6 w-6" />
+						注册
+					</CardTitle>
+					<CardDescription>
+						使用邮箱注册并完成验证码验证
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="space-y-6">
+					<div className="space-y-4">
 						<div className="space-y-2">
-							<div className="text-muted-foreground text-sm flex gap-2 items-center">
-								<Mail className="text-blue-600 h-4 w-4" />
-								{" "}
-								邮箱
+							<Label htmlFor="email">邮箱</Label>
+							<div className="relative">
+								<Mail className="text-muted-foreground h-4 w-4 left-3 top-3 absolute" />
+								<Input
+									id="email"
+									className="pl-9"
+									value={email}
+									onChange={e => setEmail(e.target.value)}
+									placeholder="请输入邮箱地址"
+									type="email"
+								/>
 							</div>
-							<Input value={email} onChange={e => setEmail(e.target.value)} placeholder="请输入邮箱" type="email" />
 						</div>
 
-						<div className="gap-2 grid grid-cols-[1fr_auto] items-end">
-							<div className="space-y-2">
-								<div className="text-muted-foreground text-sm flex gap-2 items-center">
-									<ShieldCheck className="text-blue-600 h-4 w-4" />
-									{" "}
-									验证码
+						<div className="space-y-2">
+							<Label htmlFor="code">验证码</Label>
+							<div className="flex gap-2">
+								<div className="flex-1 relative">
+									<ShieldCheck className="text-muted-foreground h-4 w-4 left-3 top-3 absolute" />
+									<Input
+										id="code"
+										className="pl-9"
+										value={code}
+										onChange={e => setCode(e.target.value)}
+										placeholder="6位数字"
+									/>
 								</div>
-								<Input value={code} onChange={e => setCode(e.target.value)} placeholder="六位数字" />
+								<Button onClick={sendCode} disabled={!canSend || sending} variant="outline" className="shrink-0 w-32">
+									{countdown > 0
+										? (
+												<span className="text-primary flex gap-1 items-center">
+													<Timer className="h-4 w-4" />
+													{" "}
+													{countdown}
+													s
+												</span>
+											)
+										: (
+												"发送验证码"
+											)}
+								</Button>
 							</div>
-							<Button onClick={sendCode} disabled={!canSend || sending} variant="outline" className="min-w-28">
-								{countdown > 0
-									? (
-											<span className="text-blue-600 flex gap-1 items-center">
-												<Timer className="h-4 w-4" />
-												{" "}
-												{countdown}
-												s
-											</span>
-										)
-									: (
-											"发送验证码"
-										)}
-							</Button>
 						</div>
 
 						<div className="space-y-2">
-							<div className="text-muted-foreground text-sm flex gap-2 items-center">
-								<Lock className="text-blue-600 h-4 w-4" />
-								{" "}
-								设置密码
+							<Label htmlFor="password">设置密码</Label>
+							<div className="relative">
+								<Lock className="text-muted-foreground h-4 w-4 left-3 top-3 absolute" />
+								<Input
+									id="password"
+									className="pl-9"
+									value={password}
+									onChange={e => setPassword(e.target.value)}
+									placeholder="请输入密码"
+									type="password"
+								/>
 							</div>
-							<Input value={password} onChange={e => setPassword(e.target.value)} placeholder="请输入密码" type="password" />
-							<PasswordStrengthMeter password={password} />
 						</div>
 						<div className="space-y-2">
-							<div className="text-muted-foreground text-sm">确认密码</div>
-							<Input value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="再次输入密码" type="password" />
+							<Label htmlFor="confirmPassword">确认密码</Label>
+							<div className="relative">
+								<Lock className="text-muted-foreground h-4 w-4 left-3 top-3 absolute" />
+								<Input
+									id="confirmPassword"
+									className="pl-9"
+									value={confirmPassword}
+									onChange={e => setConfirmPassword(e.target.value)}
+									placeholder="再次输入密码"
+									type="password"
+								/>
+							</div>
 						</div>
 
 						{/* 密码强度详细指示器 */}
 						{password && (
-							<div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-								<PasswordStrengthIndicator password={password} />
-							</div>
+							<PasswordStrengthIndicator
+								password={password}
+								className="border-border/40 bg-muted/20 p-3 border rounded-lg"
+							/>
 						)}
 
-						<Button onClick={handleSubmit} className="w-full">
+						<Button onClick={handleSubmit} className="w-full" size="lg">
 							<span className="flex gap-2 items-center justify-center">
 								完成注册
 								<ArrowRight className="h-4 w-4" />
 							</span>
 						</Button>
+					</div>
 
-						<div className="space-y-2">
-							<div className="text-muted-foreground text-xs text-center">或</div>
-							<Button
-								onClick={handleQQLoginClick}
-								variant="outline"
-								className="text-[#12B7F5] border-[#12B7F5] w-full hover:text-white hover:bg-[#12B7F5]"
-							>
-								<span className="flex gap-2 items-center justify-center">
-									<Icon icon="mingcute:qq-fill" className="h-4 w-4" />
-									QQ登录
-								</span>
-							</Button>
-							<Button
-								onClick={handleAfdianLoginClick}
-								variant="outline"
-								className="text-[#946ce6] border-[#946ce6] w-full hover:text-white hover:bg-[#946ce6]"
-							>
-								<span className="flex gap-2 items-center justify-center">
-									<Icon icon="simple-icons:afdian" className="h-4 w-4" />
-									爱发电登录
-								</span>
-							</Button>
+					<div className="relative">
+						<div className="flex items-center inset-0 absolute">
+							<span className="border-t w-full" />
 						</div>
+						<div className="text-xs flex uppercase justify-center relative">
+							<span className="bg-background text-muted-foreground px-2">
+								或者通过以下方式
+							</span>
+						</div>
+					</div>
 
-						<div className="text-muted-foreground text-sm text-center">
-							已有账号？
-							{" "}
-							<a className="text-blue-600 hover:underline" href="/signin">去登录</a>
-							{" "}
-							· 想支持我们？
-							<a className="text-pink-600 hover:underline" href="/sponsors">去赞助</a>
-						</div>
-					</CardContent>
-				</Card>
-			</div>
+					<div className="gap-4 grid grid-cols-2">
+						<Button
+							onClick={handleQQLoginClick}
+							variant="outline"
+							className="w-full hover:text-[#12B7F5] hover:border-[#12B7F5] hover:bg-[#12B7F5]/10"
+						>
+							<span className="flex gap-2 items-center justify-center">
+								<Icon icon="mingcute:qq-fill" className="text-[#12B7F5] h-4 w-4" />
+								QQ
+							</span>
+						</Button>
+						<Button
+							onClick={handleAfdianLoginClick}
+							variant="outline"
+							className="w-full hover:text-[#946ce6] hover:border-[#946ce6] hover:bg-[#946ce6]/10"
+						>
+							<span className="flex gap-2 items-center justify-center">
+								<Icon icon="simple-icons:afdian" className="text-[#946ce6] h-4 w-4" />
+								爱发电
+							</span>
+						</Button>
+					</div>
+
+					<div className="text-muted-foreground text-sm text-center">
+						已有账号？
+						{" "}
+						<a className="text-primary font-medium hover:underline" href="/signin">去登录</a>
+						{" "}
+						· 想支持我们？
+						<a className="text-pink-600 font-medium hover:underline" href="/sponsors">去赞助</a>
+					</div>
+				</CardContent>
+			</Card>
 		</div>
 	);
 };
