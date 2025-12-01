@@ -4,10 +4,11 @@ import type { AuthUserInfoSafe } from "@/types/users/user";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { DASHBOARD_NAV_ITEMS } from "@/config";
+import { cn } from "@/lib/utils";
 import { useDashboardSidebarActions, useDashboardSidebarOpen } from "@/store/ui";
 
 interface DashboardLayoutClientProps {
@@ -26,13 +27,36 @@ export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) 
 	const pathname = usePathname();
 	const mainOffsetClass = isSidebarCollapsed ? "lg:ml-16" : "lg:ml-64";
 
+	useEffect(() => {
+		// 计算滚动条宽度
+		const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+		// 设置 body 样式：禁用溢出滚动，固定高度为视口高度
+		document.body.style.overflow = "hidden";
+		document.body.style.height = "100vh";
+		// 补偿滚动条宽度，防止页面抖动
+		if (scrollbarWidth > 0) {
+			document.body.style.paddingRight = `${scrollbarWidth}px`;
+		}
+
+		// 组件卸载时恢复原样式
+		return () => {
+			document.body.style.overflow = "";
+			document.body.style.height = "";
+			document.body.style.paddingRight = "";
+		};
+	}, []);
+
 	return (
-		<div className="flex min-h-screen">
+		<div className="flex">
 			<aside
 				style={{ overscrollBehaviorY: "contain" }}
-				className={`border-r bg-white w-64 shadow-sm transition-transform duration-300 bottom-0 left-0 top-14 fixed z-40 overflow-y-auto dark:border-white/10 dark:bg-slate-900 ${
-					mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-				}  ${isSidebarCollapsed ? "lg:w-16" : "lg:w-64"}`}
+				className={cn(
+					"fixed bottom-0 left-0 top-14 z-40 overflow-y-auto border-r shadow-sm transition-transform duration-300",
+					"bg-white/80 backdrop-blur-md dark:bg-slate-950/80 dark:border-slate-800/60",
+					mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+					isSidebarCollapsed ? "lg:w-16" : "lg:w-64",
+				)}
 			>
 				<nav className="p-4 flex flex-col h-full">
 					{/* 导航项 */}
@@ -43,21 +67,26 @@ export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) 
 
 							return (
 								<li key={item.href}>
-									<Link
-										href={item.href}
-										className={`${
-											isActive
-												? "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors bg-blue-500/10 text-blue-600 dark:bg-blue-400/10 dark:text-blue-300"
-												: "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors text-slate-700 hover:text-slate-900 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-white/10"
-										}  ${isSidebarCollapsed ? "justify-center" : ""}`}
-										onClick={close}
-										title={isSidebarCollapsed ? item.label : undefined}
-									>
-										<Icon className="shrink-0 h-5 w-5" />
-										{!isSidebarCollapsed && (
-											<span className="text-sm font-medium">{item.label}</span>
+									<Button
+										variant={isActive ? "secondary" : "ghost"}
+										asChild
+										className={cn(
+											"w-full justify-start h-10",
+											isActive && "bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30",
+											isSidebarCollapsed && "justify-center px-0",
 										)}
-									</Link>
+									>
+										<Link
+											href={item.href}
+											onClick={close}
+											title={isSidebarCollapsed ? item.label : undefined}
+										>
+											<Icon className={cn("h-5 w-5", !isSidebarCollapsed && "mr-3")} />
+											{!isSidebarCollapsed && (
+												<span>{item.label}</span>
+											)}
+										</Link>
+									</Button>
 								</li>
 							);
 						})}
@@ -93,8 +122,8 @@ export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) 
 				/>
 			)}
 
-			{/* 主内容:为顶部留出空间,避免被header遮挡 */}
-			<main className={`p-4 pt-20 flex-1 transition-all duration-300 lg:p-8 sm:p-6 lg:pt-20 sm:pt-20 ${mainOffsetClass}`}>
+			{/* 主内容区域 */}
+			<main className={`p-4 pt-6 flex-1 transition-all duration-300 overflow-y-auto lg:p-8 sm:p-6 lg:pt-8 sm:pt-8 ${mainOffsetClass}`}>
 				{children}
 			</main>
 		</div>

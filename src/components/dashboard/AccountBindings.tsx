@@ -1,7 +1,8 @@
 "use client";
 
 import type { FC } from "react";
-import { Link2, LinkIcon, Mail, Unlink } from "lucide-react";
+import { Icon } from "@iconify/react";
+import { Link2, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -150,172 +151,124 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 	};
 
 	return (
-		<Card className="border-0 rounded-2xl bg-white/80 shadow-lg backdrop-blur-lg">
-			<CardHeader>
-				<CardTitle className="flex gap-2 items-center">
-					<Link2 className="text-blue-600 h-5 w-5" />
-					账号绑定
-				</CardTitle>
-				<CardDescription>管理您的第三方登录方式</CardDescription>
-			</CardHeader>
-			<CardContent className="space-y-4">
-				{/* 邮箱绑定 */}
-				<div className="p-4 border border-slate-200/40 rounded-xl bg-white/5 backdrop-blur-sm dark:border-slate-700/50 dark:bg-white/5">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-1 gap-3 items-center">
-							<Mail className="text-slate-500 h-5 w-5" />
-							<div className="flex-1">
-								<div className="flex gap-2 items-center">
-									<p className="text-sm text-slate-900 font-medium dark:text-slate-100">
-										邮箱账号
-									</p>
+		<div className="space-y-6">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+				<CardHeader>
+					<CardTitle className="flex gap-2 items-center">
+						<Link2 className="text-primary h-5 w-5" />
+						账号绑定
+					</CardTitle>
+					<CardDescription>
+						管理您的第三方登录方式和关联账号，绑定后可使用多种方式登录。
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="gap-6 grid">
+					{/* 邮箱账号 */}
+					<div className="p-4 border rounded-lg flex items-center justify-between space-x-4">
+						<div className="flex items-center space-x-4">
+							<div className="text-blue-600 rounded-full bg-blue-100 flex h-10 w-10 items-center justify-center dark:text-blue-400 dark:bg-blue-900/30">
+								<Mail className="h-5 w-5" />
+							</div>
+							<div className="space-y-1">
+								<p className="text-sm leading-none font-medium flex gap-2 items-center">
+									邮箱账号
 									{bindings.loginMethod === "email" && (
-										<Badge variant="outline" className="text-xs">
-											主登录方式
-										</Badge>
+										<Badge variant="secondary" className="text-xs font-normal">当前登录</Badge>
 									)}
-								</div>
-								<p className="text-sm text-slate-600 dark:text-slate-400">
-									{bindings.email.bound
-										? bindings.email.value
-										: "绑定后可使用邮箱登录"}
+								</p>
+								<p className="text-muted-foreground text-sm">
+									{bindings.email.bound ? bindings.email.value : "未绑定邮箱账号"}
 								</p>
 							</div>
 						</div>
-						<div className="flex gap-2">
-							{bindings.email.bound
-								? (
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={handleEmailUnbind}
-											disabled={loading.email}
-										>
-											<Unlink className="mr-2 h-4 w-4" />
-											解绑
-										</Button>
-									)
-								: (
-										<Button
-											variant="default"
-											size="sm"
-											onClick={() => setShowEmailDialog(true)}
-											disabled={loading.email}
-										>
-											<LinkIcon className="mr-2 h-4 w-4" />
-											绑定
-										</Button>
-									)}
-						</div>
+						{bindings.email.bound
+							? (
+									<Button variant="outline" size="sm" onClick={handleEmailUnbind} disabled={loading.email}>
+										解绑
+									</Button>
+								)
+							: (
+									<Button size="sm" onClick={() => setShowEmailDialog(true)} disabled={loading.email}>
+										绑定
+									</Button>
+								)}
 					</div>
-				</div>
 
-				{/* QQ 绑定 */}
-				<div className="p-4 border border-slate-200/40 rounded-xl bg-white/5 backdrop-blur-sm dark:border-slate-700/50 dark:bg-white/5">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-1 gap-3 items-center">
-							<div className="text-xs text-white font-bold rounded-full bg-blue-500 flex h-5 w-5 items-center justify-center">
-								Q
+					{/* QQ 账号 */}
+					<div className="p-4 border rounded-lg flex items-center justify-between space-x-4">
+						<div className="flex items-center space-x-4">
+							<div className="text-[#12B7F5] rounded-full bg-[#12B7F5]/10 flex h-10 w-10 items-center justify-center">
+								<Icon icon="mingcute:qq-fill" className="h-5 w-5" />
 							</div>
-							<div className="flex-1">
-								<div className="flex gap-2 items-center">
-									<p className="text-sm text-slate-900 font-medium dark:text-slate-100">
-										QQ 账号
-									</p>
+							<div className="space-y-1">
+								<p className="text-sm leading-none font-medium flex gap-2 items-center">
+									QQ 账号
 									{bindings.loginMethod === "qq" && (
-										<Badge variant="outline" className="text-xs">
-											主登录方式
-										</Badge>
+										<Badge variant="secondary" className="text-xs font-normal">当前登录</Badge>
 									)}
-								</div>
-								<p className="text-sm text-slate-600 dark:text-slate-400">
-									{bindings.qq.bound
-										? `已绑定 QQ: ${bindings.qq.value?.substring(0, 8)}...`
-										: "绑定后可使用 QQ 快捷登录"}
+								</p>
+								<p className="text-muted-foreground text-sm">
+									{bindings.qq.bound ? (bindings.qq.value || "已绑定") : "未绑定 QQ 账号"}
 								</p>
 							</div>
 						</div>
-						<div className="flex gap-2">
-							{bindings.qq.bound
-								? (
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={handleQQUnbind}
-											disabled={loading.qq}
-										>
-											<Unlink className="mr-2 h-4 w-4" />
-											解绑
-										</Button>
-									)
-								: (
-										<Button
-											variant="default"
-											size="sm"
-											onClick={handleQQBind}
-											disabled={loading.qq}
-										>
-											<LinkIcon className="mr-2 h-4 w-4" />
-											绑定
-										</Button>
-									)}
-						</div>
+						{bindings.qq.bound
+							? (
+									<Button variant="outline" size="sm" onClick={handleQQUnbind} disabled={loading.qq}>
+										解绑
+									</Button>
+								)
+							: (
+									<Button
+										size="sm"
+										variant="outline"
+										className="hover:text-[#12B7F5] hover:border-[#12B7F5] hover:bg-[#12B7F5]/10"
+										onClick={handleQQBind}
+										disabled={loading.qq}
+									>
+										绑定
+									</Button>
+								)}
 					</div>
-				</div>
 
-				{/* 爱发电绑定 */}
-				<div className="p-4 border border-slate-200/40 rounded-xl bg-white/5 backdrop-blur-sm dark:border-slate-700/50 dark:bg-white/5">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-1 gap-3 items-center">
-							<div className="text-xs text-white font-bold rounded-full bg-pink-500 flex h-5 w-5 items-center justify-center">
-								A
+					{/* 爱发电账号 */}
+					<div className="p-4 border rounded-lg flex items-center justify-between space-x-4">
+						<div className="flex items-center space-x-4">
+							<div className="text-[#946ce6] rounded-full bg-[#946ce6]/10 flex h-10 w-10 items-center justify-center">
+								<Icon icon="simple-icons:afdian" className="h-5 w-5" />
 							</div>
-							<div className="flex-1">
-								<div className="flex gap-2 items-center">
-									<p className="text-sm text-slate-900 font-medium dark:text-slate-100">
-										爱发电账号
-									</p>
+							<div className="space-y-1">
+								<p className="text-sm leading-none font-medium flex gap-2 items-center">
+									爱发电
 									{bindings.loginMethod === "afd" && (
-										<Badge variant="outline" className="text-xs">
-											主登录方式
-										</Badge>
+										<Badge variant="secondary" className="text-xs font-normal">当前登录</Badge>
 									)}
-								</div>
-								<p className="text-sm text-slate-600 dark:text-slate-400">
-									{bindings.afdian.bound
-										? "绑定后可享受赞助者专属权益"
-										: "绑定后可享受赞助者专属权益"}
+								</p>
+								<p className="text-muted-foreground text-sm">
+									{bindings.afdian.bound ? (bindings.afdian.value || "已绑定") : "未绑定爱发电账号"}
 								</p>
 							</div>
 						</div>
-						<div className="flex gap-2">
-							{bindings.afdian.bound
-								? (
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={handleAfdianUnbind}
-											disabled={loading.afdian}
-										>
-											<Unlink className="mr-2 h-4 w-4" />
-											解绑
-										</Button>
-									)
-								: (
-										<Button
-											variant="default"
-											size="sm"
-											onClick={handleAfdianBind}
-											disabled={loading.afdian}
-										>
-											<LinkIcon className="mr-2 h-4 w-4" />
-											绑定
-										</Button>
-									)}
-						</div>
+						{bindings.afdian.bound
+							? (
+									<Button variant="outline" size="sm" onClick={handleAfdianUnbind} disabled={loading.afdian}>
+										解绑
+									</Button>
+								)
+							: (
+									<Button
+										size="sm"
+										variant="outline"
+										className="hover:text-[#946ce6] hover:border-[#946ce6] hover:bg-[#946ce6]/10"
+										onClick={handleAfdianBind}
+										disabled={loading.afdian}
+									>
+										绑定
+									</Button>
+								)}
 					</div>
-				</div>
-			</CardContent>
+				</CardContent>
+			</Card>
 
 			{/* 邮箱绑定对话框 */}
 			<Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
@@ -387,7 +340,7 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
-		</Card>
+		</div>
 	);
 };
 
