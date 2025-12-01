@@ -9,21 +9,19 @@ mode: agent
 
 ---
 
-### 特别提示
-
-- 你可以忽略`eslint`警告，这些问题由用户来处理。
-
 ### 1. 项目结构与App Router
 
 - **src/ 根目录结构：** 所有源代码统一放置在 `src/` 目录下，确保代码组织的清晰性和一致性。
 - **App Router 优先：** 始终使用 Next.js 16 的 App Router (`src/app/` 目录) 作为核心路由和渲染机制。
 - **共置原则 (Colocation)：** 将路由处理程序、加载/错误状态、页面级组件、布局及私有组件共置于 `src/app/` 目录下，与对应路由紧密关联。
+- **页面角色明确（解耦核心）：** `page.tsx` **仅作为“编排者” (Orchestrator)**。其职责限制为：1. 获取数据；2. 定义元数据；3. 导入并组装各个组件。**严禁在 `page.tsx` 中编写复杂的 UI 标记或业务逻辑**，必须将其拆分为独立的组件。
 - **路由组：** 使用路由组 `()` 组织路由，实现逻辑分组而不影响URL结构。
 - **复杂布局：** 通过并行路由 (Parallel Routes) 或拦截路由 (Intercepting Routes) 实现复杂布局和模态框等高级UI模式。
 - **组件分类组织：** 共享的、可复用的 UI 组件存放于 `src/components/` 目录，按功能域进行详细分类：
   - `src/components/ui/` - ShadCN UI 基础组件
   - `src/components/common/` - 通用组件（如头部、主题切换等）
   - `src/components/layouts/` - 页面级布局组件（按页面功能分类）
+  - `src/components/business/` - **业务组件**（封装特定业务逻辑的组件，保持 page 简洁）
 - **共享逻辑/工具：** 通用工具函数、类型定义、常量等共享逻辑按功能域组织：
   - **功能域工具函数 (`@/utils/`)：** 按功能域分类的工具函数统一放置在 `src/utils/` 目录：
     - `@/utils/auth/` - 认证相关工具函数（含客户端 `client.ts`、服务器端 `server.ts` 和共享 `common.ts`）
@@ -95,7 +93,9 @@ mode: agent
 
 ### 5. 服务器组件 (Server Components)
 
-- **默认渲染模式：** 默认用于渲染。所有 `app/` 目录下的组件默认都是服务器组件。
+- **角色定位：** **编排者 (Orchestrator)**。所有 `app/` 目录下的组件默认都是服务器组件。
+- **瘦组件原则 (Thin Components)：** **严禁**在服务器组件中编写复杂的逻辑。它们的主要职责是：1. 调用 Server Actions/Utils 获取数据；2. 将数据传递给子组件。
+- **组合模式 (Composition Pattern)：** 优先使用 `children` 属性或 Slot 模式来组合组件，而不是通过深层 Props 传递 (Prop Drilling)。**这能有效解耦布局与具体内容**。
 - **数据传递：** 推荐通过 Server Actions 获取数据，然后将数据作为 props 传递给服务器组件或客户端组件。
 - **限制：** **严禁在服务器组件中使用客户端 Hooks (如 `useState`, `useEffect`) 或浏览器 API (如 `window`, `document`)**。
 - **强制检查：** 结合 `server-only` 包以在编译时强制检查服务器组件不导入客户端专属模块。
@@ -106,7 +106,7 @@ mode: agent
 ### 6. 客户端组件 (Client Components)
 
 - **明确标记：** 必须在文件顶部明确标记 `"use client"`。
-- **职责：** 仅用于包含用户交互、状态管理和浏览器 API 等客户端专属逻辑。
+- **职责：** **交互叶子节点**。仅用于包含用户交互、状态管理和浏览器 API 等客户端专属逻辑。**尽量将客户端组件推向组件树的末端**，保持父组件为服务器组件。
 - **导航：** 使用 `next/navigation` 提供的 `useRouter`、`usePathname` 等 Hooks，**严禁使用 `next/router`**。
 - **表单状态：** 结合 Server Actions，使用 `useFormStatus` (获取表单提交状态)、`useFormState` (处理表单错误或结果) 和 `useOptimistic` (实现乐观更新) 处理表单状态。
 - **数据交互：** 所有需要数据获取或变更的客户端交互，都必须通过调用 Server Actions 来实现。
@@ -116,6 +116,9 @@ mode: agent
 
 - **服务器 Actions 定义：** 必须使用 `"use server"` 指令在函数顶部定义服务器 Actions，或标记整个文件为 `"use server"`。
 - **Server Actions 优先：** **所有数据获取 (reads)、数据变更 (mutations)、表单提交以及任何需要与后端交互的逻辑，都应优先且强制使用服务器 Actions 实现**。这是 Next.js 16 的核心范式，旨在简化数据流和提高安全性。
+- **逻辑解耦 (Service Layer)：** **Server Actions 仅作为网关 (Gateway)**。
+  - **严禁**在 Server Action 函数体内直接编写复杂的数据库查询或业务逻辑。
+  - **必须**调用 `@/lib` 或 `@/services` 中的纯函数来处理实际业务。Server Action 负责处理请求参数、权限校验、调用 Service 层，并返回统一格式的响应。
 - **调用方式：** 服务器 Actions 可从服务器组件和客户端组件直接调用。
 - **客户端 Hooks 配合：** 在客户端组件中，结合 `useFormStatus` 跟踪表单提交状态、`useFormState` 处理表单提交后的结果或错误，以及 `useOptimistic` 实现UI的乐观更新。
 - **禁止旧式表单提交：** **严禁在表单提交后使用 `router.push` 或 `router.refresh` 来触发数据刷新**。应依赖 Server Actions 完成数据变更和自动重渲染。
@@ -139,6 +142,7 @@ mode: agent
 - **自定义 CSS：** 仅在特殊、复杂或 Tailwind 无法直接实现的场景下，才使用自定义 CSS（例如 CSS Modules）。
 - **类组织：** 逻辑地组织 Tailwind 类（例如：布局、间距、颜色、排版），遵循原子化设计原则。
 - **响应式与状态变体：** 在标记中广泛使用响应式 (`sm:`, `md:`, `lg:`) 和状态变体 (`hover:`, `focus:`, `dark:`)。
+- **指针交互反馈：** **所有交互元素（如按钮、链接、可点击的卡片/图标）必须显式设置 `cursor-pointer`**，确保鼠标悬停时指针变为手型，提供清晰的视觉反馈。
 - **统一设计语言：** **强烈依赖 Tailwind 类**，而非内联样式或独立的外部 CSS 文件，以维护统一的设计语言和可维护性。
 - **图片优化：** 统一使用内置的 `<Image />` 组件进行图片优化、懒加载和响应式处理。
 - **字体优化：** 使用 `@next/font` 或 React 19 新的字体 API 进行字体优化，自动处理字体加载和性能。
@@ -150,6 +154,9 @@ mode: agent
 ### 10. UI/UX 与 ShadCN UI 风格推荐 (核心)
 
 - **ShadCN UI 体系：** 严格遵循 `shadcn/ui` 组件体系进行构建。所有新功能界面都应优先复用或组合 `shadcn/ui` 提供的基础组件（如 `Card`, `Button`, `Switch`, `Progress` 等），**避免从零开始造轮子**，以确保整个应用在视觉风格、交互行为和代码结构上保持高度一致性和可维护性。
+- **原子化构建与组合 (Composition)：**
+  - **不要创建巨大的单一组件**。例如，不要创建一个包含所有逻辑的 `UserDashboard`。
+  - **应当创建** `UserProfile`, `UserSettings`, `UserStats` 等独立的小组件，然后在页面中**组合**它们。这能极大降低耦合度。
 - **卡片式布局：** 统一使用卡片式布局作为核心内容承载。所有独立的功能区块（如输入区、结果展示区、模式选择区）都必须使用 `Card` 组件包裹，并统一应用 `className="border-0 bg-white/80 shadow-lg backdrop-blur-sm"` 样式，形成具有辨识度的“毛玻璃”视觉风格，增强界面的整体感和层次感。
 - **语义化色彩：** 建立语义化的色彩应用规范。颜色使用必须有明确的业务含义：
   - 蓝色 (`-blue-`)：应用于主要的交互、选中状态和功能性图标。
@@ -160,6 +167,7 @@ mode: agent
 - **间距与布局：** 采用原子化的间距和布局原则。组件内部元素的间距应遵循 `tailwindcss` 的间距尺度（如 `space-y-4`, `gap-2`），形成有韵律的垂直和水平间距。对于多列布局，应使用 `grid` 系统（如 `md:grid-cols-3`），以实现清晰且具备响应式能力的布局结构。
 - **组件内部状态：** 优先封装组件内部状态，谨慎处理跨组件状态。组件应优先管理自身的状态（如 `WriterAnalysisModes` 中的 `isModesExpanded`）。对于必须在父子组件间传递的状态和方法（如 `articleText` 和 `setArticleText`），props 命名应清晰明了。当状态传递超过两层时，应考虑使用 React Context 或 Zustand 等轻量级状态管理方案，以避免过深的属性钻取（Prop Drilling）。
 - **即时反馈：** 为所有交互行为提供即时、明确的反馈。用户的任何操作都应获得视觉响应，这包括：按钮的 `disabled` 禁用状态，输入框的 `focus` 状态边框高亮，使用 `HoverCard` 为复杂选项提供非侵入式的解释说明，以及在执行异步操作时（如校验 Token）提供明确的加载中提示。
+- **指针状态 (Cursor States)：** **强制要求**所有可交互元素（`Button`, `Link`, `Switch`, `Select` 以及自定义的可点击 `div`）在 `hover` 状态下必须表现出正确的鼠标指针样式（通常是 `cursor-pointer`），而在禁用状态下必须表现为 `cursor-not-allowed`。禁止出现用户可点击但鼠标指针仍为默认箭头的情况。
 - **信息层级结构：** 固化信息层级结构，统一卡片内容组织。在 `Card` 组件内部，必须严格遵循 `CardHeader` > `CardTitle` + `CardDescription`，以及 `CardContent` 的内容组织范式，这确保了用户在浏览不同功能卡片时，能以相同的心理模型快速定位标题、说明和主体内容。
 - **可访问性 (A11y)：** 将可访问性（A11y）作为组件开发的基本要求。确保所有交互元素（`Button`, `Link`, `Switch`, `input`）都能通过键盘完全访问和操作。对于 `HoverCard` 等组件，要确保其触发和内容对屏幕阅读器友好。在设计点击区域时，要保证其尺寸足够大，便于移动端用户和特殊需求用户操作。
 - **文本内容：** 除内容外，组件硬编码的文本应尽量避免使用 emoji 表情，以保持专业性和跨平台一致性。
@@ -232,13 +240,15 @@ mode: agent
 
 - **Do：**
   - 在 `app` 目录组织路由和组件，遵循共置原则。
-  - 利用服务器组件进行初始渲染。
+  - 利用服务器组件进行初始渲染，但**仅作为编排者，避免在其中编写复杂逻辑**。
   - **优先且广泛使用服务器 Actions 进行所有数据获取、数据变更和表单提交。**
+  - **使用组合模式（Composition）来构建页面，将业务逻辑下沉到专门的 Service 层。**
   - 使用 `next/link` 进行内部路由和预取。
   - 使用 `loading.tsx` 文件实现加载状态和 `Suspense`。
   - 仔细分离服务器和客户端逻辑，并使用 `server-only`/`client-only` 包进行强制检查。
   - 按功能域组织工具函数到 `@/utils/` 目录，通过明确的文件命名区分客户端/服务器专用函数。
   - 广泛使用 Tailwind 工具类和 ShadCN UI 组件。
+  - **确保所有交互元素（按钮、链接等）在悬停时显示正确的手型指针 (`cursor-pointer`)。**
   - 最小化依赖，并保持依赖更新。
   - 使用 TypeScript 严格模式和高级特性。
   - 在服务器 Actions 内部使用 `React.use` Hook 读取 Promise 或 Context。
@@ -246,6 +256,7 @@ mode: agent
 
 - **Don't：**
   - 混用 `pages` 和 `app` 目录进行路由。
+  - **严禁生成“上帝组件”：即一个组件包含几百行代码并处理多种业务逻辑。**
   - **在客户端组件或服务器组件中直接使用 `fetch` 进行数据获取；所有数据交互都应通过服务器 Actions。**
   - **在服务器 Actions 可用时，使用 `router.push` 或 `router.refresh` 进行表单提交或数据刷新。**
   - 在客户端代码中暴露敏感环境变量。
