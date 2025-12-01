@@ -3,42 +3,33 @@
 import type { UserStore, UserStoreData } from "@/types/users";
 import { useEffect } from "react";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 /**
  * 用户认证状态管理
  * 管理用户登录状态、用户信息和加载状态
  */
 export const useAuthStore = create<UserStoreData>()(
-	persist(
-		set => ({
-			user: null,
-			// 初始为 true，直到客户端完成持久化数据的水合
-			loading: true,
+	set => ({
+		user: null,
+		// 初始为 true，直到客户端完成持久化数据的水合
+		loading: true,
 
-			// 设置用户信息并标记为已登录
-			setUser: (user: UserStore) => set({ user, loading: false }),
+		// 设置用户信息并标记为已登录
+		setUser: (user: UserStore) => set({ user, loading: false }),
 
-			// 退出登录，清空用户信息
-			logout: () => set({ user: null, loading: false }),
+		// 退出登录，清空用户信息
+		logout: () => set({ user: null, loading: false }),
 
-			// 清空store和本地存储
-			clearStore: () => {
-				set({ user: null, loading: false });
-				// 清空持久化存储
-				localStorage.removeItem("ib-auth");
-			},
-
-			// 设置加载状态
-			setLoading: (loading: boolean) => set({ loading }),
-		}),
-		{
-			name: "ib-auth",
-			partialize: state => ({ user: state.user }),
-			// 跳过服务端渲染时的水合，避免不匹配
-			skipHydration: true,
+		// 清空store和本地存储
+		clearStore: () => {
+			set({ user: null, loading: false });
+			// 清空持久化存储
+			localStorage.removeItem("ib-auth");
 		},
-	),
+
+		// 设置加载状态
+		setLoading: (loading: boolean) => set({ loading }),
+	}),
 );
 
 // 选择器 hooks - 只获取数据，不包含 actions
