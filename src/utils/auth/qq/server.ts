@@ -8,7 +8,9 @@ import { cookies } from "next/headers";
 import { getConfig } from "@/config";
 import { db_name } from "@/lib/constants";
 import { db_find, db_insert, db_update } from "@/lib/db";
+import { isPasswordValid } from "@/lib/password-strength";
 import { generateNextUID } from "@/utils/auth";
+import { getCurrentUserInfo } from "@/utils/auth/server";
 
 import "server-only";
 
@@ -116,7 +118,6 @@ export const bindQQAccountWithCode = async (code: string): Promise<{ success: bo
 
 	try {
 		// 获取当前登录用户
-		const { getCurrentUserInfo } = await import("@/utils/auth/server");
 		const currentUser = await getCurrentUserInfo();
 		if (!currentUser) {
 			return { success: false, message: "用户未登录" };
@@ -250,7 +251,6 @@ export const BindEmailToQQ = async (qqOpenid: string, email: string, password: s
 			return { success: false, message: "该邮箱已被其他用户使用" };
 		}
 
-		const { isPasswordValid } = await import("@/lib/password-strength");
 		if (!isPasswordValid(password)) {
 			return { success: false, message: "密码不符合要求。密码必须：至少8位字符、包含小写字母、数字和特殊字符" };
 		}

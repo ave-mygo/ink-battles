@@ -2,12 +2,14 @@
 
 import { Crown, FileText, Gift, Users, Zap } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getAvailableCalls } from "@/app/actions/billing";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { USER_LIMITS, UserType } from "@/lib/constants";
 import { getFingerprintId } from "@/lib/fingerprint";
+import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
 
 interface UserTierData {
 	userType: UserType;
@@ -174,16 +176,28 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-	const fetchUserTierData = async () => {
-		try {
-			// TODO: 在这里实现用户数据请求逻辑
-			// 示例代码:
-			// const response = await fetch('/api/user/profile');
-			// const userData = await response.json();
-			// const userType = userData.userType;
+	// 使用客户端状态管理判断登录状态
+	const isLoggedIn = useIsAuthenticated();
+	const authLoading = useAuthLoading();
+	useAuthHydration();
 
-			// 临时默认值，请替换为实际的 API 调用
-			const userType: UserType = UserType.GUEST;
+	const fetchUserTierData = useCallback(async (isAuthenticated: boolean) => {
+		try {
+			let userType: UserType = UserType.GUEST;
+			let availableCalls = 0;
+
+			if (isAuthenticated) {
+				// 用户已登录，使用 Server Action 获取计费信息
+				const callsResult = await getAvailableCalls();
+
+				if (callsResult.success && callsResult.data) {
+					availableCalls = callsResult.data.totalCalls;
+					// 如果有可用调用次数，则为会员用户
+					userType = availableCalls > 0 ? UserType.MEMBER : UserType.REGULAR;
+				} else {
+					userType = UserType.REGULAR;
+				}
+			}
 
 			const limits = USER_LIMITS[userType];
 
@@ -211,6 +225,8 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 				icon,
 				badgeColor,
 				limits,
+				advancedModelCalls: availableCalls > 0,
+				donationAmount: availableCalls, // 暂时用可用次数代替捐赠金额显示
 			});
 		} catch (error) {
 			console.error("获取用户数据失败:", error);
@@ -223,18 +239,22 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 				limits: USER_LIMITS[UserType.GUEST],
 			});
 		}
-	};
+	}, []);
 
 	// 页面加载时初始化浏览器指纹并获取用户分级信息
 	useEffect(() => {
 		const initializeData = async () => {
+			// 等待认证状态水合完成
+			if (authLoading)
+				return;
+
 			try {
 				// 初始化浏览器指纹
 				const fingerprint = await getFingerprintId();
 				setBrowserFingerprint(fingerprint);
 
-				// 获取用户分级信息
-				await fetchUserTierData();
+				// 获取用户分级信息，传入当前认证状态
+				await fetchUserTierData(isLoggedIn);
 			} catch (error) {
 				console.error("初始化数据失败:", error);
 			} finally {
@@ -243,7 +263,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 		};
 
 		initializeData();
-	}, []);
+	}, [authLoading, isLoggedIn, fetchUserTierData]);
 
 	const getCurrentLimit = useCallback(() => {
 		return tierData.limits.perRequest || Number.MAX_SAFE_INTEGER;
@@ -338,7 +358,9 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 											高级模型
 										</span>
 										<span className="font-medium">
-											已开通
+											{tierData.donationAmount || 0}
+											{" "}
+											次
 										</span>
 									</div>
 								)
@@ -359,17 +381,18 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 					)}
 					{tierData.userType === UserType.REGULAR && (
 						<div className="mt-3 pt-3 border-t flex items-center justify-between">
-							<div className="text-muted-foreground text-[12px]">升级会员解锁无限分析与高级模型</div>
-							<a href="/sponsors" className="text-xs text-orange-600 font-medium dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">了解会员</a>
+							<div className="text-muted-foreground text-[12px]">兑换订单获取高级模型调用次数</div>
+							<a href="/dashboard/billing" className="text-xs text-orange-600 font-medium dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300">去兑换</a>
 						</div>
 					)}
 					{tierData.userType === UserType.MEMBER && tierData.donationAmount !== undefined && (
 						<div className="text-[12px] text-slate-600 mt-3 pt-3 border-t flex items-center justify-between dark:text-slate-300">
-							<span>
-								感谢支持！当前累计赞助：¥
-								{tierData.donationAmount?.toLocaleString?.() || tierData.donationAmount}
+							<span className="flex gap-1 items-center">
+								<Zap className="h-3 w-3" />
+								可用调用次数：
+								{tierData.donationAmount}
 							</span>
-							<a href="/dashboard" className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">管理赞助</a>
+							<a href="/dashboard/billing" className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300">管理计费</a>
 						</div>
 					)}
 				</div>

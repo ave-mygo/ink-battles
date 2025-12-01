@@ -3,6 +3,8 @@
 import bcrypt from "bcryptjs";
 import { db_name } from "@/lib/constants";
 import { db_find, db_insert, db_update } from "@/lib/db";
+import { isPasswordValid } from "@/lib/password-strength";
+import { sendVerificationEmail } from "@/lib/smtp";
 import { registerUser } from "@/utils/auth";
 
 import "server-only";
@@ -35,7 +37,6 @@ export const SendVerificationEmail = async (
 		await db_insert(db_name, "email_verification_codes", { email, type, codeHash, createdAt, expiresAt, used: false });
 	}
 
-	const { sendVerificationEmail } = await import("@/lib/smtp");
 	const result = await sendVerificationEmail(email, code, type);
 
 	return result;
@@ -83,7 +84,6 @@ export const registerUserWithEmail = async (
 	if (!email || !password || !code) {
 		return { success: false, message: "邮箱、密码和验证码不能为空" };
 	}
-	const { isPasswordValid } = await import("@/lib/password-strength");
 	if (!isPasswordValid(password)) {
 		return { success: false, message: "密码不符合要求。密码必须：至少8位字符、包含小写字母、数字和特殊字符" };
 	}

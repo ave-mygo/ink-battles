@@ -1,6 +1,7 @@
 "use server";
 
 import type { AuthUserInfo } from "@/types/users/user";
+import bcrypt from "bcryptjs";
 import { db_name } from "@/lib/constants";
 import { db_find, db_update } from "@/lib/db";
 import { getCurrentUserInfo } from "@/utils/auth/server";
@@ -80,7 +81,6 @@ export const bindEmailAccount = async (email: string, password?: string): Promis
 
 		// 如果提供了密码，也更新密码
 		if (password) {
-			const bcrypt = await import("bcryptjs");
 			updateData.passwordHash = await bcrypt.hash(password, 10);
 		}
 

@@ -34,7 +34,7 @@ export const PasswordStrengthIndicator = ({
 		<div className={cn("space-y-3", className)}>
 			{/* 进度条部分 */}
 			<div className="space-y-1.5">
-				<div className="flex items-center justify-between text-xs">
+				<div className="text-xs flex items-center justify-between">
 					<span className="text-muted-foreground font-medium">密码强度</span>
 					<span className={cn(
 						"font-medium",
@@ -44,7 +44,7 @@ export const PasswordStrengthIndicator = ({
 						{getPasswordStrengthText(strength.level)}
 					</span>
 				</div>
-				<div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary/50">
+				<div className="bg-secondary/50 rounded-full h-1.5 w-full overflow-hidden">
 					<div
 						className={cn("h-full transition-all duration-500 ease-out", progressColor)}
 						style={{ width: `${Math.max(5, strength.score)}%` }}
@@ -53,7 +53,7 @@ export const PasswordStrengthIndicator = ({
 			</div>
 
 			{showRequirements && (
-				<div className="grid grid-cols-2 gap-2 pt-1">
+				<div className="pt-1 gap-2 grid grid-cols-2">
 					<RequirementItem
 						met={strength.requirements.length}
 						text={`至少 ${PASSWORD_REQUIREMENTS.minLength} 位字符`}
@@ -74,7 +74,7 @@ export const PasswordStrengthIndicator = ({
 						met={strength.requirements.special}
 						text="特殊字符"
 					/>
-					<div className="flex items-center gap-2 text-xs">
+					<div className="text-xs flex gap-2 items-center">
 						<span className="text-muted-foreground text-[10px]">
 							(满足长度 + 任意两项即可)
 						</span>
@@ -86,13 +86,13 @@ export const PasswordStrengthIndicator = ({
 };
 
 const RequirementItem = ({ met, text }: { met: boolean; text: string }) => (
-	<div className="flex items-center gap-2 text-xs transition-colors duration-200">
+	<div className="text-xs flex gap-2 transition-colors duration-200 items-center">
 		{met
 			? (
-					<Check className="h-3.5 w-3.5 text-green-500 shrink-0" />
+					<Check className="text-green-500 shrink-0 h-3.5 w-3.5" />
 				)
 			: (
-					<X className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0" />
+					<X className="text-muted-foreground/40 shrink-0 h-3.5 w-3.5" />
 				)}
 		<span className={cn(
 			"truncate",
@@ -125,7 +125,7 @@ export const PasswordStrengthMeter = ({
 
 	return (
 		<div className={cn("space-y-1.5", className)}>
-			<div className="h-1 w-full overflow-hidden rounded-full bg-secondary/50">
+			<div className="bg-secondary/50 rounded-full h-1 w-full overflow-hidden">
 				<div
 					className={cn("h-full transition-all duration-500 ease-out", progressColor)}
 					style={{ width: `${Math.max(5, strength.score)}%` }}

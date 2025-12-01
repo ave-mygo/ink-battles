@@ -1,5 +1,7 @@
 export const db_name = "ink_battles";
 export const db_table = "analysis_requests";
+export const db_collection_user_billing = "user_billing";
+export const db_collection_afd_orders = "afd_orders";
 
 // 使用额度与限制（字数）
 export const PER_REQUEST_GUEST = 5000; // 未登录单次上限
@@ -9,8 +11,9 @@ export const DAILY_CAP_GUEST = 100000; // 未登录每日累计上限（按 IP �
 // 高级模型调用成本配置
 export const ADVANCED_MODEL_BASE_COST = 0.5; // 单次高级模型调用基础成本（人民币）
 export const GRANT_CALL_VIRTUAL_COST = 1.2; // 赠送调用虚拟单价（人民币）
-export const MONTHLY_GRANT_BASE = 10; // 每月赠送保底次数
-export const MONTHLY_GRANT_MAX = 80; // 每月赠送上限次数
+export const MONTHLY_GRANT_BASE = 5; // 每月赠送保底次数
+export const MONTHLY_GRANT_MAX = 60; // 每月赠送上限次数
+export const NEW_USER_BONUS = 20; // 新用户注册赠送次数
 
 // 会员等级和折扣配置
 export const MEMBERSHIP_TIERS = {

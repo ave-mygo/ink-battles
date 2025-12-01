@@ -12,6 +12,7 @@ import { db_name } from "@/lib/constants";
 import { db_find, db_insert } from "@/lib/db";
 
 import { generateNextUID } from "@/utils/auth";
+import { initializeUserBilling } from "@/utils/billing/server";
 import "server-only";
 
 const {
@@ -43,6 +44,10 @@ export async function registerUser(email: string, password: string): Promise<{ s
 	if (!ok) {
 		return { success: false, message: "注册失败，请重试" };
 	}
+
+	// 初始化用户计费信息（赠送20次调用）
+	await initializeUserBilling(uid);
+
 	return { success: true, message: "注册成功，请登录" };
 }
 
