@@ -22,7 +22,7 @@ export interface Stats {
 	successRate: number;
 }
 // 修正后的 ApiResponse 接口
-export interface ApiResponse {
+export interface StatusApiResponse {
 	success: boolean;
 	// 移除了 message 字段，因为在提供的JSON中没有
 	items: UsageLog[];
