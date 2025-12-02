@@ -91,7 +91,16 @@ export async function POST(request: NextRequest) {
 		if (!sessionRecords) {
 			return Response.json({ error: "该会话标识不存在或已被使用，请刷新页面重试" }, { status: 400 });
 		}
-		await db_delete(db_name, "sessions", {});
+
+		// 检查 session 是否过期（30 分钟）
+		const sessionCreatedAt = new Date(sessionRecords.createdAt).getTime();
+		const now = Date.now();
+		const SESSION_TTL = 30 * 60 * 1000; // 30 分钟
+		if (now - sessionCreatedAt > SESSION_TTL) {
+			// 过期则删除并返回错误
+			await db_delete(db_name, "sessions", { session });
+			return Response.json({ error: "会话已过期，请重新提交分析" }, { status: 400 });
+		}
 
 		// 如果是高级模型，检查是否有可用次数
 		if (isPremiumModel && uid) {
@@ -161,6 +170,11 @@ export async function POST(request: NextRequest) {
 
 					// 7. 异步保存结果到数据库 (流结束后执行)
 					if (accumulatedContent.trim()) {
+						// 流成功完成，删除已使用的 session
+						db_delete(db_name, "sessions", { session }).catch(err =>
+							console.error("删除 session 失败:", err),
+						);
+
 						// 使用 setImmediate 或不 await 保证不阻塞流关闭
 						saveToDatabase({
 							accumulatedContent,
@@ -184,6 +198,7 @@ export async function POST(request: NextRequest) {
 						}
 					}
 				} catch (error) {
+					console.error("流式响应出错:", error);
 					controller.error(error);
 				}
 			},
@@ -263,8 +278,10 @@ async function saveToDatabase({
 }) {
 	try {
 		// 尝试提取 JSON
-		const match = accumulatedContent.match(/```json\n?([\s\S]+?)\n?```/) || accumulatedContent.match(/\{[\s\S]+\}/);
-		const jsonContent = match ? match[1].trim() : accumulatedContent;
+		const codeBlockMatch = accumulatedContent.match(/```json\n?([\s\S]+?)\n?```/);
+		const jsonObjectMatch = accumulatedContent.match(/\{[\s\S]+\}/);
+		// codeBlockMatch[1] 是捕获组内容，jsonObjectMatch[0] 是整个匹配
+		const jsonContent = codeBlockMatch ? codeBlockMatch[1].trim() : (jsonObjectMatch ? jsonObjectMatch[0].trim() : accumulatedContent);
 
 		let parsedResult;
 		try {
