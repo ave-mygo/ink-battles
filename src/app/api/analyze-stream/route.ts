@@ -9,6 +9,8 @@ import { db_name, db_table } from "@/lib/constants";
 
 import { db_delete, db_find, db_insert } from "@/lib/db";
 import { searchWebFromJina } from "@/lib/external";
+import { getCurrentUserInfo } from "@/utils/auth/server";
+import { deductCallBalance, hasAvailableCalls } from "@/utils/billing/server";
 
 // 格式化搜索结果为适合AI对话的文本
 function formatSearchResultsForAI(searchResult: JinaSearchResponse): string {
@@ -43,22 +45,39 @@ export async function POST(request: NextRequest) {
 			return Response.json({ error: "无效的评分模型" }, { status: 400 });
 		}
 
+		// 获取当前用户信息
+		const user = await getCurrentUserInfo();
+		const uid = user?.uid || null;
+
+		// 检查模型是否为高级模型
+		const isPremiumModel = gradingModel.premium === true;
+
+		// 如果是高级模型，必须登录
+		if (isPremiumModel && !uid) {
+			return Response.json(
+				{ error: "高级模型需要登录后使用，请先登录" },
+				{ status: 401 },
+			);
+		}
+
 		const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
 		const sha1 = crypto.SHA1(normalizedText).toString();
 
-		// 1. 检查数据库缓存
+		// 1. 检查数据库缓存（通过 sha1 比对）
 		const cached = await db_find(db_name, db_table, {
 			"metadata.sha1": sha1,
 			"article.input.mode": mode,
 			"metadata.modelId": modelId,
 		});
 
-		if (cached && cached.article.output.result) {
-			const resultStr = typeof cached.article.output.result === "string" ? cached.article.output.result : JSON.stringify(cached.article.output.result);
-			// 缓存命中直接模拟流式返回
+		// 如果找到缓存且 sha1 匹配，直接返回缓存结果
+		if (cached && cached.metadata?.sha1 === sha1 && cached.article?.output?.result) {
+			const resultStr = typeof cached.article.output.result === "string"
+				? cached.article.output.result
+				: JSON.stringify(cached.article.output.result);
+			// 缓存命中直接模拟流式返回，不扣减次数
 			return createTextStreamResponse(resultStr);
 		}
-
 		// 2. 权限与Session校验
 		const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null;
 		const fingerprint = request.headers.get("x-fingerprint");
@@ -73,6 +92,17 @@ export async function POST(request: NextRequest) {
 			return Response.json({ error: "该会话标识不存在或已被使用，请刷新页面重试" }, { status: 400 });
 		}
 		await db_delete(db_name, "sessions", {});
+
+		// 如果是高级模型，检查是否有可用次数
+		if (isPremiumModel && uid) {
+			const hasCalls = await hasAvailableCalls(uid);
+			if (!hasCalls) {
+				return Response.json(
+					{ error: "调用次数不足，请前往计费管理页面充值或兑换订单" },
+					{ status: 403 },
+				);
+			}
+		}
 
 		// 3. 执行搜索 (如果需要)
 		let searchResult = null;
@@ -143,7 +173,15 @@ export async function POST(request: NextRequest) {
 							ip,
 							fingerprint,
 							modelId,
+							uid,
 						}).catch(err => console.error("异步保存数据库失败:", err));
+
+						// 如果是高级模型且用户已登录，扣减调用次数
+						if (isPremiumModel && uid) {
+							deductCallBalance(uid).catch(err =>
+								console.error("扣减调用次数失败:", err),
+							);
+						}
 					}
 				} catch (error) {
 					controller.error(error);
@@ -198,9 +236,31 @@ function createTextStreamResponse(text: string) {
 }
 
 // 辅助：数据库保存逻辑抽离
-async function saveToDatabase(params: any) {
-	const { accumulatedContent, articleText, mode, needSearch, searchKeywords, searchResult, sha1, ip, fingerprint, modelId } = params;
-
+async function saveToDatabase({
+	accumulatedContent,
+	articleText,
+	mode,
+	needSearch,
+	searchKeywords,
+	searchResult,
+	sha1,
+	ip,
+	fingerprint,
+	modelId,
+	uid,
+}: {
+	accumulatedContent: string;
+	articleText: string;
+	mode: string;
+	needSearch: boolean;
+	searchKeywords: string[] | undefined;
+	searchResult: JinaSearchResponse | null;
+	sha1: string;
+	ip: string | null;
+	fingerprint: string | null;
+	modelId: string;
+	uid: number | null;
+}) {
 	try {
 		// 尝试提取 JSON
 		const match = accumulatedContent.match(/```json\n?([\s\S]+?)\n?```/) || accumulatedContent.match(/\{[\s\S]+\}/);
@@ -221,7 +281,7 @@ async function saveToDatabase(params: any) {
 			db_name,
 			db_table,
 			{
-				uid: null,
+				uid,
 				article: {
 					input: {
 						articleText,
