@@ -43,6 +43,7 @@ interface AfdianOAuthResponse {
  */
 export const loginOrRegisterWithAfdian = async (code: string): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfoSafe }> => {
 	if (!code) {
+		console.error("[oauth/afdian]授权码不能为空");
 		return { success: false, message: "授权码不能为空" };
 	}
 
@@ -64,12 +65,14 @@ export const loginOrRegisterWithAfdian = async (code: string): Promise<{ success
 		const data: AfdianOAuthResponse = await response.json();
 
 		if (data.ec !== 200 || !data.data) {
+			console.error("[oauth/afdian]获取爱发电用户信息失败:", data.em);
 			return { success: false, message: data.em || "获取爱发电用户信息失败" };
 		}
 
 		const { user_id, name, avatar } = data.data;
 
 		if (!user_id) {
+			console.error("[oauth/afdian]爱发电用户信息不完整");
 			return { success: false, message: "爱发电用户信息不完整" };
 		}
 
@@ -91,6 +94,7 @@ export const loginOrRegisterWithAfdian = async (code: string): Promise<{ success
 
 			const insertResult = await db_insert(db_name, "users", newUser);
 			if (!insertResult) {
+				console.error("[oauth/afdian]创建用户失败");
 				return { success: false, message: "创建用户失败" };
 			}
 			user = newUser;
@@ -144,7 +148,7 @@ export const loginOrRegisterWithAfdian = async (code: string): Promise<{ success
 			userInfo: safeUser,
 		};
 	} catch (error) {
-		console.error("爱发电登录错误:", error);
+		console.error("[oauth/afdian]爱发电登录错误:", error);
 		return { success: false, message: "服务器内部错误" };
 	}
 };
@@ -156,12 +160,14 @@ export const loginOrRegisterWithAfdian = async (code: string): Promise<{ success
  */
 export const bindAfdianAccountWithCode = async (code: string): Promise<{ success: boolean; message: string }> => {
 	if (!code) {
+		console.error("[oauth/afdian]授权码不能为空");
 		return { success: false, message: "授权码不能为空" };
 	}
 
 	try {
 		const currentUser = await getCurrentUserInfo();
 		if (!currentUser) {
+			console.error("[oauth/afdian]用户未登录");
 			return { success: false, message: "用户未登录" };
 		}
 
@@ -182,6 +188,7 @@ export const bindAfdianAccountWithCode = async (code: string): Promise<{ success
 		const data: AfdianOAuthResponse = await response.json();
 
 		if (data.ec !== 200 || !data.data) {
+			console.error("[oauth/afdian]获取爱发电用户信息失败:", data.em);
 			return { success: false, message: data.em || "获取爱发电用户信息失败" };
 		}
 
@@ -208,6 +215,7 @@ export const bindAfdianAccountWithCode = async (code: string): Promise<{ success
 				}
 				return { success: true, message: "该爱发电账号已绑定到当前账号" };
 			}
+			console.error("[oauth/afdian]该爱发电账号已被其他账号绑定");
 			return { success: false, message: "该爱发电账号已被其他账号绑定" };
 		}
 
@@ -220,6 +228,7 @@ export const bindAfdianAccountWithCode = async (code: string): Promise<{ success
 		});
 
 		if (!updateResult) {
+			console.error("[oauth/afdian]绑定失败");
 			return { success: false, message: "绑定失败" };
 		}
 
@@ -242,7 +251,7 @@ export const bindAfdianAccountWithCode = async (code: string): Promise<{ success
 
 		return { success: true, message: "绑定成功" };
 	} catch (error) {
-		console.error("爱发电绑定错误:", error);
+		console.error("[oauth/afdian]爱发电绑定错误:", error);
 		return { success: false, message: "服务器内部错误" };
 	}
 };
