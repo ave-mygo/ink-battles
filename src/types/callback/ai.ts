@@ -1,4 +1,17 @@
 /**
+ * Mermaid 图表类型定义
+ * 用于可视化作品的结构和逻辑关系
+ */
+export interface MermaidDiagram {
+	/** 图表类型 (如 graph, flowchart 等) */
+	type: string;
+	/** 图表标题 (简短描述该图表展示的内容) */
+	title: string;
+	/** Mermaid 图表代码 (纯文本，使用分号分隔) */
+	code: string;
+}
+
+/**
  * 分析维度类型定义
  * 用于描述每个维度的详细信息
  */
@@ -34,6 +47,8 @@ export interface AnalysisResult {
 	strengths: string[];
 	/** 改进建议列表 */
 	improvements: string[];
+	/** Mermaid 图表列表 (可视化作品结构和逻辑) */
+	mermaid_diagrams?: MermaidDiagram[];
 }
 
 /**
