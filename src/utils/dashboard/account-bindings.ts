@@ -2,7 +2,7 @@
 
 import type { AuthUserInfo } from "@/types/users/user";
 import bcrypt from "bcryptjs";
-import { db_name } from "@/lib/constants";
+import { db_collection_afd_orders, db_name } from "@/lib/constants";
 import { db_find, db_update } from "@/lib/db";
 import { getCurrentUserInfo } from "@/utils/auth/server";
 import "server-only";
@@ -163,6 +163,12 @@ export const unbindAfdianAccount = async (): Promise<{ success: boolean; message
 		// 检查是否至少保留一种登录方式
 		if (!currentUser.email && !currentUser.qqOpenid && currentUser.loginMethod === "afd") {
 			return { success: false, message: "至少需要保留一种登录方式" };
+		}
+
+		// 检查用户是否有兑换订单
+		const hasOrders = await db_find(db_name, db_collection_afd_orders, { uid: currentUser.uid });
+		if (hasOrders) {
+			return { success: false, message: "您已有兑换订单，无法解绑爱发电账号" };
 		}
 
 		// 更新用户信息
