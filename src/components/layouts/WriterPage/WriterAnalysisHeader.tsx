@@ -1,15 +1,17 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { Activity, ExternalLink, Heart, Info, MessageCircle, PenTool } from "lucide-react";
+import { Activity, ExternalLink, Github, Heart, Info, Link as LinkIcon, MessageCircle, PenTool } from "lucide-react";
 import Link from "next/link";
 
 // 颜色样式映射表，解决 Tailwind JIT 编译问题并集中管理样式
-const colorStyles: Record<"pink" | "green" | "purple" | "blue", string> = {
+const colorStyles: Record<"pink" | "green" | "purple" | "blue" | "orange" | "slate", string> = {
 	pink: "text-pink-600 bg-pink-100 hover:bg-pink-200 hover:text-pink-700 dark:text-pink-300 dark:bg-pink-500/15 dark:hover:bg-pink-500/25",
 	green: "text-green-600 bg-green-100 hover:bg-green-200 hover:text-green-700 dark:text-green-400 dark:bg-green-500/15 dark:hover:bg-green-500/25",
 	purple: "text-purple-600 bg-purple-100 hover:bg-purple-200 hover:text-purple-700 dark:text-purple-400 dark:bg-purple-500/15 dark:hover:bg-purple-500/25",
 	blue: "text-blue-600 bg-blue-100 hover:bg-blue-200 hover:text-blue-700 dark:text-blue-400 dark:bg-blue-500/15 dark:hover:bg-blue-500/25",
+	orange: "text-orange-600 bg-orange-100 hover:bg-orange-200 hover:text-orange-700 dark:text-orange-400 dark:bg-orange-500/15 dark:hover:bg-orange-500/25",
+	slate: "text-slate-600 bg-slate-100 hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:bg-slate-500/15 dark:hover:bg-slate-500/25",
 };
 
 type Color = keyof typeof colorStyles;
@@ -19,6 +21,8 @@ export default function WriterAnalysisHeader() {
 		{ href: "/sponsors", icon: Heart, text: "赞助支持我们", color: "pink" },
 		{ href: "/status", icon: Activity, text: "前往状态页", color: "green" },
 		{ href: "https://qm.qq.com/q/D6AK1DEQtq", icon: MessageCircle, text: "加入QQ群", color: "purple", external: true },
+		{ href: "/friends", icon: LinkIcon, text: "友情链接", color: "orange" },
+		{ href: "https://github.com/ave-mygo/ink-battles", icon: Github, text: "代码仓库", color: "slate", external: true },
 		{ href: "/about", icon: Info, text: "关于本项目/使用说明", color: "blue" },
 	];
 
