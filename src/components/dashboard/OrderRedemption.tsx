@@ -4,11 +4,11 @@ import { ExternalLink, Gift, Loader2, Receipt, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import { redeemOrderAction } from "@/app/actions/billing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { redeemOrderAction } from "@/utils/billing/actions";
 
 /**
  * 订单兑换组件
@@ -105,7 +105,6 @@ export default function OrderRedemption() {
 					<ul className="text-muted-foreground text-xs list-disc list-inside space-y-2">
 						<li>请确保已在账户设置中绑定对应的爱发电账户</li>
 						<li>每个订单号仅限兑换一次，兑换后立即生效</li>
-						<li>支持兑换会员时长包和额度包</li>
 					</ul>
 				</div>
 			</CardContent>

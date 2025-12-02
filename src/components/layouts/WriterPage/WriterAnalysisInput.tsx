@@ -2,7 +2,6 @@
 
 import { Crown, FileText, Gift, Users, Zap } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getAvailableCalls } from "@/app/actions/billing";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -10,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { USER_LIMITS, UserType } from "@/lib/constants";
 import { getFingerprintId } from "@/lib/fingerprint";
 import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
+import { getAvailableCalls } from "@/utils/billing/actions";
 
 interface UserTierData {
 	userType: UserType;

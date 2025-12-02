@@ -3,12 +3,12 @@
 import type { SerializedUserBilling } from "@/types/database/user_billing";
 import { AlertCircle, Calendar, Coins, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { getBillingInfo } from "@/app/actions/billing";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getBillingInfo } from "@/utils/billing/actions";
 
 /**
  * 计费管理组件
