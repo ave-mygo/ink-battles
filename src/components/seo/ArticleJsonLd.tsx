@@ -1,4 +1,3 @@
-import React from "react";
 import { buildArticleJsonLd } from "@/lib/seo";
 import JsonLd from "./JsonLd";
 

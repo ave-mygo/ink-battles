@@ -1,6 +1,6 @@
 "use client";
 
-import type { ApiResponse, Stats, UsageLog } from "@/types/common/status";
+import type { StatusApiResponse, Stats, UsageLog } from "@/types/common/status";
 import { Activity, Clock, Cpu, MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,7 +60,7 @@ export default function StatusDashboard() {
 			}
 
 			const response = await fetch(`/api/status?page=${page}&pageSize=20`);
-			const responseData: ApiResponse = await response.json();
+			const responseData: StatusApiResponse = await response.json();
 
 			if (responseData.success) {
 				if (isFirstLoad) {
