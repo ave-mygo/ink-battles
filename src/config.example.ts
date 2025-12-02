@@ -150,7 +150,7 @@ const config: Config = {
 		user_id: "YOUR_AFDIAN_USER_ID", // 替换为你的爱发电用户ID
 		client_id: "YOUR_AFDIAN_CLIENT_ID", // 替换为你的爱发电 Client ID
 		client_secret: "YOUR_AFDIAN_CLIENT_SECRET", // 替换为你的爱发电 Client Secret
-		redirect_uri: "https://your-app.com/api/oauth/afdian", // 替换为你的回调URI
+		redirect_uri: "https://your-app.com/oauth/afdian", // 替换为你的回调URI
 	},
 	api: {
 		// 应用程序内部API密钥，用于一些内部服务或与特定用户关联
