@@ -268,3 +268,48 @@ export async function db_getUniqueFieldValues(dbName: string, collectionName: st
 		}
 	}
 }
+
+// 缓存已初始化的 TTL 索引集合
+const ttlIndexInitialized = new Set<string>();
+
+/**
+ * 确保集合具有 TTL 索引（用于自动过期删除）
+ * @param {string} dbName - 数据库名称
+ * @param {string} collectionName - 集合名称
+ * @param {string} fieldName - 时间字段名
+ * @param {number} expireAfterSeconds - 过期时间（秒）
+ */
+export async function ensureTTLIndex(
+	dbName: string,
+	collectionName: string,
+	fieldName: string,
+	expireAfterSeconds: number,
+): Promise<void> {
+	const cacheKey = `${dbName}.${collectionName}.${fieldName}`;
+	if (ttlIndexInitialized.has(cacheKey)) {
+		return;
+	}
+
+	const client = await mongoClient();
+	try {
+		const db = client.db(dbName);
+		const collection = db.collection(collectionName);
+
+		// 检查索引是否已存在
+		const indexes = await collection.indexes();
+		const ttlIndexExists = indexes.some(
+			idx => idx.key?.[fieldName] === 1 && idx.expireAfterSeconds !== undefined,
+		);
+
+		if (!ttlIndexExists) {
+			await collection.createIndex(
+				{ [fieldName]: 1 },
+				{ expireAfterSeconds },
+			);
+		}
+
+		ttlIndexInitialized.add(cacheKey);
+	} catch (error) {
+		console.error(`创建 TTL 索引时出错: ${(error as Error).message}`);
+	}
+}
