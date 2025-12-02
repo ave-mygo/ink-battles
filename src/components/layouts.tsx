@@ -119,6 +119,13 @@ export default function WriterAnalysisSystem() {
 	const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isCancelledRef = useRef(false);
 	const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	// 缓存校验结果，重试时跳过校验
+	const verifyResultRef = useRef<{
+		session: string;
+		needSearch: boolean;
+		searchKeywords?: string[];
+		fingerprint: string;
+	} | null>(null);
 
 	const availableGradingModels = getAvailableGradingModels();
 	const validIds = availableGradingModels.map(m => m.model);
@@ -214,6 +221,7 @@ export default function WriterAnalysisSystem() {
 		setIsCompleted(false);
 		setProgress(0);
 		setRetryCount(0);
+		verifyResultRef.current = null;
 		toast.success("已清除所有内容");
 	};
 
@@ -240,12 +248,14 @@ export default function WriterAnalysisSystem() {
 			}
 
 			// 尝试直接解析
+			console.log(content.trim());
 			const fallback = JSON.parse(content.trim());
 			if (fallback && (fallback.overallScore == null || fallback.overallScore === 0)) {
 				fallback.overallScore = calculateFinalScore(fallback);
 			}
 			return fallback as AnalysisResult;
 		} catch (error) {
+			console.log(content.trim());
 			console.error("解析结果失败，内容可能不完整:", error);
 			return null;
 		}
@@ -285,16 +295,33 @@ export default function WriterAnalysisSystem() {
 		progressIntervalRef.current = progressInterval as unknown as ReturnType<typeof setInterval>;
 
 		try {
-			setStreamContent(prev => `${prev}${isRetry ? "重试" : "开始"}分析，校验文章内容...\n`);
+			let fingerprint: string;
+			let session: string;
+			let needSearch: boolean;
+			let searchKeywords: string[] | undefined;
 
-			const fingerprint = await getFingerprintId();
-			const verifyResult = await verifyArticleValue(articleText, selectedModeName.join(","), selectedModelId, fingerprint);
+			// 重试时跳过校验，使用缓存的结果
+			if (isRetry && verifyResultRef.current) {
+				setStreamContent(prev => `${prev}重试分析，跳过校验...\n`);
+				({ fingerprint, session, needSearch, searchKeywords } = verifyResultRef.current);
+			} else {
+				setStreamContent(prev => `${prev}开始分析，校验文章内容...\n`);
 
-			if (!verifyResult.success) {
-				throw new Error(`校验失败: ${verifyResult.error || "文章内容不符合分析标准"}`);
+				fingerprint = await getFingerprintId();
+				const verifyResult = await verifyArticleValue(articleText, selectedModeName.join(","), selectedModelId, fingerprint);
+
+				if (!verifyResult.success) {
+					throw new Error(`校验失败: ${verifyResult.error || "文章内容不符合分析标准"}`);
+				}
+
+				// 缓存校验结果供重试使用
+				session = verifyResult.session || "";
+				needSearch = verifyResult.needSearch || false;
+				searchKeywords = verifyResult.searchKeywords;
+				verifyResultRef.current = { session, needSearch, searchKeywords, fingerprint };
 			}
 
-			setStreamContent(prev => `${prev}校验通过，正在分析中...\n`);
+			setStreamContent(prev => `${prev}${isRetry ? "" : "校验通过，"}正在分析中...\n`);
 			setProgress(10);
 
 			const timeoutId = setTimeout(() => controller.abort(), 120000); // 2分钟总超时
@@ -304,14 +331,14 @@ export default function WriterAnalysisSystem() {
 				headers: {
 					"Content-Type": "application/json",
 					"X-Fingerprint": fingerprint,
-					"X-Session": verifyResult.session || "",
+					"X-Session": session,
 				},
 				body: JSON.stringify({
 					articleText,
 					mode: selectedModeName.join(","),
 					modelId: selectedModelId,
-					needSearch: verifyResult.needSearch,
-					searchKeywords: verifyResult.searchKeywords,
+					needSearch,
+					searchKeywords,
 				}),
 				signal: controller.signal,
 			});
@@ -423,6 +450,8 @@ export default function WriterAnalysisSystem() {
 			retryTimeoutRef.current = null;
 		}
 
+		// 新分析时清除缓存的校验结果
+		verifyResultRef.current = null;
 		setIsAnalyzing(true);
 		setShowStreamingDisplay(true);
 		setRetryCount(0);

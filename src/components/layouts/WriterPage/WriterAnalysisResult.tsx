@@ -1,9 +1,11 @@
 "use client";
 
+import type { MermaidDiagram } from "@/types/callback/ai";
 import { BadgeCheck, BarChart3, BookOpen, Heart, Lightbulb, Share2, Star, Target } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import MermaidDiagrams from "@/components/layouts/WriterPage/MermaidDiagram";
 import { RadarChart } from "@/components/layouts/WriterPage/RadarChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -27,6 +29,7 @@ interface WriterAnalysisResultProps {
 		dimensions: Dimension[];
 		strengths: string[];
 		improvements: string[];
+		mermaid_diagrams?: MermaidDiagram[];
 	};
 	getScoreColor: (score: number) => string;
 	getScoreBgColor: (score: number) => string;
@@ -313,6 +316,11 @@ export default function WriterAnalysisResult({
 					</div>
 				</CardContent>
 			</Card>
+
+			{/* Mermaid 结构分析图表 */}
+			{analysisResult.mermaid_diagrams && analysisResult.mermaid_diagrams.length > 0 && (
+				<MermaidDiagrams diagrams={analysisResult.mermaid_diagrams} />
+			)}
 		</div>
 	);
 }
