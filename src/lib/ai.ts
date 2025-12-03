@@ -784,6 +784,11 @@ export const getScorePercentile = async (currentScore: number): Promise<string |
 	}
 };
 
+/**
+ * 计算最终战力值并四舍五入到最多 2 位小数
+ * @param parsedResult - 包含 dimensions 数组的解析结果
+ * @returns 最终得分（number），最多保留两位小数
+ */
 export const calculateFinalScore = async (parsedResult: any): Promise<number> => {
 	if (!parsedResult.dimensions || !Array.isArray(parsedResult.dimensions)) {
 		return 0;
@@ -808,5 +813,11 @@ export const calculateFinalScore = async (parsedResult: any): Promise<number> =>
 	// 计算最终战力值
 	const finalScore = baseScore * classicityWeight * noveltyWeight;
 
-	return finalScore;
+	// 四舍五入到最多 2 位小数
+	if (!Number.isFinite(finalScore)) {
+		return 0;
+	}
+	const rounded = Math.round(finalScore * 100) / 100;
+
+	return rounded;
 };
