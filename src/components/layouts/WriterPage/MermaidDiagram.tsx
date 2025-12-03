@@ -101,7 +101,7 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 		setScale(1);
 	}, []);
 
-	// 滚轮缩放
+	// 滚轮缩放（桌面端）
 	const handleWheel = useCallback((e: WheelEvent) => {
 		if (e.ctrlKey || e.metaKey) {
 			e.preventDefault();
@@ -110,14 +110,64 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 		}
 	}, []);
 
-	// 绑定滚轮事件
+	// 触摸缩放状态（移动端）
+	const lastTouchDistance = useRef<number | null>(null);
+	const lastScale = useRef(scale);
+
+	// 计算两指间距离
+	const getTouchDistance = useCallback((touches: TouchList) => {
+		if (touches.length < 2)
+			return null;
+		const dx = touches[0].clientX - touches[1].clientX;
+		const dy = touches[0].clientY - touches[1].clientY;
+		return Math.sqrt(dx * dx + dy * dy);
+	}, []);
+
+	// 触摸开始
+	const handleTouchStart = useCallback((e: TouchEvent) => {
+		if (e.touches.length === 2) {
+			lastTouchDistance.current = getTouchDistance(e.touches);
+			lastScale.current = scale;
+		}
+	}, [getTouchDistance, scale]);
+
+	// 触摸移动（双指缩放）
+	const handleTouchMove = useCallback((e: TouchEvent) => {
+		if (e.touches.length === 2 && lastTouchDistance.current !== null) {
+			e.preventDefault();
+			const currentDistance = getTouchDistance(e.touches);
+			if (currentDistance !== null) {
+				const scaleRatio = currentDistance / lastTouchDistance.current;
+				const newScale = Math.min(Math.max(lastScale.current * scaleRatio, MIN_SCALE), MAX_SCALE);
+				setScale(newScale);
+			}
+		}
+	}, [getTouchDistance]);
+
+	// 触摸结束
+	const handleTouchEnd = useCallback(() => {
+		lastTouchDistance.current = null;
+	}, []);
+
+	// 绑定滚轮和触摸事件
 	useEffect(() => {
 		const wrapper = wrapperRef.current;
 		if (wrapper) {
+			// 桌面端滚轮缩放
 			wrapper.addEventListener("wheel", handleWheel, { passive: false });
-			return () => wrapper.removeEventListener("wheel", handleWheel);
+			// 移动端触摸缩放
+			wrapper.addEventListener("touchstart", handleTouchStart, { passive: true });
+			wrapper.addEventListener("touchmove", handleTouchMove, { passive: false });
+			wrapper.addEventListener("touchend", handleTouchEnd, { passive: true });
+
+			return () => {
+				wrapper.removeEventListener("wheel", handleWheel);
+				wrapper.removeEventListener("touchstart", handleTouchStart);
+				wrapper.removeEventListener("touchmove", handleTouchMove);
+				wrapper.removeEventListener("touchend", handleTouchEnd);
+			};
 		}
-	}, [handleWheel]);
+	}, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
 	useEffect(() => {
 		const renderDiagram = async () => {
@@ -169,60 +219,66 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 
 	return (
 		<div className="space-y-2">
-			<div className="flex items-center justify-between">
+			{/* 标题和缩放控制 - 移动端垂直布局 */}
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<h5 className="text-sm text-slate-700 font-medium dark:text-slate-300">{title}</h5>
 				{isRendered && (
-					<div className="flex gap-1 items-center">
+					<div className="flex gap-1 items-center justify-between sm:justify-end">
 						<span className="text-xs text-slate-400 mr-2">
 							{Math.round(scale * 100)}
 							%
 						</span>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="p-0 h-7 w-7 cursor-pointer"
-							onClick={handleZoomOut}
-							disabled={scale <= MIN_SCALE}
-							title="缩小 (Ctrl+滚轮)"
-						>
-							<ZoomOut className="h-4 w-4" />
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="p-0 h-7 w-7 cursor-pointer"
-							onClick={handleResetZoom}
-							title="重置缩放"
-						>
-							<RotateCcw className="h-4 w-4" />
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="p-0 h-7 w-7 cursor-pointer"
-							onClick={handleZoomIn}
-							disabled={scale >= MAX_SCALE}
-							title="放大 (Ctrl+滚轮)"
-						>
-							<ZoomIn className="h-4 w-4" />
-						</Button>
+						<div className="flex gap-1">
+							<Button
+								variant="ghost"
+								size="sm"
+								className="p-0 h-8 w-8 cursor-pointer sm:h-7 sm:w-7"
+								onClick={handleZoomOut}
+								disabled={scale <= MIN_SCALE}
+								title="缩小"
+							>
+								<ZoomOut className="h-4 w-4" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								className="p-0 h-8 w-8 cursor-pointer sm:h-7 sm:w-7"
+								onClick={handleResetZoom}
+								title="重置缩放"
+							>
+								<RotateCcw className="h-4 w-4" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								className="p-0 h-8 w-8 cursor-pointer sm:h-7 sm:w-7"
+								onClick={handleZoomIn}
+								disabled={scale >= MAX_SCALE}
+								title="放大"
+							>
+								<ZoomIn className="h-4 w-4" />
+							</Button>
+						</div>
 					</div>
 				)}
 			</div>
+			{/* 图表容器 - 移动端限制更小高度 */}
 			<div
 				ref={wrapperRef}
 				className="border border-slate-200 rounded-lg bg-white overflow-auto dark:border-slate-700 dark:bg-slate-800/50"
-				style={{ maxHeight: "500px" }}
+				style={{ maxHeight: "min(500px, 60vh)" }}
 			>
 				<div
 					ref={containerRef}
-					className={`p-4 w-full origin-top-left transition-transform ${!isRendered ? "animate-pulse min-h-[100px]" : ""}`}
+					className={`p-2 w-full origin-top-left transition-transform sm:p-4 ${!isRendered ? "min-h-[100px] animate-pulse" : ""}`}
 					style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
 				/>
 			</div>
+			{/* 提示文本 - 移动端显示不同提示 */}
 			{isRendered && (
 				<p className="text-xs text-slate-400 text-center dark:text-slate-500">
-					按住 Ctrl/Cmd + 滚轮可缩放图表
+					<span className="hidden sm:inline">按住 Ctrl/Cmd + 滚轮可缩放图表</span>
+					<span className="sm:hidden">双指捏合或使用上方按钮缩放</span>
 				</p>
 			)}
 		</div>
