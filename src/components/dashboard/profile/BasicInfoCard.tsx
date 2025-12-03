@@ -23,7 +23,7 @@ export function BasicInfoCard({ user }: BasicInfoCardProps) {
 	};
 
 	return (
-		<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+		<Card className="border-0 bg-white/80 h-full shadow-lg backdrop-blur-sm dark:bg-slate-900/80">
 			<CardHeader>
 				<CardTitle className="flex gap-2 items-center">
 					<User className="text-blue-600 h-5 w-5" />
