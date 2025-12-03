@@ -119,7 +119,6 @@
 	body {
 		@apply bg-background text-foreground;
 		/* 防止滚动到底部/顶部时的浏览器回弹导致的视觉割裂 */
-		overflow-y: auto;
 		overscroll-behavior-y: none;
 	}
 }

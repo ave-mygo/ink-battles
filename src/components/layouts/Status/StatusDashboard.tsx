@@ -1,6 +1,6 @@
 "use client";
 
-import type { StatusApiResponse, Stats, UsageLog } from "@/types/common/status";
+import type { Stats, StatusApiResponse, UsageLog } from "@/types/common/status";
 import { Activity, Clock, Cpu, MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

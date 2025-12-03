@@ -19,7 +19,7 @@ export const AppHeader = () => {
 	const inDashboard = pathname?.startsWith("/dashboard");
 
 	const headerClass = inDashboard
-		? "bg-white dark:bg-slate-900 border-b border-white/40 top-0 sticky z-50 dark:border-white/10"
+		? "bg-white dark:bg-slate-900 border-b border-white/40 top-0 sticky z-50 dark:border-white/10 h-14"
 		: "supports-backdrop-filter:bg-white/60 dark:supports-backdrop-filter:bg-slate-900/60 border-b border-white/40 bg-white/60 top-0 sticky z-40 backdrop-blur dark:border-white/10 dark:bg-slate-900/60";
 
 	return (

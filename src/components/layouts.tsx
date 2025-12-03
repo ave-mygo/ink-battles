@@ -248,14 +248,12 @@ export default function WriterAnalysisSystem() {
 			}
 
 			// 尝试直接解析
-			console.log(content.trim());
 			const fallback = JSON.parse(content.trim());
 			if (fallback && (fallback.overallScore == null || fallback.overallScore === 0)) {
 				fallback.overallScore = calculateFinalScore(fallback);
 			}
 			return fallback as AnalysisResult;
 		} catch (error) {
-			console.log(content.trim());
 			console.error("解析结果失败，内容可能不完整:", error);
 			return null;
 		}
@@ -467,18 +465,22 @@ export default function WriterAnalysisSystem() {
 
 	const getScoreColor = (score: number) => {
 		if (score >= 80)
-			return "text-green-600";
+			return "text-green-600 dark:text-green-400";
 		if (score >= 60)
-			return "text-yellow-600";
-		return "text-red-600";
+			return "text-blue-600 dark:text-blue-400";
+		if (score >= 40)
+			return "text-yellow-600 dark:text-yellow-400";
+		return "text-red-600 dark:text-red-400";
 	};
 
 	const getScoreBgColor = (score: number) => {
 		if (score >= 80)
-			return "bg-green-100";
+			return "bg-green-50 dark:bg-green-950/30";
 		if (score >= 60)
-			return "bg-yellow-100";
-		return "bg-red-100";
+			return "bg-blue-50 dark:bg-blue-950/30";
+		if (score >= 40)
+			return "bg-yellow-50 dark:bg-yellow-950/30";
+		return "bg-red-50 dark:bg-red-950/30";
 	};
 
 	return (
