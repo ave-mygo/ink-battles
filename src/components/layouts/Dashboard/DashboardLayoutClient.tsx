@@ -4,7 +4,7 @@ import type { AuthUserInfoSafe } from "@/types/users/user";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { DASHBOARD_NAV_ITEMS } from "@/config";
@@ -27,33 +27,13 @@ export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) 
 	const pathname = usePathname();
 	const mainOffsetClass = isSidebarCollapsed ? "lg:ml-16" : "lg:ml-64";
 
-	useEffect(() => {
-		// 计算滚动条宽度
-		const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-
-		// 设置 body 样式：禁用溢出滚动，固定高度为视口高度
-		document.body.style.overflow = "hidden";
-		document.body.style.height = "100vh";
-		// 补偿滚动条宽度，防止页面抖动
-		if (scrollbarWidth > 0) {
-			document.body.style.paddingRight = `${scrollbarWidth}px`;
-		}
-
-		// 组件卸载时恢复原样式
-		return () => {
-			document.body.style.overflow = "";
-			document.body.style.height = "";
-			document.body.style.paddingRight = "";
-		};
-	}, []);
-
 	return (
-		<div className="flex">
+		<div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
 			<aside
 				style={{ overscrollBehaviorY: "contain" }}
 				className={cn(
 					"fixed bottom-0 left-0 top-14 z-40 overflow-y-auto border-r shadow-sm transition-transform duration-300",
-					"bg-white/80 backdrop-blur-md dark:bg-slate-950/80 dark:border-slate-800/60",
+					"bg-white dark:bg-slate-950 dark:border-slate-800",
 					mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
 					isSidebarCollapsed ? "lg:w-16" : "lg:w-64",
 				)}
@@ -123,7 +103,12 @@ export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) 
 			)}
 
 			{/* 主内容区域 */}
-			<main className={`p-4 pt-6 flex-1 transition-all duration-300 overflow-y-auto lg:p-8 sm:p-6 lg:pt-8 sm:pt-8 ${mainOffsetClass}`}>
+			<main
+				className={cn(
+					"p-4 pt-6 flex-1 transition-all duration-300 overflow-y-auto lg:p-8 sm:p-6 lg:pt-8 sm:pt-8",
+					mainOffsetClass,
+				)}
+			>
 				{children}
 			</main>
 		</div>
