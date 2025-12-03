@@ -20,7 +20,7 @@
 // -------------------------------------------------------------
 import type { ComponentType } from "react";
 import process from "node:process";
-import { Link as LinkIcon, User } from "lucide-react";
+import { History, Link as LinkIcon, User } from "lucide-react";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -197,6 +197,7 @@ export interface FaqItemConfig {
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
 	{ label: "用户信息", href: "/dashboard/profile", icon: User },
 	{ label: "账号绑定与管理", href: "/dashboard/accounts", icon: LinkIcon },
+	{ label: "分析历史", href: "/dashboard/history", icon: History },
 ];
 
 /** About 页面 FAQ 配置（集中管理，便于复用与 SEO） */
