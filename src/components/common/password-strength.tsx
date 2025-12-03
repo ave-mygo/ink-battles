@@ -14,6 +14,25 @@ interface PasswordStrengthIndicatorProps {
 	className?: string;
 }
 
+const RequirementItem = ({ met, text }: { met: boolean; text: string }) => (
+	<div className="text-xs flex gap-2 transition-colors duration-200 items-center">
+		{met
+			? (
+					<Check className="text-green-500 shrink-0 h-3.5 w-3.5" />
+				)
+			: (
+					<X className="text-muted-foreground/40 shrink-0 h-3.5 w-3.5" />
+				)}
+		<span className={cn(
+			"truncate",
+			met ? "text-foreground" : "text-muted-foreground",
+		)}
+		>
+			{text}
+		</span>
+	</div>
+);
+
 /**
  * 密码强度指示器组件
  * 显示密码强度进度条和具体要求
@@ -84,25 +103,6 @@ export const PasswordStrengthIndicator = ({
 		</div>
 	);
 };
-
-const RequirementItem = ({ met, text }: { met: boolean; text: string }) => (
-	<div className="text-xs flex gap-2 transition-colors duration-200 items-center">
-		{met
-			? (
-					<Check className="text-green-500 shrink-0 h-3.5 w-3.5" />
-				)
-			: (
-					<X className="text-muted-foreground/40 shrink-0 h-3.5 w-3.5" />
-				)}
-		<span className={cn(
-			"truncate",
-			met ? "text-foreground" : "text-muted-foreground",
-		)}
-		>
-			{text}
-		</span>
-	</div>
-);
 
 interface PasswordStrengthMeterProps {
 	password: string;
