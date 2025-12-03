@@ -31,4 +31,8 @@ export interface DatabaseAnalysisRecord {
 	};
 	/** 记录时间戳 */
 	timestamp: string;
+	settings?: {
+		/** 是否公开访问 */
+		public: boolean;
+	};
 }

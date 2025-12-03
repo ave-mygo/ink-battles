@@ -1,6 +1,6 @@
 "use server";
 
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import { getConfig } from "@/config";
 
 import "server-only";
@@ -163,6 +163,31 @@ export async function db_find(dbName: string, collectionName: string, data: obje
 		return await collection.findOne(data);
 	} catch (error) {
 		console.error(`查找数据时出错: ${(error as Error).message}`);
+		return null;
+	}
+}
+
+/**
+ * 根据 MongoDB ObjectId 查找单条记录
+ * @param {string} dbName - 数据库名称
+ * @param {string} collectionName - 集合名称
+ * @param {string} id - ObjectId 字符串
+ * @returns {Promise<any | null>} 返回查找到的文档，如果没有找到则返回 null
+ */
+export async function db_findById(dbName: string, collectionName: string, id: string): Promise<any | null> {
+	// 验证 ObjectId 格式
+	if (!ObjectId.isValid(id)) {
+		console.error(`无效的 ObjectId 格式: ${id}`);
+		return null;
+	}
+
+	const client = await mongoClient();
+	try {
+		const db = client.db(dbName);
+		const collection = db.collection(collectionName);
+		return await collection.findOne({ _id: new ObjectId(id) });
+	} catch (error) {
+		console.error(`根据 ID 查找数据时出错: ${(error as Error).message}`);
 		return null;
 	}
 }
