@@ -5,6 +5,8 @@
  * 自动分析 MongoDB 数据库中的集合结构并生成文档
  */
 
+import fs from "node:fs";
+import path from "node:path";
 import process from "node:process";
 import dotenv from "dotenv";
 import { MongoClient } from "mongodb";
@@ -321,9 +323,6 @@ async function main() {
 		console.log(markdown);
 
 		// 直接更新文件
-		const fs = await import("node:fs");
-		const path = await import("node:path");
-
 		const filePath = path.join(process.cwd(), "database.mdc");
 
 		try {

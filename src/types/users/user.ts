@@ -14,6 +14,10 @@ export interface AuthUserInfo {
 	createdAt: Date;
 	updatedAt?: Date;
 	isActive?: boolean;
+	/** 用户昵称 */
+	nickname?: string | null;
+	/** 用户签名/简介 */
+	bio?: string | null;
 }
 
 /**
@@ -31,6 +35,20 @@ export interface AuthUserInfoSafe {
 	isActive?: boolean;
 	createdAt?: string | null;
 	updatedAt?: string | null;
+	/** 用户昵称 */
+	nickname?: string | null;
+	/** 用户签名/简介 */
+	bio?: string | null;
+}
+
+/**
+ * 用户资料更新参数
+ */
+export interface UserProfileUpdate {
+	/** 用户昵称（最多 20 字符） */
+	nickname?: string;
+	/** 用户签名（最多 100 字符） */
+	bio?: string;
 }
 
 export interface QQUserInfo {
