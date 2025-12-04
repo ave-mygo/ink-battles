@@ -1,60 +1,70 @@
+version: '3.8'
+
 services:
   # ============================================
-  # Next.js 应用
+  # Next.js 应用 (从 GHCR 拉取)
   # ============================================
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # 使用 GHCR 镜像
+    image: ghcr.io/ave-mygo/ink-battles:latest
     container_name: ink-battles
     restart: unless-stopped
+    # 每次启动时检查是否有新镜像，确保更新
+    pull_policy: always
     ports:
       - "3001:3000"
     volumes:
-      # 挂载 TOML 配置文件（关键！）
+      # 挂载配置文件
       - ./config.toml:/app/config.toml:ro
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
-      # 可选：通过环境变量覆盖部分配置
-      # - MONGODB_HOST=mongodb
-      # - JWT_SECRET=your-secret
-      # - APP_BASE_URL=https://your-domain.com
-    depends_on:
-      - mongodb
     networks:
       - ink-battles-network
+    # 限制日志大小，防止占满磁盘
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # ============================================
-  # MongoDB 数据库
-  # ============================================
-  mongodb:
-    image: mongo:7
-    container_name: ink-battles-mongo
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb_data:/data/db
-      - mongodb_config:/data/configdb
-    environment:
-      # 如需认证，取消下面注释并设置密码
-      # - MONGO_INITDB_ROOT_USERNAME=admin
-      # - MONGO_INITDB_ROOT_PASSWORD=your_password
-      - TZ=Asia/Shanghai
-    networks:
-      - ink-battles-network
+  # # ============================================
+  # # MongoDB 数据库
+  # # ============================================
+  # mongodb:
+  #   image: mongo:7
+  #   container_name: ink-battles-mongo
+  #   restart: unless-stopped
+  #   volumes:
+  #     - mongodb_data:/data/db
+  #     - mongodb_config:/data/configdb
+  #   environment:
+  #     - TZ=Asia/Shanghai
+  #   networks:
+  #     - ink-battles-network
+  #   # 添加健康检查
+  #   healthcheck:
+  #     test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 5s
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
 
-# ============================================
-# 数据持久化
-# ============================================
-volumes:
-  mongodb_data:
-  mongodb_config:
+# # ============================================
+# # 数据持久化
+# # ============================================
+# volumes:
+#   mongodb_data:
+#   mongodb_config:
 
-# ============================================
-# 网络配置
-# ============================================
-networks:
-  ink-battles-network:
-    driver: bridge
+# # ============================================
+# # 网络配置
+# # ============================================
+# networks:
+#   ink-battles-network:
+#     driver: bridge

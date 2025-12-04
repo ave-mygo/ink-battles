@@ -11,15 +11,10 @@
 # -------------------------------------------------------------
 # 系统模型配置
 # -------------------------------------------------------------
-[system_models.validator]
+[system_models.validator] # only google models supported
 api_key = "YOUR_VALIDATOR_API_KEY"
 base_url = "https://api.openai.com/v1"
 model = "gpt-4o"
-
-[system_models.search]
-api_key = "YOUR_SEARCH_API_KEY"
-base_url = "https://s.jina.ai"
-
 # -------------------------------------------------------------
 # 评分模型配置
 # -------------------------------------------------------------

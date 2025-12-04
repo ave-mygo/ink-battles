@@ -126,8 +126,6 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 	// 缓存校验结果，重试时跳过校验
 	const verifyResultRef = useRef<{
 		session: string;
-		needSearch: boolean;
-		searchKeywords?: string[];
 		fingerprint: string;
 	} | null>(null);
 	const DEFAULT_INDEX = 2;
@@ -297,13 +295,11 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		try {
 			let fingerprint: string;
 			let session: string;
-			let needSearch: boolean;
-			let searchKeywords: string[] | undefined;
 
 			// 重试时跳过校验，使用缓存的结果
 			if (isRetry && verifyResultRef.current) {
 				setStreamContent(prev => `${prev}重试分析，跳过校验...\n`);
-				({ fingerprint, session, needSearch, searchKeywords } = verifyResultRef.current);
+				({ fingerprint, session } = verifyResultRef.current);
 			} else {
 				setStreamContent(prev => `${prev}开始分析，校验文章内容...\n`);
 
@@ -316,9 +312,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 				// 缓存校验结果供重试使用
 				session = verifyResult.session || "";
-				needSearch = verifyResult.needSearch || false;
-				searchKeywords = verifyResult.searchKeywords;
-				verifyResultRef.current = { session, needSearch, searchKeywords, fingerprint };
+				verifyResultRef.current = { session, fingerprint };
 			}
 
 			setStreamContent(prev => `${prev}${isRetry ? "" : "校验通过，"}正在分析中...\n`);
@@ -337,8 +331,6 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 					articleText,
 					mode: selectedModeName.join(","),
 					modelId: selectedModelId,
-					needSearch,
-					searchKeywords,
 				}),
 				signal: controller.signal,
 			});

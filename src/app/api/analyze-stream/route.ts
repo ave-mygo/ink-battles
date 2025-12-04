@@ -1,5 +1,4 @@
 import type { NextRequest } from "next/server";
-import type { JinaSearchResponse } from "@/types/callback/external";
 import crypto from "crypto-js";
 import OpenAI from "openai";
 import { getGradingModel } from "@/config";
@@ -8,31 +7,12 @@ import { buildSystemPrompt, calculateFinalScore, getModeInstructions } from "@/l
 import { db_name, db_table } from "@/lib/constants";
 
 import { db_delete, db_find, db_insert } from "@/lib/db";
-import { searchWebFromJina } from "@/lib/external";
 import { getCurrentUserInfo } from "@/utils/auth/server";
 import { deductCallBalance, hasAvailableCalls } from "@/utils/billing/server";
 
-// 格式化搜索结果为适合AI对话的文本
-function formatSearchResultsForAI(searchResult: JinaSearchResponse): string {
-	if (!searchResult || !searchResult.data || searchResult.data.length === 0) {
-		return "";
-	}
-
-	const searchInfo = searchResult.data
-		.map((article, index) => {
-			return `${index + 1}. 标题: ${article.title}
-   来源: ${article.url}
-   描述: ${article.description}
-   内容摘要: ${article.content.substring(0, 200)}...`;
-		})
-		.join("\n\n");
-
-	return `\n\n=== 相关资料检索结果 ===\n${searchInfo}\n=== 检索结果结束 ===\n\n`;
-}
-
 export async function POST(request: NextRequest) {
 	try {
-		const { articleText, mode, modelId, needSearch, searchKeywords } = await request.json();
+		const { articleText, mode, modelId } = await request.json();
 
 		// 输入验证
 		if (!articleText || typeof articleText !== "string") {
@@ -113,11 +93,8 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// 3. 执行搜索 (如果需要)
-		let searchResult = null;
-		if (needSearch && searchKeywords) {
-			searchResult = await searchWebFromJina(searchKeywords);
-		}
+		// 3. 从 session 记录获取搜索结果
+		const searchResults = sessionRecords.searchResults || null;
 
 		// 4. 准备 OpenAI 请求
 		const openAI = new OpenAI({
@@ -132,11 +109,11 @@ export async function POST(request: NextRequest) {
 			{ role: "system", content: systemPrompt },
 		];
 
-		const formattedSearch = searchResult ? formatSearchResultsForAI(searchResult as JinaSearchResponse) : "";
-		if (formattedSearch && formattedSearch.trim().length > 0) {
+		// 如果有搜索结果总结，添加到对话中
+		if (searchResults) {
 			messages.push({
 				role: "user",
-				content: `以下是与主题相关的检索资料（供参考）：\n${formattedSearch}`,
+				content: `以下是通过搜索获得的背景资料总结（供参考）：\n\n${searchResults}`,
 			});
 		}
 
@@ -170,24 +147,18 @@ export async function POST(request: NextRequest) {
 
 					// 7. 异步保存结果到数据库 (流结束后执行)
 					if (accumulatedContent.trim()) {
-						// 流成功完成，删除已使用的 session
-						db_delete(db_name, "sessions", { session }).catch(err =>
-							console.error("删除 session 失败:", err),
-						);
-
 						// 使用 setImmediate 或不 await 保证不阻塞流关闭
 						saveToDatabase({
 							accumulatedContent,
 							articleText,
 							mode,
-							needSearch,
-							searchKeywords,
-							searchResult,
+							searchResults,
 							sha1,
 							ip,
 							fingerprint,
 							modelId,
 							uid,
+							session, // 传递 session 用于成功后删除
 						}).catch(err => console.error("异步保存数据库失败:", err));
 
 						// 如果是高级模型且用户已登录，扣减调用次数
@@ -255,30 +226,28 @@ async function saveToDatabase({
 	accumulatedContent,
 	articleText,
 	mode,
-	needSearch,
-	searchKeywords,
-	searchResult,
+	searchResults,
 	sha1,
 	ip,
 	fingerprint,
 	modelId,
 	uid,
+	session,
 }: {
 	accumulatedContent: string;
 	articleText: string;
 	mode: string;
-	needSearch: boolean;
-	searchKeywords: string[] | undefined;
-	searchResult: JinaSearchResponse | null;
+	searchResults: string | null;
 	sha1: string;
 	ip: string | null;
 	fingerprint: string | null;
 	modelId: string;
 	uid: number | null;
+	session: string;
 }) {
 	try {
 		// 尝试提取 JSON
-		const codeBlockMatch = accumulatedContent.match(/```json\n?([\s\S]+?)\n?```/);
+		const codeBlockMatch = accumulatedContent.match(/```json\n?>([\s\S]+?)\n?```/);
 		const jsonObjectMatch = accumulatedContent.match(/\{[\s\S]+\}/);
 		// codeBlockMatch[1] 是捕获组内容，jsonObjectMatch[0] 是整个匹配
 		const jsonContent = codeBlockMatch ? codeBlockMatch[1].trim() : (jsonObjectMatch ? jsonObjectMatch[0].trim() : accumulatedContent);
@@ -304,9 +273,7 @@ async function saveToDatabase({
 						articleText,
 						mode: mode || "default",
 						search: {
-							needSearch,
-							searchKeywords: searchKeywords || [],
-							searchResult: searchResult || "",
+							searchResults: searchResults || "",
 						},
 					},
 					output: { result: jsonContent, overallScore, tags },
@@ -320,7 +287,11 @@ async function saveToDatabase({
 				timestamp: new Date().toISOString(),
 			},
 		);
+
+		// 数据库写入成功后，删除 session
+		await db_delete(db_name, "sessions", { session });
 	} catch (e) {
 		console.error("保存数据库逻辑异常:", e);
+		// 如果保存失败，不删除 session，以便重试
 	}
 }

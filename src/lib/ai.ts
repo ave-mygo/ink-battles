@@ -1,172 +1,196 @@
 "use server";
+import type { Schema } from "@google/genai";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
-
+import { GoogleGenAI, Type } from "@google/genai";
 import crypto from "crypto-js";
-import { OpenAI } from "openai";
-
 import { getConfig } from "@/config";
 import { db_name, db_table } from "@/lib/constants";
+
 import { db_find, db_insert, db_read, ensureTTLIndex } from "@/lib/db";
+
 import { generateSessionId } from "@/utils/auth/sessions";
 
 import "server-only";
 
 const AppConfig = getConfig();
 
-/**
- * 验证文章内容的有效性，检查是否为有意义的内容。
- * 同时检测文章来源（经典、同人、再创作）并输出搜索关键词。
- * @param articleText 文章文本内容
- * @param mode 分析模式，默认为 "default"
- * @returns 验证结果，包含成功状态、是否需要搜索和搜索关键词，以及session
- */
-export const verifyArticleValue = async (articleText: string, mode: string = "default", modelId: string, fingerprint: string): Promise<
-	{
-		success: boolean;
-		error?: string;
-		needSearch?: boolean;
-		searchKeywords?: string[];
-		session?: string;
-	}
-> => {
-	// 1. 预处理文本，去除符号、空格、换行符
-	const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
-	const sha1 = crypto.SHA1(normalizedText).toString(); // 计算文本的SHA1哈希值
+// 定义返回结构的 Schema
+// 在新版 SDK 中，通常使用 Type 枚举，结构字段需符合 Schema 接口定义
+const verifySchema: Schema = {
+	type: Type.OBJECT,
+	properties: {
+		success: {
+			type: Type.BOOLEAN,
+			description: "内容是否有效（非乱码、非灌水）",
+		},
+		message: {
+			type: Type.STRING,
+			description: "简述判断理由或内容类型",
+		},
+		searchSummary: {
+			type: Type.STRING,
+			description: "如果执行了搜索，请在此字段总结搜索到的关键信息（包括作品来源、作者、相关背景等）",
+		},
+	},
+	required: ["success"],
+};
 
-	// 2. 查找数据库缓存，使用新的数据结构字段路径
-	const cached = await db_find(db_name, db_table, {
+export const verifyArticleValue = async (
+	articleText: string,
+	mode: string = "default",
+	modelId: string,
+	fingerprint: string,
+): Promise<{
+	success: boolean;
+	error?: string;
+	session?: string;
+}> => {
+	// 1. 基础预处理
+	const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
+	const sha1 = crypto.SHA1(normalizedText).toString();
+
+	// 2. 查缓存
+	const cached = (await db_find(db_name, db_table, {
 		"metadata.sha1": sha1,
 		"article.input.mode": mode,
 		"metadata.modelId": modelId,
-	}) as DatabaseAnalysisRecord | null;
+	})) as DatabaseAnalysisRecord | null;
 
 	if (cached) {
 		return { success: true };
 	}
 
-	const openAI = new OpenAI({
+	// 3. 初始化 Google GenAI 客户端
+	// 使用 'as any' 绕过 TypeScript 对 baseUrl 的检查（如果 SDK 类型定义尚未更新）
+	// 通常代理地址可以通过 baseUrl, rootUrl 或 transport 传入
+	const client = new GoogleGenAI({
 		apiKey: AppConfig.system_models.validator.api_key,
-		baseURL: AppConfig.system_models.validator.base_url,
-	});
+		baseUrl: AppConfig.system_models.validator.base_url,
+	} as any);
 
-	// 读取模型名，优先使用环境变量，否则用默认值
-	const model: string = AppConfig.system_models.validator.model || "gemini-2.5-flash";
+	const modelName: string = AppConfig.system_models.validator.model || "gemini-2.0-flash";
 
 	try {
-		const response = await openAI.chat.completions.create({
-			model,
-			messages: [
-				{
-					role: "system",
-					content: `你是一个内容验证和来源分析助手，专注于识别有效内容、检测文章来源并生成搜索关键词。
-
-请严格遵守以下**输入处理原则**与**执行步骤**：
-
-### 0. 核心输入原则（至关重要）
-- **整体性视同**：无论用户输入的内容包含多少个段落、换行符、章节标题（如“第一章”、“Part 1”）或视觉分隔符，**均必须将其视为【同一篇内容的整体】进行分析**。
-- **禁止分割**：严禁将输入内容拆分为多个独立任务处理。
-- **单一输出**：最终结果**必须**是单个JSON对象 \`{...}\`，**严禁**返回JSON数组 \`[{...}, {...}]\`。
+		const response = await client.models.generateContent({
+			model: modelName,
+			config: {
+				// 启用 Google 搜索接地
+				tools: [
+					{
+						googleSearch: {},
+					},
+				],
+				// 强制 JSON 输出
+				responseMimeType: "application/json",
+				responseSchema: verifySchema,
+				systemInstruction: `你是一个严格的内容验证专家。请分析用户输入的文本内容，判断其有效性，并在必要时使用 Google 搜索工具查找相关资料并总结关键信息。
 
 ### 1. 内容有效性校验
 - **核心目标**：拦截一切明显无意义或会严重浪费Tokens的内容。
-- **判定为“无效”的规则（满足任一则判定为不通过）**：
+- **判定为"无效"的规则（满足任一则判定为不通过）**：
   - **乱码/不可读**：主要由随机字符、无意义符号或编码噪声构成，无法形成可理解的词语或语句。
   - **极端重复/灌水**：大段重复同一字符/词/句（如"哈哈哈……"上百上千次），或无内容的大篇幅占位符。
   - **净空内容**：仅包含空白、换行或极少量无意义字符。
-- **判定为“有效”的情况（即使内容不完整或非传统文章形式，只要有意义，均视为有效）**：
+- **判定为"有效"的情况（即使内容不完整或非传统文章形式，只要有意义，均视为有效）**：
   - 程序代码、配置文件、日志片段、命令行输出、公式、列表、片段化笔记、短语、单个句子等。
-  - 任何非上述“无效”规则涵盖的内容。
+  - 任何非上述"无效"规则涵盖的内容。
 
-### 2. 文章来源分析与搜索需求判断
-- **目标**：判断该整体内容是否为具有明确来源的作品，并据此决定是否需要搜索。
-- **判断规则**：
-  - **经典文章**：原文来自知名文学作品、历史文献、学术论文、教科书、百科全书、正式出版物等。
-  - **同人作品**：基于现有经典作品或流行文化（如小说、动漫、影视、游戏）的角色、设定、世界观进行的二次创作。
-  - **再创作/改编**：基于现有文章或故事进行改编、改写、翻译或进一步阐述的内容。
-  - **原创/短文**：内容明显为独立创作，或篇幅极短、信息量有限，不像是基于特定来源的作品。
-- **\`needSearch\` 字段逻辑**：
-  - 若判断为**经典文章、同人作品或再创作/改编** -> \`true\`。
-  - 若判断为**原创或短文** -> \`false\`。
+### 2. 搜索执行与总结
+- **何时搜索**：
+  - **经典文章**：原文来自知名文学作品、历史文献、学术论文、教科书、百科全书、正式出版物等 → **必须搜索**
+  - **同人作品**：基于现有作品或流行文化的二次创作 → **必须搜索**
+  - **再创作/改编**：基于现有文章或故事的改编、改写、翻译 → **必须搜索**
+  - **原创/短文**：明显为独立创作，或篇幅极短、信息量有限 → **无需搜索**
+  
+- **如何总结搜索结果**：
+  - 提取3-8个关键词（核心人物、作品名称、重要概念、时代背景、作者名等）执行搜索
+  - 仔细阅读搜索结果
+  - 在 \`searchSummary\` 字段中总结关键发现，包括：
+    * 作品的原始来源（如果是经典文章/同人/改编）
+    * 作者信息
+    * 作品背景、创作时代
+    * 相关的重要事实或历史背景
+    * 其他有助于理解文章的关键信息
+  - 总结应简洁但包含关键事实，200-500字为宜
 
-### 3. 搜索关键词生成
-- 仅当 \`needSearch\` 为 \`true\` 时生成3-8个关键词；否则为空数组 \`[]\`。
-- **关键词策略**：
-  - **核心主题词**：主要人物、概念、事件、作品名称等。
-  - **背景信息词**：时代、流派、团体、作者、原作名称等。
-  - **同人/再创作特有词**：
-    - 同人作品：侧重于找到原作或相关社区，避免使用“同人”、“二次创作”等通用词。
-    - 再创作/改编：侧重于找到原作或相关阐述。
-
-### 4. 结果返回格式
-请严格按照以下JSON格式返回结果，**返回内容必须以 \`{\` 开头，以 \`}\` 结尾，绝对不要包裹在 \`[\` \`]\` 中**：
+### 3. 结果返回格式
+请严格按照以下JSON格式返回结果：
 
 \`\`\`json
 {
   "success": true, // 或 false
   "message": "如果success为false，提供具体原因；否则留空或简述类型。",
-  "needSearch": true, // 或 false
-  "searchKeywords": ["关键词1", "关键词2", ...] // 仅在needSearch为true时填充
+  "searchSummary": "如果执行了搜索，在此总结搜索发现的关键信息；否则留空。"
 }
 \`\`\`
+
+**重要**：searchSummary 应该是你对搜索结果的总结，而不是搜索结果的原始内容。
 `,
-				},
+			},
+			contents: [
 				{
 					role: "user",
-					content: articleText,
+					parts: [{ text: articleText }],
 				},
 			],
-			response_format: { type: "json_object" },
 		});
 
-		const result = response.choices[0].message.content?.trim();
+		// 修正点：Node.js SDK 中通过 response.text 获取文本，需要手动解析 JSON
+		let rawText = response.text;
 
-		if (!result) {
-			console.error("AI返回内容为空");
-			return { success: false, error: "AI返回内容为空" };
+		if (!rawText) {
+			console.error("AI验证返回内容为空");
+			return { success: false, error: "AI验证服务无响应" };
 		}
 
-		let parsedResult;
+		// 清洗可能存在的 Markdown 代码块标记 (虽然 responseMimeType 设置为 json 通常不需要，但为了稳健)
+		rawText = rawText.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+
+		let parsedResult: {
+			success: boolean;
+			message?: string;
+			searchSummary?: string;
+		};
+
 		try {
-			// 合规化并解析JSON响应
-			const cleanedData = result.replace(/```json/g, "").replace(/```/g, "");
-			parsedResult = JSON.parse(cleanedData);
-		} catch (parseError) {
-			console.error("解析AI响应JSON失败:", parseError);
-			return { success: false, error: `AI返回格式异常: ${result.slice(0, 100)}...` };
+			parsedResult = JSON.parse(rawText);
+		} catch {
+			console.error("JSON解析失败:", rawText);
+			return { success: false, error: "AI返回数据格式错误" };
 		}
 
-		// 确保parsedResult的结构符合预期
-		if (typeof parsedResult.success !== "boolean" || typeof parsedResult.needSearch !== "boolean" || !Array.isArray(parsedResult.searchKeywords)) {
-			console.error("AI返回格式不完整或字段类型错误:", parsedResult);
-			return { success: false, error: `AI返回格式不完整或字段类型错误: ${JSON.stringify(parsedResult).slice(0, 100)}...` };
+		// 简单的防守性检查
+		if (typeof parsedResult.success !== "boolean") {
+			return { success: false, error: "AI返回格式异常: 缺少 success 字段" };
 		}
 
-		// 生成session
+		// 提取 AI 总结的搜索信息
+		const searchResults = parsedResult.searchSummary || undefined;
+
+		// 生成 Session
 		const session = generateSessionId(16);
-
-		// 确保 sessions 集合有 TTL 索引（30 分钟自动过期）
 		await ensureTTLIndex(db_name, "sessions", "createdAt", 30 * 60);
 
-		// 写入数据库，包含创建时间用于过期检查
 		await db_insert(db_name, "sessions", {
 			fingerprint,
 			session,
 			sha1,
+			searchResults,
 			used: false,
 			createdAt: new Date(),
 		});
 
-		// 返回完整的结果
 		return {
 			success: parsedResult.success,
-			error: parsedResult.success === false ? (parsedResult.message || "内容不符合分析标准") : undefined,
-			needSearch: parsedResult.needSearch,
-			searchKeywords: parsedResult.searchKeywords,
+			error: parsedResult.success === false ? (parsedResult.message || "内容未通过验证") : undefined,
 			session,
 		};
 	} catch (error: any) {
-		console.error("Failed to verify article value", error);
-		return { success: false, error: error?.message || "网络连接异常，请检查网络后重试" };
+		console.error("Gemini Verify Error:", error);
+		return {
+			success: false,
+			error: error?.message || "验证服务连接失败",
+		};
 	}
 };
 
