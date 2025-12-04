@@ -35,6 +35,8 @@ export interface AnalysisResult {
 	title: string;
 	/** 评级标签 (如 S+, A, B 等) */
 	ratingTag: string;
+	/** 最终总结性标签 (一句话精准概括文章核心特质与价值定位) */
+	finalTag: string;
 	/** 总体评估描述 */
 	overallAssessment: string;
 	/** 作品概要 */
