@@ -130,11 +130,10 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		searchKeywords?: string[];
 		fingerprint: string;
 	} | null>(null);
-	const validIds = availableGradingModels.map(m => m.model);
 	const DEFAULT_INDEX = 2;
-	const defaultModelId = validIds[DEFAULT_INDEX] ?? validIds[0] ?? "";
+	const defaultModelId = String(DEFAULT_INDEX < availableGradingModels.length ? DEFAULT_INDEX : 0);
 
-	const STORAGE_KEY = "writer.selectedModelId";
+	const STORAGE_KEY = "writer.selectedModelIndex";
 	const subscribe = (callback: () => void) => {
 		if (typeof window === "undefined")
 			return () => { };
@@ -154,8 +153,9 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		try {
 			if (typeof window !== "undefined") {
 				const saved = window.localStorage.getItem(STORAGE_KEY);
-				if (saved && validIds.includes(saved))
-					return saved;
+				const index = Number.parseInt(saved || "", 10);
+				if (!Number.isNaN(index) && index >= 0 && index < availableGradingModels.length)
+					return String(index);
 			}
 		} catch { }
 		return defaultModelId;

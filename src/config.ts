@@ -57,11 +57,16 @@ export const getAvailableGradingModels = (): GradingModelConfig[] => {
 };
 
 /**
- * 获取特定评分模型
+ * 获取特定评分模型（通过索引）
  */
-export const getGradingModel = (modelId: string): GradingModelConfig | null => {
+export const getGradingModel = (modelIndex: string | number): GradingModelConfig | null => {
 	const config = getConfigInstance();
-	return config.grading_models.find((model: GradingModelConfig) => model.model === modelId) || null;
+	const index = typeof modelIndex === "string" ? Number.parseInt(modelIndex, 10) : modelIndex;
+	if (Number.isNaN(index) || index < 0 || index >= config.grading_models.length) {
+		return null;
+	}
+	const model = config.grading_models[index];
+	return model?.enabled ? model : null;
 };
 
 /**
