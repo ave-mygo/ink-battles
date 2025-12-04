@@ -24,6 +24,7 @@ interface WriterAnalysisResultProps {
 		overallAssessment: string;
 		title: string;
 		ratingTag: string;
+		finalTag?: string;
 		summary: string;
 		tags?: string[];
 		dimensions: Dimension[];
@@ -115,14 +116,23 @@ export default function WriterAnalysisResult({
 					<div className={`text-6xl font-bold mb-2 ${getScoreColor(analysisResult.overallScore)}`}>
 						{analysisResult.overallScore}
 					</div>
-					<div className="text-xs text-slate-400 mb-2">狸希Rikki</div>
+					<div className="text-xs text-slate-400 mb-2 dark:text-slate-500">狸希Rikki</div>
 					<div className="text-lg font-semibold mb-2 dark:text-slate-100">{analysisResult.title}</div>
 					<div className="text-sm text-slate-600 mb-4 dark:text-slate-300">{analysisResult.ratingTag}</div>
+
+					{/* 最终总结性标签 */}
+					{analysisResult.finalTag && (
+						<div className="text-xs text-purple-600 mb-4 px-3 py-1.5 border border-purple-200 rounded-lg bg-purple-50 italic dark:text-purple-400 dark:border-purple-800 dark:bg-purple-950/30">
+							「
+							{analysisResult.finalTag}
+							」
+						</div>
+					)}
 
 					<div
 						className={`text-sm font-medium px-4 py-2 rounded-full inline-flex ${getScoreBgColor(
 							analysisResult.overallScore,
-						)}  ${getScoreColor(analysisResult.overallScore)} mb-4 dark:bg-white/5 dark:ring-1 dark:ring-white/10`}
+						)}  ${getScoreColor(analysisResult.overallScore)} mb-4 dark:ring-1 dark:ring-white/10`}
 					>
 						{analysisResult.overallScore >= 80
 							? "优秀作品"
@@ -222,7 +232,7 @@ export default function WriterAnalysisResult({
 							<div key={dim.name} className="space-y-2">
 								<div className="flex items-center justify-between">
 									<span className="text-slate-700 font-medium dark:text-slate-100">{dim.name}</span>
-									<span className={`font-bold ${getScoreColor(dim.score)}`}>
+									<span className={`font-bold ${getScoreColor((dim.score / maxScore) * 100)}`}>
 										{dim.score}
 										/
 										{maxScore}

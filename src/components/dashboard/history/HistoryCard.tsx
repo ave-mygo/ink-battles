@@ -4,10 +4,21 @@ import type { AnalysisResult } from "@/types/callback/ai";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { Calendar, Clock, Copy, ExternalLink, Globe, Lock } from "lucide-react";
+import { Calendar, Clock, Copy, ExternalLink, Globe, Lock, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -17,18 +28,20 @@ import { cn } from "@/lib/utils";
 interface HistoryCardProps {
 	record: DatabaseAnalysisRecord;
 	onTogglePublic?: (recordId: string, isPublic: boolean) => Promise<void>;
+	onDelete?: (recordId: string) => Promise<void>;
 }
 
 /**
  * 历史记录卡片组件
  * 用于历史记录列表视图
  */
-export function HistoryCard({ record, onTogglePublic }: HistoryCardProps) {
+export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardProps) {
 	const isPublic = record.settings?.public || false;
 	const recordId = record._id || "";
 	const timestamp = new Date(record.timestamp);
 	const timeAgo = formatDistanceToNow(timestamp, { addSuffix: true, locale: zhCN });
 	const [isToggling, setIsToggling] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
 
 	// AI 输出的总评预览（从 result 字段解析为 AnalysisResult）
 	let aiResult: AnalysisResult | null = null;
@@ -65,6 +78,22 @@ export function HistoryCard({ record, onTogglePublic }: HistoryCardProps) {
 		const url = `${window.location.origin}/share/${recordId}`;
 		navigator.clipboard.writeText(url);
 		toast.success("链接已复制", { description: "快去分享给朋友吧！" });
+	};
+
+	const handleDelete = async () => {
+		if (!onDelete)
+			return;
+		setIsDeleting(true);
+		try {
+			await onDelete(recordId);
+			toast.success("删除成功", { description: "分析记录已被删除" });
+		} catch (error) {
+			toast.error("删除失败", {
+				description: error instanceof Error ? error.message : "请稍后重试",
+			});
+		} finally {
+			setIsDeleting(false);
+		}
 	};
 
 	return (
@@ -178,28 +207,66 @@ export function HistoryCard({ record, onTogglePublic }: HistoryCardProps) {
 						</Tooltip>
 					</TooltipProvider>
 
-					{isPublic && (
-						<TooltipProvider>
-							<Tooltip>
-								<TooltipTrigger asChild>
+				{isPublic && (
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="outline"
+									size="icon"
+									className="text-blue-600 border-blue-200 bg-blue-50/80 h-8 w-8 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer"
+									onClick={handleCopyLink}
+								>
+									<Copy className="h-3.5 w-3.5" />
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>复制分享链接</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+				)}
+
+				{/* 删除按钮 */}
+				<AlertDialog>
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<AlertDialogTrigger asChild>
 									<Button
 										variant="outline"
 										size="icon"
-										className="text-blue-600 border-blue-200 bg-blue-50/80 h-8 w-8 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50"
-										onClick={handleCopyLink}
+										className="text-red-600 border-red-200 bg-red-50/80 h-8 w-8 dark:text-red-400 dark:border-red-800 dark:bg-red-950/50 hover:bg-red-100 dark:hover:bg-red-900/50 cursor-pointer disabled:cursor-not-allowed"
+										disabled={isDeleting}
 									>
-										<Copy className="h-3.5 w-3.5" />
+										{isDeleting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-600 border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
 									</Button>
-								</TooltipTrigger>
-								<TooltipContent>
-									<p>复制分享链接</p>
-								</TooltipContent>
-							</Tooltip>
-						</TooltipProvider>
-					)}
-				</div>
-
-				<Button variant="default" size="sm" asChild className="text-xs bg-slate-900 h-8 shadow-sm dark:text-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200">
+								</AlertDialogTrigger>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p>删除记录</p>
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
+					<AlertDialogContent>
+						<AlertDialogHeader>
+							<AlertDialogTitle>确认删除</AlertDialogTitle>
+							<AlertDialogDescription>
+								确定要删除这条分析记录吗？此操作不可撤销，删除后数据将无法恢复。
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel className="cursor-pointer">取消</AlertDialogCancel>
+							<AlertDialogAction
+								onClick={handleDelete}
+								className="bg-red-600 text-white cursor-pointer hover:bg-red-700 focus:ring-red-600"
+							>
+								删除
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
+			</div>				<Button variant="default" size="sm" asChild className="text-xs bg-slate-900 h-8 shadow-sm dark:text-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200">
 					<Link href={`/dashboard/history/${recordId}`}>
 						查看详情
 						<ExternalLink className="ml-1.5 h-3 w-3" />

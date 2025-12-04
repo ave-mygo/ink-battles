@@ -4,7 +4,7 @@ import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests"
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getUserAnalysisHistory, toggleRecordPublic } from "@/utils/dashboard";
+import { deleteAnalysisRecord, getUserAnalysisHistory, toggleRecordPublic } from "@/utils/dashboard";
 import { HistoryCard } from "./HistoryCard";
 
 interface HistoryListProps {
@@ -57,6 +57,26 @@ export function HistoryList({ initialData }: HistoryListProps) {
 		});
 	};
 
+	const handleDelete = async (recordId: string) => {
+		const result = await deleteAnalysisRecord(recordId);
+		if (!result.success) {
+			throw new Error(result.message || "删除失败");
+		}
+
+		// 更新本地状态，移除已删除的记录
+		setData((prev) => {
+			if (!prev)
+				return prev;
+			const newRecords = prev.records.filter(record => record._id !== recordId);
+			return {
+				...prev,
+				records: newRecords,
+				total: prev.total - 1,
+				totalPages: Math.ceil((prev.total - 1) / prev.limit),
+			};
+		});
+	};
+
 	const loadPage = async (newPage: number) => {
 		setIsLoading(true);
 		try {
@@ -80,6 +100,7 @@ export function HistoryList({ initialData }: HistoryListProps) {
 						key={record._id}
 						record={record}
 						onTogglePublic={handleTogglePublic}
+						onDelete={handleDelete}
 					/>
 				))}
 			</div>
