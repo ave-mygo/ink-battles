@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { DASHBOARD_NAV_ITEMS } from "@/config";
+import { DASHBOARD_NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useDashboardSidebarActions, useDashboardSidebarOpen } from "@/store/ui";
 

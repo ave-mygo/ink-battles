@@ -6,7 +6,7 @@ import JsonLd from "@/components/seo/JsonLd";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ABOUT_FAQ_ITEMS } from "@/config";
+import { ABOUT_FAQ_ITEMS } from "@/lib/constants";
 import { buildFaqJsonLd, createPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {

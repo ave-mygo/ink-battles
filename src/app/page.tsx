@@ -4,7 +4,7 @@ import { NoticeBar } from "@/components/common/notice-bar";
 import WriterAnalysisSystem from "@/components/layouts";
 import JsonLd from "@/components/seo/JsonLd";
 import { SEOContent } from "@/components/seo/SEOContent";
-import { getConfig } from "@/config";
+import { getAvailableGradingModels, getConfig } from "@/config";
 import {
 	buildArticleJsonLd,
 	buildHowToJsonLd,
@@ -39,6 +39,17 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function Home() {
 	const noticeConf = getConfig().app.notice;
 	const { app: { base_url: siteUrl } } = getConfig();
+	// 在服务器端获取评分模型配置，传递给客户端组件
+	const availableGradingModels = getAvailableGradingModels().map(model => ({
+		name: model.name,
+		model: model.model,
+		description: model.description,
+		enabled: model.enabled,
+		premium: model.premium,
+		features: model.features,
+		advantages: model.advantages,
+		usageScenario: model.usageScenario,
+	}));
 
 	return (
 		<>
@@ -86,7 +97,7 @@ export default async function Home() {
 				})}
 			/>
 
-			<WriterAnalysisSystem />
+			<WriterAnalysisSystem availableGradingModels={availableGradingModels} />
 		</>
 	);
 }

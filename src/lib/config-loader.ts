@@ -1,12 +1,15 @@
 /**
  * 运行时配置加载器
  * 从 TOML 文件动态加载配置，支持容器部署时挂载外部配置
+ * @server-only 此模块仅在服务器端运行
  */
 
 import fs from "node:fs";
+
 import path from "node:path";
 import process from "node:process";
 import toml from "toml";
+import "server-only";
 
 // 配置类型定义
 interface SystemModelConfig {

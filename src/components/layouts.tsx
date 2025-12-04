@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnalysisResult } from "@/types/callback/ai";
+import type { GradingModelConfig } from "@/types/common/config";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
@@ -12,10 +13,13 @@ import WriterAnalysisResult from "@/components/layouts/WriterPage/WriterAnalysis
 import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/WriterAnalysisResultPlaceholder";
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
-import { getAvailableGradingModels } from "@/config";
 import { verifyArticleValue } from "@/lib/ai";
 import { getFingerprintId } from "@/lib/fingerprint";
 import { calculateFinalScore } from "@/lib/utils-client";
+
+interface WriterAnalysisSystemProps {
+	availableGradingModels: GradingModelConfig[];
+}
 
 const evaluationModes = [
 	{
@@ -101,7 +105,7 @@ const evaluationModes = [
 	},
 ];
 
-export default function WriterAnalysisSystem() {
+export default function WriterAnalysisSystem({ availableGradingModels }: WriterAnalysisSystemProps) {
 	const [articleText, setArticleText] = useState("");
 	const [selectedMode, setSelectedMode] = useState<string[]>([]);
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -126,8 +130,6 @@ export default function WriterAnalysisSystem() {
 		searchKeywords?: string[];
 		fingerprint: string;
 	} | null>(null);
-
-	const availableGradingModels = getAvailableGradingModels();
 	const validIds = availableGradingModels.map(m => m.model);
 	const DEFAULT_INDEX = 2;
 	const defaultModelId = validIds[DEFAULT_INDEX] ?? validIds[0] ?? "";
