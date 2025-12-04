@@ -1,6 +1,6 @@
 "use client";
 
-import type { GradingModelConfig } from "@/config";
+import type { GradingModelConfig } from "@/types/common/config";
 import { Brain, Clock, Crown, Settings, Sparkles, Target, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
