@@ -11,6 +11,8 @@ import { db_find, db_insert, db_update } from "@/lib/db";
 import { isPasswordValid } from "@/lib/password-strength";
 import { generateNextUID } from "@/utils/auth";
 import { getCurrentUserInfo } from "@/utils/auth/server";
+import { initializeUserBilling } from "@/utils/billing/server";
+import { consumeInviteCode, isInviteCodeRequired, validateInviteCode } from "@/utils/invite";
 
 import "server-only";
 
@@ -24,9 +26,13 @@ const {
  * 统一的 QQ 登录或注册 Action
  * 使用 code 获取 openid，自动判断是登录还是注册
  * @param code QQ 授权码
+ * @param inviteCode 邀请码（当配置启用邀请码且是新用户时必填）
  * @returns 登录或注册结果
  */
-export const loginOrRegisterWithQQ = async (code: string): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfoSafe }> => {
+export const loginOrRegisterWithQQ = async (
+	code: string,
+	inviteCode?: string,
+): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfoSafe; needInviteCode?: boolean }> => {
 	if (!code) {
 		return { success: false, message: "授权码不能为空" };
 	}
@@ -51,8 +57,20 @@ export const loginOrRegisterWithQQ = async (code: string): Promise<{ success: bo
 		let user = await db_find(db_name, "users", { qqOpenid: qq_openid });
 		const now = new Date();
 
-		// 如果用户不存在，创建新用户
+		// 如果用户不存在，需要创建新用户
 		if (!user) {
+			// 检查是否需要邀请码
+			const inviteRequired = await isInviteCodeRequired();
+			if (inviteRequired) {
+				if (!inviteCode) {
+					return { success: false, message: "当前注册需要邀请码", needInviteCode: true };
+				}
+				const inviteValidation = await validateInviteCode(inviteCode);
+				if (!inviteValidation.success) {
+					return { ...inviteValidation, needInviteCode: true };
+				}
+			}
+
 			const uid = await generateNextUID();
 			const newUser: AuthUserInfo = {
 				uid,
@@ -67,6 +85,15 @@ export const loginOrRegisterWithQQ = async (code: string): Promise<{ success: bo
 			if (!insertResult) {
 				return { success: false, message: "创建用户失败" };
 			}
+
+			// 初始化用户计费信息
+			await initializeUserBilling(uid);
+
+			// 如果使用了邀请码，标记为已使用
+			if (inviteRequired && inviteCode) {
+				await consumeInviteCode(inviteCode, uid);
+			}
+
 			user = newUser;
 		}
 

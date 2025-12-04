@@ -68,7 +68,7 @@ api_token = "YOUR_AFDIAN_API_TOKEN"
 user_id = "YOUR_AFDIAN_USER_ID"
 client_id = "YOUR_CLIENT_ID"
 client_secret = "YOUR_CLIENT_SECRET"
-redirect_uri = "https://your-domain.com/api/oauth/afdian"
+redirect_uri = "https://your-domain.com/oauth/afdian/callback"
 
 # -------------------------------------------------------------
 # 内部 API 配置
@@ -91,6 +91,13 @@ password = "YOUR_EMAIL_PASSWORD"
 # -------------------------------------------------------------
 [jwt]
 secret = "YOUR_JWT_SECRET_KEY"
+
+# -------------------------------------------------------------
+# 注册配置
+# -------------------------------------------------------------
+[registration]
+# 是否启用邀请码注册（启用后注册必须提供有效邀请码）
+invite_code_required = false
 
 # -------------------------------------------------------------
 # 应用配置

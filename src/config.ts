@@ -80,6 +80,24 @@ export const getFriendLinks = (): FriendLinkConfig[] => {
 	return config.friends;
 };
 
+/**
+ * 检查是否需要邀请码注册
+ * @returns 是否需要邀请码
+ */
+export const isInviteCodeRequired = (): boolean => {
+	const config = getConfigInstance();
+	return config.registration?.invite_code_required ?? false;
+};
+
+/**
+ * 获取邀请码的注册配置状态（用于客户端 API）
+ * @returns 是否需要邀请码
+ */
+export const getInviteCodeConfig = (): { required: boolean } => {
+	const required = isInviteCodeRequired();
+	return { required };
+};
+
 // 重新导出类型
 export { loadConfig };
 export type { Config, FriendLinkConfig, GradingModelConfig, SystemModelConfig };

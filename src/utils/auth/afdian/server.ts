@@ -10,6 +10,8 @@ import { db_name } from "@/lib/constants";
 import { db_find, db_insert, db_update } from "@/lib/db";
 import { generateNextUID } from "@/utils/auth/common";
 import { getCurrentUserInfo } from "@/utils/auth/server";
+import { initializeUserBilling } from "@/utils/billing/server";
+import { consumeInviteCode, isInviteCodeRequired, validateInviteCode } from "@/utils/invite";
 
 import "server-only";
 
@@ -39,9 +41,13 @@ interface AfdianOAuthResponse {
  * 统一的爱发电登录或注册 Action
  * 使用 code 获取 user_id，自动判断是登录还是注册
  * @param code 爱发电授权码
+ * @param inviteCode 邀请码（当配置启用邀请码且是新用户时必填）
  * @returns 登录或注册结果
  */
-export const loginOrRegisterWithAfdian = async (code: string): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfoSafe }> => {
+export const loginOrRegisterWithAfdian = async (
+	code: string,
+	inviteCode?: string,
+): Promise<{ success: boolean; message: string; userInfo?: AuthUserInfoSafe; needInviteCode?: boolean }> => {
 	if (!code) {
 		console.error("[oauth/afdian]授权码不能为空");
 		return { success: false, message: "授权码不能为空" };
@@ -80,8 +86,20 @@ export const loginOrRegisterWithAfdian = async (code: string): Promise<{ success
 		let user = await db_find(db_name, "users", { afdId: user_id });
 		const now = new Date();
 
-		// 如果用户不存在，创建新用户
+		// 如果用户不存在，需要创建新用户
 		if (!user) {
+			// 检查是否需要邀请码
+			const inviteRequired = await isInviteCodeRequired();
+			if (inviteRequired) {
+				if (!inviteCode) {
+					return { success: false, message: "当前注册需要邀请码", needInviteCode: true };
+				}
+				const inviteValidation = await validateInviteCode(inviteCode);
+				if (!inviteValidation.success) {
+					return { ...inviteValidation, needInviteCode: true };
+				}
+			}
+
 			const uid = await generateNextUID();
 			const newUser: AuthUserInfo = {
 				uid,
@@ -97,6 +115,15 @@ export const loginOrRegisterWithAfdian = async (code: string): Promise<{ success
 				console.error("[oauth/afdian]创建用户失败");
 				return { success: false, message: "创建用户失败" };
 			}
+
+			// 初始化用户计费信息
+			await initializeUserBilling(uid);
+
+			// 如果使用了邀请码，标记为已使用
+			if (inviteRequired && inviteCode) {
+				await consumeInviteCode(inviteCode, uid);
+			}
+
 			user = newUser;
 		}
 

@@ -6,6 +6,7 @@ import { db_find, db_insert, db_update } from "@/lib/db";
 import { isPasswordValid } from "@/lib/password-strength";
 import { sendVerificationEmail } from "@/lib/smtp";
 import { registerUser } from "@/utils/auth";
+import { consumeInviteCode, isInviteCodeRequired, validateInviteCode } from "@/utils/invite";
 
 import "server-only";
 
@@ -74,12 +75,17 @@ export const VerifyEmailCode = async (
 };
 
 /**
- * 新注册流程：需验证码
+ * 新注册流程：需验证码（可选邀请码）
+ * @param email 邮箱
+ * @param password 密码
+ * @param code 邮箱验证码
+ * @param inviteCode 邀请码（当配置启用邀请码时必填）
  */
 export const registerUserWithEmail = async (
 	email: string,
 	password: string,
 	code: string,
+	inviteCode?: string,
 ): Promise<{ success: boolean; message: string }> => {
 	if (!email || !password || !code) {
 		return { success: false, message: "邮箱、密码和验证码不能为空" };
@@ -93,14 +99,31 @@ export const registerUserWithEmail = async (
 		return { success: false, message: "该邮箱已注册" };
 	}
 
+	// 检查是否需要邀请码
+	const inviteRequired = await isInviteCodeRequired();
+	if (inviteRequired) {
+		if (!inviteCode) {
+			return { success: false, message: "当前注册需要邀请码" };
+		}
+		const inviteValidation = await validateInviteCode(inviteCode);
+		if (!inviteValidation.success) {
+			return inviteValidation;
+		}
+	}
+
 	const verify = await VerifyEmailCode(email, code, "register");
 	if (!verify.success) {
 		return verify;
 	}
 
-	const { success } = await registerUser(email, password);
-	if (!success) {
+	const { success, uid } = await registerUser(email, password);
+	if (!success || !uid) {
 		return { success: false, message: "注册失败，请重试" };
+	}
+
+	// 如果使用了邀请码，标记为已使用
+	if (inviteRequired && inviteCode) {
+		await consumeInviteCode(inviteCode, uid);
 	}
 
 	return { success: true, message: "注册成功，请登录" };

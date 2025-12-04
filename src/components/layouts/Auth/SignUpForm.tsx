@@ -1,12 +1,13 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { ArrowRight, Lock, Mail, ShieldCheck, Timer, UserPlus } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { AlertCircle, ArrowRight, Lock, Mail, ShieldCheck, Ticket, Timer, UserPlus } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { toast } from "sonner";
 import { PasswordStrengthIndicator } from "@/components/common/password-strength";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,29 +16,65 @@ import { isPasswordValid } from "@/lib/password-strength";
 import { loginSetState } from "@/utils/auth/client";
 
 /**
- * 注册表单组件（含邮箱验证码）
+ * 注册表单组件（含邮箱验证码和可选邀请码）
  * @returns 注册交互卡片
  */
 const SignUpForm = () => {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [code, setCode] = useState("");
+	const [inviteCode, setInviteCode] = useState("");
+	const [inviteCodeRequired, setInviteCodeRequired] = useState(false);
 	const [sending, setSending] = useState(false);
 	const [countdown, setCountdown] = useState(0);
 	const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+	// 从 URL 参数初始化错误信息
+	const initialErrorMessage = searchParams.get("status") && searchParams.get("msg") ? searchParams.get("msg") : null;
+	const [errorMessage] = useState<string | null>(initialErrorMessage);
+
 	const canSend = useMemo(() => countdown <= 0 && !!email, [countdown, email]);
 
+	// 检查是否需要邀请码
+	useEffect(() => {
+		const checkInviteConfig = async () => {
+			try {
+				const res = await fetch("/api/auth/invite-config");
+				const data = await res.json();
+				setInviteCodeRequired(data.required);
+			} catch (error) {
+				console.error("获取邀请码配置失败:", error);
+			}
+		};
+		checkInviteConfig();
+
+		// 如果有错误信息，显示 toast
+		if (initialErrorMessage) {
+			toast.error(initialErrorMessage);
+		}
+	}, [initialErrorMessage]);
+
 	const handleQQLoginClick = () => {
-		// 跳转到统一 QQ OAuth 入口，携带 method=signup
-		router.push("/oauth/qq?method=signup");
+		// 跳转到统一 QQ OAuth 入口，携带 method=signup 和邀请码
+		const url = new URL("/oauth/qq", window.location.origin);
+		url.searchParams.set("method", "signup");
+		if (inviteCode) {
+			url.searchParams.set("inviteCode", inviteCode);
+		}
+		router.push(url.toString());
 	};
 
 	const handleAfdianLoginClick = () => {
-		// 跳转到爱发电 OAuth 入口，携带 method=signup
-		router.push("/oauth/afdian?method=signup");
+		// 跳转到爱发电 OAuth 入口，携带 method=signup 和邀请码
+		const url = new URL("/oauth/afdian", window.location.origin);
+		url.searchParams.set("method", "signup");
+		if (inviteCode) {
+			url.searchParams.set("inviteCode", inviteCode);
+		}
+		router.push(url.toString());
 	};
 
 	useEffect(() => {
@@ -82,6 +119,10 @@ const SignUpForm = () => {
 			toast.error("请完整填写信息");
 			return;
 		}
+		if (inviteCodeRequired && !inviteCode) {
+			toast.error("请填写邀请码");
+			return;
+		}
 		if (!isPasswordValid(password)) {
 			toast.error("密码不符合要求，请检查密码强度");
 			return;
@@ -94,7 +135,7 @@ const SignUpForm = () => {
 			const res = await fetch("/api/register", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email, password, code }),
+				body: JSON.stringify({ email, password, code, inviteCode: inviteCode || undefined }),
 			});
 			const data = await res.json();
 			if (data.success) {
@@ -142,6 +183,14 @@ const SignUpForm = () => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
+					{/* 错误信息提示 */}
+					{errorMessage && (
+						<Alert variant="destructive">
+							<AlertCircle className="h-4 w-4" />
+							<AlertDescription>{errorMessage}</AlertDescription>
+						</Alert>
+					)}
+
 					<div className="space-y-4">
 						<div className="space-y-2">
 							<Label htmlFor="email">邮箱</Label>
@@ -217,6 +266,29 @@ const SignUpForm = () => {
 							</div>
 						</div>
 
+						{/* 邀请码输入框 */}
+						{inviteCodeRequired && (
+							<div className="space-y-2">
+								<Label htmlFor="inviteCode">
+									邀请码
+									<span className="text-destructive ml-1">*</span>
+								</Label>
+								<div className="relative">
+									<Ticket className="text-muted-foreground h-4 w-4 left-3 top-3 absolute" />
+									<Input
+										id="inviteCode"
+										className="pl-9"
+										value={inviteCode}
+										onChange={e => setInviteCode(e.target.value.toUpperCase())}
+										placeholder="请输入邀请码"
+									/>
+								</div>
+								<p className="text-muted-foreground text-xs">
+									当前注册需要邀请码，请联系管理员获取
+								</p>
+							</div>
+						)}
+
 						{/* 密码强度详细指示器 */}
 						{password && (
 							<PasswordStrengthIndicator
@@ -244,27 +316,40 @@ const SignUpForm = () => {
 						</div>
 					</div>
 
-					<div className="gap-4 grid grid-cols-2">
-						<Button
-							onClick={handleQQLoginClick}
-							variant="outline"
-							className="w-full hover:text-[#12B7F5] hover:border-[#12B7F5] hover:bg-[#12B7F5]/10"
-						>
-							<span className="flex gap-2 items-center justify-center">
-								<Icon icon="mingcute:qq-fill" className="text-[#12B7F5] h-4 w-4" />
-								QQ
-							</span>
-						</Button>
-						<Button
-							onClick={handleAfdianLoginClick}
-							variant="outline"
-							className="w-full hover:text-[#946ce6] hover:border-[#946ce6] hover:bg-[#946ce6]/10"
-						>
-							<span className="flex gap-2 items-center justify-center">
-								<Icon icon="simple-icons:afdian" className="text-[#946ce6] h-4 w-4" />
-								爱发电
-							</span>
-						</Button>
+					{/* 第三方登录区域 - 带锁定效果 */}
+					<div className="relative">
+						<div className="gap-4 grid grid-cols-2">
+							<Button
+								disabled={inviteCodeRequired && !inviteCode}
+								onClick={handleQQLoginClick}
+								variant="outline"
+								className="w-full hover:text-[#12B7F5] hover:border-[#12B7F5] hover:bg-[#12B7F5]/10"
+							>
+								<span className="flex gap-2 items-center justify-center">
+									<Icon icon="mingcute:qq-fill" className="text-[#12B7F5] h-4 w-4" />
+									QQ
+								</span>
+							</Button>
+							<Button
+								disabled={inviteCodeRequired && !inviteCode}
+								onClick={handleAfdianLoginClick}
+								variant="outline"
+								className="w-full hover:text-[#946ce6] hover:border-[#946ce6] hover:bg-[#946ce6]/10"
+							>
+								<span className="flex gap-2 items-center justify-center">
+									<Icon icon="simple-icons:afdian" className="text-[#946ce6] h-4 w-4" />
+									爱发电
+								</span>
+							</Button>
+						</div>
+
+						{/* 需要邀请码但未输入时的锁定遮罩 */}
+						{inviteCodeRequired && !inviteCode && (
+							<div className="bg-background/80 rounded-lg flex flex-col gap-1 items-center inset-0 justify-center absolute backdrop-blur-[2px]">
+								<Lock className="text-muted-foreground h-5 w-5" />
+								<span className="text-muted-foreground text-xs">请先填写邀请码</span>
+							</div>
+						)}
 					</div>
 
 					<div className="text-muted-foreground text-sm text-center">
