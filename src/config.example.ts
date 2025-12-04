@@ -85,6 +85,14 @@ interface Config {
 			link: string;
 		};
 	};
+	friends: FriendLinkConfig[];
+}
+
+/** 友情链接配置类型 */
+export interface FriendLinkConfig {
+	title: string;
+	description: string;
+	url: string;
 }
 
 // 配置数据
@@ -178,6 +186,19 @@ const config: Config = {
 			link: isDev ? "http://localhost:3000" : "https://ink-battles.rikki.top", // 公告链接
 		},
 	},
+	// 友情链接配置
+	friends: [
+		{
+			title: "作家战力分析系统 (梦月版)",
+			description: "提供更有趣味的分析结果",
+			url: "https://ink-battles.yumetsuki.moe",
+		},
+		{
+			title: "天翔TNXGの自留地",
+			description: "明日尚未到来，希望凝于心上",
+			url: "https://tnxg.top",
+		},
+	],
 };
 
 /** 仪表盘侧边导航项类型 */
@@ -230,7 +251,7 @@ export const ABOUT_FAQ_ITEMS: FaqItemConfig[] = [
 	{
 		question: "系统提供哪些分析模式？",
 		answer:
-			"我们提供多种预设的分析模式，例如“整体质量评估”、“写作风格分析”、“情感倾向识别”等，以满足不同场景的需求。您可以在“评分模式”区域自由组合，定制最适合您的分析视角。",
+			"我们提供多种预设的分析模式，例如“综合战力评分”、“各维度评分”、“作品概述”等，以满足不同场景的需求。您可以在“评分模式”区域自由组合，定制最适合您的分析视角。",
 	},
 	{
 		question: "用户权限和会员服务有什么区别？",
@@ -271,6 +292,11 @@ export const getGradingModel = (modelId: string): GradingModelConfig | null => {
 // 工具函数：获取系统模型配置
 export const getSystemModel = (type: keyof Config["system_models"]): SystemModelConfig | null => {
 	return config.system_models[type] || null;
+};
+
+// 工具函数：获取友情链接配置
+export const getFriendLinks = (): FriendLinkConfig[] => {
+	return config.friends;
 };
 
 export type { Config, GradingModelConfig, SystemModelConfig };

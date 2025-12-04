@@ -116,7 +116,7 @@ export default function WriterAnalysisResult({
 					<div className={`text-6xl font-bold mb-2 ${getScoreColor(analysisResult.overallScore)}`}>
 						{analysisResult.overallScore}
 					</div>
-					<div className="text-xs text-slate-400 mb-2 dark:text-slate-500">狸希Rikki</div>
+					<div className="text-xs text-slate-400 mb-2 dark:text-slate-500">凑Minato</div>
 					<div className="text-lg font-semibold mb-2 dark:text-slate-100">{analysisResult.title}</div>
 					<div className="text-sm text-slate-600 mb-4 dark:text-slate-300">{analysisResult.ratingTag}</div>
 

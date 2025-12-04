@@ -82,7 +82,7 @@ export function AnalysisResultDisplay({ result }: AnalysisResultDisplayProps) {
 					<div className={`text-6xl font-bold mb-2 ${getScoreColor(overallScore)}`}>
 						{overallScore}
 					</div>
-					<div className="text-xs text-slate-400 mb-2 dark:text-slate-500">狸希Rikki</div>
+					<div className="text-xs text-slate-400 mb-2 dark:text-slate-500">凑Minato</div>
 					{data.title && (
 						<div className="text-lg font-semibold mb-2 dark:text-slate-100">{data.title}</div>
 					)}

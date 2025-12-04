@@ -3,6 +3,7 @@ import { ExternalLink, Globe, Home, LinkIcon, Plus } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getFriendLinks } from "@/config";
 import { createPageMetadata } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -14,24 +15,8 @@ export async function generateMetadata(): Promise<Metadata> {
 	});
 }
 
-interface FriendLink {
-	title: string;
-	description: string;
-	url: string;
-}
-
-const friends: FriendLink[] = [
-	{
-		title: "作家战力分析系统 (梦月版)",
-		description: "提供更有趣味的分析结果",
-		url: "https://ink-battles.yumetsuki.moe",
-	},
-	{
-		title: "天翔TNXGの自留地",
-		description: "明日尚未到来，希望凝于心上",
-		url: "https://tnxg.top",
-	},
-];
+// 从配置文件获取友情链接
+const friends = getFriendLinks();
 
 export default function FriendsPage() {
 	return (
