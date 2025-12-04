@@ -2,7 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
 	allowedDevOrigins: [
-		"dev-ink-battles.rikki.top",
+		"ink-battles.couqie.moe",
+		"dev-ink-battles.couqie.moe",
 		"localhost:3000",
 	],
 	images: {
