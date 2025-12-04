@@ -6,7 +6,7 @@
 
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { db_name, db_table } from "@/lib/constants";
-import { db_count, db_find, db_findById, db_read, db_update } from "@/lib/db";
+import { db_count, db_delete, db_find, db_findById, db_read, db_update } from "@/lib/db";
 import { getCurrentUserInfo, getUserAvatarUrl } from "@/utils/auth/server";
 import "server-only";
 
@@ -280,6 +280,50 @@ export async function toggleRecordPublic(
 	} catch (error) {
 		console.error("切换公开状态失败:", error);
 		return { success: false, message: "操作失败，请稍后重试" };
+	}
+}
+
+/**
+ * 删除分析记录
+ * @param recordId 记录 ID
+ * @returns 删除结果
+ */
+export async function deleteAnalysisRecord(recordId: string): Promise<{
+	success: boolean;
+	message?: string;
+}> {
+	// 验证用户身份
+	const user = await getCurrentUserInfo();
+	if (!user) {
+		return { success: false, message: "未登录" };
+	}
+
+	try {
+		// 查询记录并验证所有权
+		const record = await db_findById(db_name, db_table, recordId);
+
+		if (!record) {
+			return { success: false, message: "记录不存在" };
+		}
+
+		if (record.uid !== user.uid) {
+			return { success: false, message: "无权删除此记录" };
+		}
+
+		// 执行删除
+		const deleteResult = await db_delete(db_name, db_table, { _id: record._id });
+
+		if (!deleteResult) {
+			return { success: false, message: "删除失败" };
+		}
+
+		return {
+			success: true,
+			message: "记录已删除",
+		};
+	} catch (error) {
+		console.error("删除记录失败:", error);
+		return { success: false, message: "删除失败，请稍后重试" };
 	}
 }
 
