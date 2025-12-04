@@ -71,7 +71,7 @@ export function AnalysisResultDisplay({ result }: AnalysisResultDisplayProps) {
 	return (
 		<div className="gap-6 grid md:grid-cols-3">
 			{/* 综合战力评分卡片 */}
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-900/80 dark:ring-1 dark:ring-white/10">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-white/5 dark:ring-1 dark:ring-white/10">
 				<CardHeader className="text-center">
 					<CardTitle className="flex gap-2 items-center justify-center">
 						<Star className="text-yellow-500 h-5 w-5" />
@@ -88,6 +88,15 @@ export function AnalysisResultDisplay({ result }: AnalysisResultDisplayProps) {
 					)}
 					{data.ratingTag && (
 						<div className="text-sm text-slate-600 mb-4 dark:text-slate-300">{data.ratingTag}</div>
+					)}
+
+					{/* 最终总结性标签 */}
+					{data.finalTag && (
+						<div className="text-xs text-purple-600 mb-4 px-3 py-1.5 border border-purple-200 rounded-lg bg-purple-50 italic dark:text-purple-400 dark:border-purple-800 dark:bg-purple-950/30">
+							「
+							{data.finalTag}
+							」
+						</div>
 					)}
 
 					<div
@@ -124,7 +133,7 @@ export function AnalysisResultDisplay({ result }: AnalysisResultDisplayProps) {
 
 			{/* 各维度评分卡片 */}
 			{dimensions.length > 0 && (
-				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-900/80 dark:ring-1 dark:ring-white/10">
+				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-white/5 dark:ring-1 dark:ring-white/10">
 					<CardHeader>
 						<CardTitle className="flex gap-2 items-center">
 							<BarChart3 className="text-blue-600 h-5 w-5" />
@@ -168,7 +177,7 @@ export function AnalysisResultDisplay({ result }: AnalysisResultDisplayProps) {
 			)}
 
 			{/* 分析报告卡片 */}
-			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-900/80 dark:ring-1 dark:ring-white/10">
+			<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm dark:bg-white/5 dark:ring-1 dark:ring-white/10">
 				<CardHeader>
 					<CardTitle className="flex gap-2 items-center">
 						<Lightbulb className="text-yellow-500 h-5 w-5" />

@@ -1,8 +1,10 @@
 "use client";
 
-import { Crown, FileText, Gift, Users, Zap } from "lucide-react";
+import { Crown, FileText, Gift, Upload, Users, X, Zap } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +12,7 @@ import { USER_LIMITS, UserType } from "@/lib/constants";
 import { getFingerprintId } from "@/lib/fingerprint";
 import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
 import { getAvailableCalls } from "@/utils/billing/actions";
+import { FILE_ACCEPT_STRING, parseFile, SUPPORTED_EXTENSIONS } from "@/utils/common/file-parser";
 
 interface UserTierData {
 	userType: UserType;
@@ -173,7 +176,10 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 		limits: USER_LIMITS[UserType.GUEST],
 	});
 	const [loading, setLoading] = useState(true);
+	const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+	const [isParsingFile, setIsParsingFile] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
 	// 使用客户端状态管理判断登录状态
@@ -288,9 +294,68 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 			clearTimeout(debounceTimerRef.current);
 		}
 
+		// 清除已上传文件名（用户手动编辑时）
+		if (uploadedFileName) {
+			setUploadedFileName(null);
+		}
+
 		// 立即更新本地状态以保证输入响应性
 		setArticleText(val);
+	}, [getCurrentLimit, setArticleText, uploadedFileName]);
+
+	// 处理文件上传
+	const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file)
+			return;
+
+		// 重置 input 以便可以再次选择同一文件
+		if (fileInputRef.current) {
+			fileInputRef.current.value = "";
+		}
+
+		setIsParsingFile(true);
+
+		try {
+			const result = await parseFile(file);
+
+			if (!result.success) {
+				toast.error(result.error || "文件解析失败");
+				return;
+			}
+
+			const text = result.text || "";
+			const currentLimit = getCurrentLimit();
+
+			// 检查解析后的文本是否超过限制
+			if (text.length > currentLimit) {
+				setArticleText(text.slice(0, currentLimit));
+				setUploadedFileName(result.fileName || null);
+				toast.warning(`文件内容已截断至 ${currentLimit.toLocaleString()} 字（原文 ${text.length.toLocaleString()} 字）`);
+				setShowLimitModal(true);
+			} else {
+				setArticleText(text);
+				setUploadedFileName(result.fileName || null);
+				toast.success(`已导入「${result.fileName}」，共 ${text.length.toLocaleString()} 字`);
+			}
+		} catch (error) {
+			console.error("文件上传处理错误:", error);
+			toast.error("文件处理失败，请重试");
+		} finally {
+			setIsParsingFile(false);
+		}
 	}, [getCurrentLimit, setArticleText]);
+
+	// 触发文件选择
+	const handleUploadClick = useCallback(() => {
+		fileInputRef.current?.click();
+	}, []);
+
+	// 清除已上传文件
+	const handleClearFile = useCallback(() => {
+		setUploadedFileName(null);
+		setArticleText("");
+	}, [setArticleText]);
 
 	if (loading) {
 		return (
@@ -397,9 +462,51 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 					)}
 				</div>
 
+				{/* 文件上传区域 */}
+				<div className="mb-3 flex gap-2 items-center">
+					<input
+						ref={fileInputRef}
+						type="file"
+						accept={FILE_ACCEPT_STRING}
+						onChange={handleFileUpload}
+						className="hidden"
+					/>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={handleUploadClick}
+						disabled={isParsingFile}
+						className="text-xs gap-1.5 cursor-pointer"
+					>
+						<Upload className="h-3.5 w-3.5" />
+						{isParsingFile ? "解析中..." : "上传文件"}
+					</Button>
+					<span className="text-muted-foreground text-xs">
+						支持
+						{" "}
+						{SUPPORTED_EXTENSIONS.join(", ")}
+						{" "}
+						格式
+					</span>
+					{uploadedFileName && (
+						<div className="text-xs text-blue-600 ml-auto px-2 py-1 border border-blue-200 rounded-md bg-blue-50 flex gap-1.5 items-center dark:text-blue-400 dark:border-blue-900 dark:bg-blue-950/30">
+							<FileText className="h-3 w-3" />
+							{uploadedFileName}
+							<button
+								type="button"
+								onClick={handleClearFile}
+								className="text-slate-400 cursor-pointer dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+							>
+								<X className="h-3 w-3" />
+							</button>
+						</div>
+					)}
+				</div>
+
 				<Textarea
 					ref={textareaRef}
-					placeholder="请在此处粘贴要分析的作品全文..."
+					placeholder="请在此处粘贴要分析的作品全文，或上传文件..."
 					value={articleText}
 					onChange={handleTextChange}
 					className="text-base leading-relaxed border-slate-200 flex-1 max-h-[400px] min-h-[200px] w-full resize-none overflow-auto dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
