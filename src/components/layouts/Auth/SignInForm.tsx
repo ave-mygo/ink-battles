@@ -1,11 +1,12 @@
 "use client";
 
 import { Icon } from "@iconify/react";
-import { ArrowRight, Lock, LogIn, Mail } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { AlertCircle, ArrowRight, Lock, LogIn, Mail, Ticket } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,18 +19,54 @@ import { loginSetState } from "@/utils/auth/client";
  */
 const SignInForm = () => {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
+	const [inviteCode, setInviteCode] = useState("");
+	const [inviteCodeRequired, setInviteCodeRequired] = useState(false);
+
+	// 从 URL 参数初始化错误信息
+	const initialErrorMessage = searchParams.get("status") && searchParams.get("msg") ? searchParams.get("msg") : null;
+	const [errorMessage] = useState<string | null>(initialErrorMessage);
+
+	// 检查是否需要邀请码
+	useEffect(() => {
+		const checkInviteConfig = async () => {
+			try {
+				const res = await fetch("/api/auth/invite-config");
+				const data = await res.json();
+				setInviteCodeRequired(data.required);
+			} catch (error) {
+				console.error("获取邀请码配置失败:", error);
+			}
+		};
+		checkInviteConfig();
+
+		// 如果有错误信息，显示 toast
+		if (initialErrorMessage) {
+			toast.error(initialErrorMessage);
+		}
+	}, [initialErrorMessage]);
 
 	const handleQQLoginClick = () => {
-		// 跳转到统一 QQ OAuth 入口，携带 method=signin
-		router.push("/oauth/qq?method=signin");
+		// 跳转到统一 QQ OAuth 入口，携带 method=signin 和邀请码
+		const url = new URL("/oauth/qq", window.location.origin);
+		url.searchParams.set("method", "signin");
+		if (inviteCodeRequired && inviteCode) {
+			url.searchParams.set("inviteCode", inviteCode);
+		}
+		router.push(url.toString());
 	};
 
 	const handleAfdianLoginClick = () => {
-		// 跳转到爱发电 OAuth 入口，携带 method=signin
-		router.push("/oauth/afdian?method=signin");
+		// 跳转到爱发电 OAuth 入口，携带 method=signin 和邀请码
+		const url = new URL("/oauth/afdian", window.location.origin);
+		url.searchParams.set("method", "signin");
+		if (inviteCodeRequired && inviteCode) {
+			url.searchParams.set("inviteCode", inviteCode);
+		}
+		router.push(url.toString());
 	};
 
 	const handleSubmit = async () => {
@@ -74,6 +111,14 @@ const SignInForm = () => {
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-6">
+					{/* 错误信息提示 */}
+					{errorMessage && (
+						<Alert variant="destructive">
+							<AlertCircle className="h-4 w-4" />
+							<AlertDescription>{errorMessage}</AlertDescription>
+						</Alert>
+					)}
+
 					<div className="space-y-4">
 						<div className="space-y-2">
 							<Label htmlFor="email">邮箱</Label>
@@ -127,6 +172,27 @@ const SignInForm = () => {
 							</span>
 						</div>
 					</div>
+
+					{/* 第三方登录需要邀请码时显示输入框 */}
+					{inviteCodeRequired && (
+						<div className="space-y-2">
+							<Label htmlFor="inviteCode">
+								<span className="flex gap-1 items-center">
+									<Ticket className="h-4 w-4" />
+									邀请码（第三方登录新用户必填）
+								</span>
+							</Label>
+							<Input
+								id="inviteCode"
+								value={inviteCode}
+								onChange={e => setInviteCode(e.target.value.toUpperCase())}
+								placeholder="如果您是新用户，请输入邀请码"
+							/>
+							<p className="text-muted-foreground text-xs">
+								已有账号可直接登录，无需邀请码
+							</p>
+						</div>
+					)}
 
 					<div className="gap-4 grid grid-cols-2">
 						<Button

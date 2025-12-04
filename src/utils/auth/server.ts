@@ -25,9 +25,9 @@ const {
  * 用户注册
  * @param email 邮箱
  * @param password 密码
- * @returns { success, message } 注册结果对象，包含是否成功和提示信息
+ * @returns { success, message, uid } 注册结果对象，包含是否成功、提示信息和用户 UID
  */
-export async function registerUser(email: string, password: string): Promise<{ success: boolean; message: string }> {
+export async function registerUser(email: string, password: string): Promise<{ success: boolean; message: string; uid?: number }> {
 	if (!email || !password) {
 		return { success: false, message: "邮箱和密码不能为空" };
 	}
@@ -48,7 +48,7 @@ export async function registerUser(email: string, password: string): Promise<{ s
 	// 初始化用户计费信息（赠送20次调用）
 	await initializeUserBilling(uid);
 
-	return { success: true, message: "注册成功，请登录" };
+	return { success: true, message: "注册成功，请登录", uid };
 }
 
 /**

@@ -70,6 +70,9 @@ interface RuntimeConfig {
 	jwt: {
 		secret: string;
 	};
+	registration: {
+		invite_code_required: boolean;
+	};
 	app: {
 		app_name: string;
 		base_url: string;

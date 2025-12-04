@@ -15,17 +15,19 @@ type QQOAuthMethod = "signin" | "signup" | "bind";
 
 /**
  * QQ OAuth 入口页
- * 接收 method 参数（signin/signup/bind），生成包含 method 的 state，重定向到 QQ 授权页
+ * 接收 method 参数（signin/signup/bind）和可选的 inviteCode，生成包含 method 的 state，重定向到 QQ 授权页
  */
 export default async function QQOAuthPage({ searchParams }: QQOAuthPageProps) {
 	const params = await searchParams;
 	const method = (typeof params?.method === "string" ? params.method : "signin") as QQOAuthMethod;
+	const inviteCode = typeof params?.inviteCode === "string" ? params.inviteCode : undefined;
 
-	// 生成包含 method 的 state
+	// 生成包含 method 和 inviteCode 的 state
 	const state = JSON.stringify({
 		method,
 		timestamp: Date.now(),
 		random: Math.random().toString(36).substring(2),
+		inviteCode,
 	});
 
 	const config = getConfig();
