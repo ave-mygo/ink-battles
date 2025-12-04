@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import SignInForm from "@/components/layouts/Auth/SignInForm";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -9,5 +10,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function SignInPage() {
-	return <SignInForm />;
+	return (
+		<Suspense fallback={<div className="p-4 flex min-h-[calc(100vh-4rem)] items-center justify-center">加载中...</div>}>
+			<SignInForm />
+		</Suspense>
+	);
 }
