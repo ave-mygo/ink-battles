@@ -12,10 +12,9 @@ interface HistoryDetailPageProps {
 	}>;
 }
 
-export async function generateMetadata({ params }: HistoryDetailPageProps): Promise<Metadata> {
-	const { id } = await params;
+export async function generateMetadata(): Promise<Metadata> {
 	return {
-		title: `分析记录详情 - ${id}`,
+		title: `分析记录详情`,
 		description: "查看分析记录的详细信息",
 	};
 }

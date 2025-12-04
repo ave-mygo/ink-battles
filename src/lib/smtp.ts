@@ -74,7 +74,7 @@ export const getSmtpConfig = (): EmailConfig => ({
  */
 export const getFromAddress = (): string => {
 	const address = EMAIL_USER || "noreply@localhost";
-	const name = "Rikki|狸希";
+	const name = "凑Minato|作家战力系统";
 	return name ? `${name} <${address}>` : address;
 };
 

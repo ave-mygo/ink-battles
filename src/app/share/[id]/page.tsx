@@ -25,8 +25,8 @@ export async function generateMetadata({ params }: SharePageProps): Promise<Meta
 	}
 
 	return {
-		title: `分析记录分享 - Ink Battles`,
-		description: `分析评分: ${result.data.article.output.overallScore || "N/A"}`,
+		title: `分析记录分享`,
+		description: `由 ${result.sharer ? result.sharer.displayName : "匿名用户"} 分享的作家战力分析记录`,
 	};
 }
 
