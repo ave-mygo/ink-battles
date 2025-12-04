@@ -178,12 +178,12 @@ const config: Config = {
 	},
 	app: {
 		app_name: "Ink Battles", // 应用程序名称
-		// 根据环境选择 base_url：开发环境使用 http://localhost:3000，其他环境使用 https://ink-battles.rikki.top
-		base_url: isDev ? "http://localhost:3000" : "https://ink-battles.rikki.top",
+		// 根据环境选择 base_url：开发环境使用 http://localhost:3000，其他环境使用 https://ink-battles.couqie.moe
+		base_url: isDev ? "http://localhost:3000" : "https://ink-battles.couqie.moe",
 		notice: {
 			enabled: true, // 是否启用网站公告
 			content: "欢迎使用 Ink Battles！请查看最新公告。", // 公告内容
-			link: isDev ? "http://localhost:3000" : "https://ink-battles.rikki.top", // 公告链接
+			link: isDev ? "http://localhost:3000" : "https://ink-battles.couqie.moe", // 公告链接
 		},
 	},
 	// 友情链接配置
