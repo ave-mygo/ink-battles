@@ -348,3 +348,39 @@ export async function getRecentAnalysisHistory(limit: number = 5): Promise<{
 		data: result.data.records,
 	};
 }
+
+/**
+ * Sitemap 条目信息
+ */
+export interface SitemapShareEntry {
+	/** 记录 ID */
+	id: string;
+	/** 最后修改时间 (ISO 字符串或 Date) */
+	lastModified: string | Date;
+}
+
+/**
+ * 获取所有公开分享记录的 ID 和更新时间（用于 Sitemap 生成）
+ * @returns 公开记录的 ID 和更新时间列表
+ */
+export async function getPublicRecordsForSitemap(): Promise<SitemapShareEntry[]> {
+	try {
+		const records = await db_read(
+			db_name,
+			db_table,
+			{ "settings.public": true },
+			{
+				sort: { timestamp: -1 },
+				projection: { _id: 1, timestamp: 1, updatedAt: 1 },
+			},
+		);
+
+		return records.map(record => ({
+			id: record._id.toString(),
+			lastModified: record.updatedAt || record.timestamp || new Date(),
+		}));
+	} catch (error) {
+		console.error("获取公开记录列表失败:", error);
+		return [];
+	}
+}
