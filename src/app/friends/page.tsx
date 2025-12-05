@@ -6,6 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getFriendLinks } from "@/config";
 import { createPageMetadata } from "@/lib/seo";
 
+// 强制动态渲染，确保配置在运行时读取
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
 	return createPageMetadata({
 		pathname: "/friends",
@@ -15,10 +18,10 @@ export async function generateMetadata(): Promise<Metadata> {
 	});
 }
 
-// 从配置文件获取友情链接
-const friends = getFriendLinks();
-
 export default function FriendsPage() {
+	// 在组件内部获取配置，确保运行时读取
+	const friends = getFriendLinks();
+
 	return (
 		<div className="min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">
 			<div className="mx-auto px-4 py-8 container max-w-6xl">

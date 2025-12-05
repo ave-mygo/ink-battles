@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getConfig } from "@/config";
 
+// 强制动态渲染，确保配置在运行时读取
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
 	title: "QQ 授权",
 	description: "QQ OAuth 授权入口",
