@@ -11,6 +11,9 @@ services:
     pull_policy: always
     ports:
       - "3001:3000"
+    extra_hosts:
+      # Linux 上需要手动添加 host.docker.internal 映射
+      - "host.docker.internal:host-gateway"
     volumes:
       # 挂载配置文件
       - ./config.toml:/app/config.toml:ro
@@ -19,6 +22,8 @@ services:
       - TZ=Asia/Shanghai
       # 设置应用基础 URL，用于 OAuth 回调等场景
       - APP_BASE_URL=https://ink-battles.couqie.moe
+      # 使用 Docker 默认网桥网关访问宿主机 MongoDB
+      - MONGODB_HOST=172.17.0.1
     # networks:
     #   - ink-battles-network
     # 限制日志大小，防止占满磁盘

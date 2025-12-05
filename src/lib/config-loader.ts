@@ -162,7 +162,7 @@ export function loadConfig(): RuntimeConfig {
 			parsed.mongodb.host = process.env.MONGODB_HOST;
 		}
 		if (process.env.MONGODB_PORT) {
-			parsed.mongodb.port = Number.parseInt(process.env.MONGODB_PORT, 10);
+			parsed.mongodb.port = Number.parseInt(process.env.MONGODB_PORT, 10) || 27017;
 		}
 		if (process.env.JWT_SECRET) {
 			parsed.jwt.secret = process.env.JWT_SECRET;
