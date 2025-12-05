@@ -1,7 +1,6 @@
 "use server";
-import type { Schema } from "@google/genai";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto-js";
 import { getConfig } from "@/config";
 import { db_name, db_table } from "@/lib/constants";
@@ -13,27 +12,6 @@ import { generateSessionId } from "@/utils/auth/sessions";
 import "server-only";
 
 const AppConfig = getConfig();
-
-// 定义返回结构的 Schema
-// 在新版 SDK 中，通常使用 Type 枚举，结构字段需符合 Schema 接口定义
-const verifySchema: Schema = {
-	type: Type.OBJECT,
-	properties: {
-		success: {
-			type: Type.BOOLEAN,
-			description: "内容是否有效（非乱码、非灌水）",
-		},
-		message: {
-			type: Type.STRING,
-			description: "简述判断理由或内容类型",
-		},
-		searchSummary: {
-			type: Type.STRING,
-			description: "如果执行了搜索，请在此字段总结搜索到的关键信息（包括作品来源、作者、相关背景等）",
-		},
-	},
-	required: ["success"],
-};
 
 export const verifyArticleValue = async (
 	articleText: string,
@@ -65,8 +43,10 @@ export const verifyArticleValue = async (
 	// 通常代理地址可以通过 baseUrl, rootUrl 或 transport 传入
 	const client = new GoogleGenAI({
 		apiKey: AppConfig.system_models.validator.api_key,
-		baseUrl: AppConfig.system_models.validator.base_url,
-	} as any);
+		httpOptions: {
+			baseUrl: AppConfig.system_models.validator.base_url,
+		},
+	});
 
 	const modelName: string = AppConfig.system_models.validator.model || "gemini-2.0-flash";
 
@@ -80,9 +60,6 @@ export const verifyArticleValue = async (
 						googleSearch: {},
 					},
 				],
-				// 强制 JSON 输出
-				responseMimeType: "application/json",
-				responseSchema: verifySchema,
 				systemInstruction: `你是一个严格的内容验证专家。请分析用户输入的文本内容，判断其有效性，并在必要时使用 Google 搜索工具查找相关资料并总结关键信息。
 
 ### 1. 内容有效性校验
