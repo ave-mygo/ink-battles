@@ -113,15 +113,30 @@ export const verifyArticleValue = async (
 		});
 
 		// 修正点：Node.js SDK 中通过 response.text 获取文本，需要手动解析 JSON
-		let rawText = response.text;
+		const rawText = response.text;
 
 		if (!rawText) {
 			console.error("AI验证返回内容为空");
 			return { success: false, error: "AI验证服务无响应" };
 		}
 
-		// 清洗可能存在的 Markdown 代码块标记 (虽然 responseMimeType 设置为 json 通常不需要，但为了稳健)
-		rawText = rawText.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+		// 更健壮的 JSON 提取逻辑
+		// 1. 尝试从 Markdown 代码块中提取 (优化正则避免回溯)
+		const codeBlockMatch = rawText.match(/```json\n?([\s\S]*?)\n?```/);
+		let jsonContent: string;
+
+		if (codeBlockMatch) {
+			jsonContent = codeBlockMatch[1].trim();
+		} else {
+			// 2. 尝试直接匹配 JSON 对象
+			const jsonObjectMatch = rawText.match(/\{[\s\S]*\}/);
+			if (jsonObjectMatch) {
+				jsonContent = jsonObjectMatch[0].trim();
+			} else {
+				// 3. 回退到原始文本（去除代码块标记）
+				jsonContent = rawText.replace(/^```json\n?/, "").replace(/^```\n?/, "").replace(/\n?```$/, "").trim();
+			}
+		}
 
 		let parsedResult: {
 			success: boolean;
@@ -130,7 +145,7 @@ export const verifyArticleValue = async (
 		};
 
 		try {
-			parsedResult = JSON.parse(rawText);
+			parsedResult = JSON.parse(jsonContent);
 		} catch {
 			console.error("JSON解析失败:", rawText);
 			return { success: false, error: "AI返回数据格式错误" };

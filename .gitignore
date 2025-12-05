@@ -40,3 +40,5 @@ config.toml
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+output
