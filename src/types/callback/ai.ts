@@ -61,6 +61,11 @@ export interface AnalysisInput {
 	articleText: string;
 	/** 分析模式 */
 	mode: string;
+	/** 搜索相关信息 */
+	search?: {
+		/** 搜索结果总结 */
+		searchResults?: string;
+	};
 }
 
 /**

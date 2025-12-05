@@ -4,7 +4,7 @@ import type { AnalysisResult } from "@/types/callback/ai";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { Calendar, Clock, Copy, ExternalLink, Globe, Lock, Trash2 } from "lucide-react";
+import { Calendar, Clock, Copy, ExternalLink, Globe, Lock, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -101,7 +101,7 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 			<CardHeader className="pb-3">
 				<div className="flex gap-4 items-start justify-between">
 					<div className="space-y-1.5">
-						<div className="flex gap-2 items-center">
+						<div className="flex gap-2 items-center flex-wrap">
 							<Badge variant="outline" className="font-medium bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50">
 								{record.article.input.mode || "默认模式"}
 							</Badge>
@@ -118,6 +118,13 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 											私密
 										</Badge>
 									)}
+							{/* 搜索凭据指示 */}
+							{record.article.input.search?.searchResults && (
+								<Badge variant="secondary" className="text-blue-700 px-2 border-blue-200 bg-blue-50 gap-1 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50">
+									<Search className="h-3 w-3" />
+									已搜索
+								</Badge>
+							)}
 						</div>
 						<div className="text-xs text-slate-500 flex gap-3 items-center dark:text-slate-400">
 							<span className="flex gap-1 items-center">
