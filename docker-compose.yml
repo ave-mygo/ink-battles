@@ -23,7 +23,7 @@ services:
       # 设置应用基础 URL，用于 OAuth 回调等场景
       - APP_BASE_URL=https://ink-battles.couqie.moe
       # 使用 Docker 默认网桥网关访问宿主机 MongoDB
-      - MONGODB_HOST=172.17.0.1
+      - MONGODB_HOST=host.docker.internal
     # networks:
     #   - ink-battles-network
     # 限制日志大小，防止占满磁盘

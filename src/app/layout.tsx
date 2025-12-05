@@ -4,6 +4,7 @@ import { JetBrains_Mono, Noto_Sans_SC } from "next/font/google";
 import { AppHeader } from "@/components/common/header/AppHeader";
 import { ThemeProvider } from "@/components/common/theme/provider";
 import { Toaster } from "@/components/ui/sonner";
+import { getConfig } from "@/config";
 
 import "./globals.css";
 
@@ -17,7 +18,10 @@ const jetBrainsMono = JetBrains_Mono({
 	subsets: ["latin"],
 });
 
+const config = getConfig();
+
 export const metadata: Metadata = {
+	metadataBase: new URL(config.app.base_url),
 	title: {
 		template: "%s | 作家战力分析系统",
 		default: "作家战力分析系统",
