@@ -64,10 +64,13 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
+# 删除 standalone 中可能包含的构建时配置，强制使用运行时挂载的配置
+RUN rm -f /app/config.toml /app/config.example.toml
+
 # 复制入口脚本
 COPY --from=builder /app/scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
 
-# 复制示例配置（运行时会被 volume 覆盖）
+# 复制示例配置作为备份（运行时会被 volume 覆盖）
 COPY --from=builder /app/config.example.toml /app/config.example.toml
 
 # 设置权限

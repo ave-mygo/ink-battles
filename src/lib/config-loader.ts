@@ -123,16 +123,35 @@ function getConfigPath(): string {
 }
 
 /**
+ * 检测是否在 Next.js 构建阶段
+ * 构建时会设置特定的环境变量或者 process.argv 包含 build 命令
+ */
+function isBuildPhase(): boolean {
+	// Next.js 构建时会设置这个环境变量
+	if (process.env.NEXT_PHASE === "phase-production-build") {
+		return true;
+	}
+	// 检查是否在执行 next build
+	if (process.argv.some(arg => arg.includes("next") && process.argv.includes("build"))) {
+		return true;
+	}
+	return false;
+}
+
+/**
  * 加载并解析 TOML 配置
  */
 export function loadConfig(): RuntimeConfig {
-	// 返回缓存（生产环境）
-	if (cachedConfig && process.env.NODE_ENV === "production") {
+	// 构建阶段不缓存，确保运行时能读取新配置
+	const shouldCache = process.env.NODE_ENV === "production" && !isBuildPhase();
+
+	// 返回缓存（仅在生产环境运行时）
+	if (cachedConfig && shouldCache) {
 		return cachedConfig;
 	}
 
 	const configPath = getConfigPath();
-	console.log(`[config-loader] 加载配置: ${configPath}`);
+	console.warn(`[config-loader] 加载配置: ${configPath} (构建阶段: ${isBuildPhase()})`);
 
 	try {
 		const content = fs.readFileSync(configPath, "utf-8");
