@@ -94,8 +94,9 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// 3. 从 session 记录获取搜索结果
+		// 3. 从 session 记录获取搜索结果和网页信息
 		const searchResults = sessionRecords.searchResults || null;
+		const searchWebPages = sessionRecords.searchWebPages || null;
 
 		// 4. 准备 OpenAI 请求
 		const openAI = new OpenAI({
@@ -148,21 +149,20 @@ export async function POST(request: NextRequest) {
 
 					// 7. 异步保存结果到数据库 (流结束后执行)
 					if (accumulatedContent.trim()) {
-						// 使用 setImmediate 或不 await 保证不阻塞流关闭
+					// 使用 setImmediate 或不 await 保证不阻塞流关闭
 						saveToDatabase({
 							accumulatedContent,
 							articleText,
 							mode,
 							searchResults,
+							searchWebPages,
 							sha1,
 							ip,
 							fingerprint,
 							modelName: gradingModel.model,
 							uid,
 							session, // 传递 session 用于成功后删除
-						}).catch(err => console.error("异步保存数据库失败:", err));
-
-						// 如果是高级模型且用户已登录，扣减调用次数
+						}).catch(err => console.error("异步保存数据库失败:", err)); // 如果是高级模型且用户已登录，扣减调用次数
 						if (isPremiumModel && uid) {
 							deductCallBalance(uid).catch(err =>
 								console.error("扣减调用次数失败:", err),
@@ -228,6 +228,7 @@ async function saveToDatabase({
 	articleText,
 	mode,
 	searchResults,
+	searchWebPages,
 	sha1,
 	ip,
 	fingerprint,
@@ -239,6 +240,7 @@ async function saveToDatabase({
 	articleText: string;
 	mode: string;
 	searchResults: string | null;
+	searchWebPages: Array<{ uri: string; title?: string }> | null;
 	sha1: string;
 	ip: string | null;
 	fingerprint: string | null;
@@ -275,6 +277,7 @@ async function saveToDatabase({
 						mode: mode || "default",
 						search: {
 							searchResults: searchResults || "",
+							searchWebPages: searchWebPages || undefined,
 						},
 					},
 					output: { result: jsonContent, overallScore, tags },
