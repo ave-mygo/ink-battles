@@ -65,6 +65,8 @@ export interface AnalysisInput {
 	search?: {
 		/** 搜索结果总结 */
 		searchResults?: string;
+		/** 搜索使用的网页列表 */
+		searchWebPages?: Array<{ uri: string; title?: string }>;
 	};
 }
 
