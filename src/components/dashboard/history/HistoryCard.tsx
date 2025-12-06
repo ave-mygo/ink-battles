@@ -101,7 +101,7 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 			<CardHeader className="pb-3">
 				<div className="flex gap-4 items-start justify-between">
 					<div className="space-y-1.5">
-						<div className="flex gap-2 items-center flex-wrap">
+						<div className="flex flex-wrap gap-2 items-center">
 							<Badge variant="outline" className="font-medium bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50">
 								{record.article.input.mode || "默认模式"}
 							</Badge>
@@ -123,6 +123,13 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 								<Badge variant="secondary" className="text-blue-700 px-2 border-blue-200 bg-blue-50 gap-1 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50">
 									<Search className="h-3 w-3" />
 									已搜索
+									{record.article.input.search.searchWebPages && record.article.input.search.searchWebPages.length > 0 && (
+										<span className="ml-1">
+											(
+											{record.article.input.search.searchWebPages.length}
+											)
+										</span>
+									)}
 								</Badge>
 							)}
 						</div>
@@ -214,66 +221,68 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 						</Tooltip>
 					</TooltipProvider>
 
-				{isPublic && (
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="outline"
-									size="icon"
-									className="text-blue-600 border-blue-200 bg-blue-50/80 h-8 w-8 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer"
-									onClick={handleCopyLink}
-								>
-									<Copy className="h-3.5 w-3.5" />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>复制分享链接</p>
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-				)}
-
-				{/* 删除按钮 */}
-				<AlertDialog>
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<AlertDialogTrigger asChild>
+					{isPublic && (
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
 									<Button
 										variant="outline"
 										size="icon"
-										className="text-red-600 border-red-200 bg-red-50/80 h-8 w-8 dark:text-red-400 dark:border-red-800 dark:bg-red-950/50 hover:bg-red-100 dark:hover:bg-red-900/50 cursor-pointer disabled:cursor-not-allowed"
-										disabled={isDeleting}
+										className="text-blue-600 border-blue-200 bg-blue-50/80 h-8 w-8 cursor-pointer dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50"
+										onClick={handleCopyLink}
 									>
-										{isDeleting ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-red-600 border-t-transparent" /> : <Trash2 className="h-3.5 w-3.5" />}
+										<Copy className="h-3.5 w-3.5" />
 									</Button>
-								</AlertDialogTrigger>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>删除记录</p>
-							</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
-					<AlertDialogContent>
-						<AlertDialogHeader>
-							<AlertDialogTitle>确认删除</AlertDialogTitle>
-							<AlertDialogDescription>
-								确定要删除这条分析记录吗？此操作不可撤销，删除后数据将无法恢复。
-							</AlertDialogDescription>
-						</AlertDialogHeader>
-						<AlertDialogFooter>
-							<AlertDialogCancel className="cursor-pointer">取消</AlertDialogCancel>
-							<AlertDialogAction
-								onClick={handleDelete}
-								className="bg-red-600 text-white cursor-pointer hover:bg-red-700 focus:ring-red-600"
-							>
-								删除
-							</AlertDialogAction>
-						</AlertDialogFooter>
-					</AlertDialogContent>
-				</AlertDialog>
-			</div>				<Button variant="default" size="sm" asChild className="text-xs bg-slate-900 h-8 shadow-sm dark:text-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200">
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>复制分享链接</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					)}
+
+					{/* 删除按钮 */}
+					<AlertDialog>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<AlertDialogTrigger asChild>
+										<Button
+											variant="outline"
+											size="icon"
+											className="text-red-600 border-red-200 bg-red-50/80 h-8 w-8 cursor-pointer dark:text-red-400 dark:border-red-800 dark:bg-red-950/50 hover:bg-red-100 disabled:cursor-not-allowed dark:hover:bg-red-900/50"
+											disabled={isDeleting}
+										>
+											{isDeleting ? <span className="border-2 border-red-600 border-t-transparent rounded-full h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+										</Button>
+									</AlertDialogTrigger>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>删除记录</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>确认删除</AlertDialogTitle>
+								<AlertDialogDescription>
+									确定要删除这条分析记录吗？此操作不可撤销，删除后数据将无法恢复。
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel className="cursor-pointer">取消</AlertDialogCancel>
+								<AlertDialogAction
+									onClick={handleDelete}
+									className="text-white bg-red-600 cursor-pointer hover:bg-red-700 focus:ring-red-600"
+								>
+									删除
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
+				</div>
+				{" "}
+				<Button variant="default" size="sm" asChild className="text-xs bg-slate-900 h-8 shadow-sm dark:text-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-slate-200">
 					<Link href={`/dashboard/history/${recordId}`}>
 						查看详情
 						<ExternalLink className="ml-1.5 h-3 w-3" />

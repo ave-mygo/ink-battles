@@ -3,9 +3,10 @@
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { Check, Copy, Globe, Lock, Search } from "lucide-react";
+import { Check, Copy, Globe, Lock } from "lucide-react";
 import { useState } from "react";
 import { AnalysisResultDisplay } from "@/components/common/AnalysisResultDisplay";
+import { SearchCredentials } from "@/components/common/SearchCredentials";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -147,22 +148,10 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 
 			{/* 搜索凭据 - 如果有搜索结果则显示 */}
 			{record.article.input.search?.searchResults && (
-				<Card className="border-0 rounded-2xl bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-900/80">
-					<CardHeader>
-						<CardTitle className="flex gap-2 items-center">
-							<Search className="text-blue-600 h-5 w-5" />
-							搜索凭据
-						</CardTitle>
-						<CardDescription>
-							AI 在分析前搜索到的背景资料总结
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div className="text-slate-800 p-4 rounded-lg border border-blue-100 bg-blue-50/50 whitespace-pre-wrap dark:text-slate-200 dark:border-blue-900 dark:bg-blue-950/30">
-							{record.article.input.search.searchResults}
-						</div>
-					</CardContent>
-				</Card>
+				<SearchCredentials
+					searchResults={record.article.input.search.searchResults}
+					searchWebPages={record.article.input.search.searchWebPages}
+				/>
 			)}
 
 			{/* 分析结果 */}

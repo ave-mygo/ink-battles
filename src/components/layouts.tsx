@@ -5,6 +5,7 @@ import type { GradingModelConfig } from "@/types/common/config";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
+import { SearchCredentials } from "@/components/common/SearchCredentials";
 import StreamingDisplay from "@/components/layouts/WriterPage/streaming-display";
 import WriterAnalysisHeader from "@/components/layouts/WriterPage/WriterAnalysisHeader";
 import WriterAnalysisInput from "@/components/layouts/WriterPage/WriterAnalysisInput";
@@ -119,6 +120,10 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 	const [progress, setProgress] = useState(0);
 	const [retryCount, setRetryCount] = useState(0);
 	const [abortController, setAbortController] = useState<AbortController | null>(null);
+	const [searchInfo, setSearchInfo] = useState<{
+		searchResults?: string;
+		searchWebPages?: Array<{ uri: string; title?: string }>;
+	} | null>(null);
 
 	const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isCancelledRef = useRef(false);
@@ -215,6 +220,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		setSelectedMode([]);
 		setSelectedModeName([]);
 		setAnalysisResult(null);
+		setSearchInfo(null);
 		setStreamContent("");
 		setShowStreamingDisplay(false);
 		setIsError(false);
@@ -385,6 +391,29 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 			if (parsedResult) {
 				setAnalysisResult(parsedResult);
+
+				// 获取搜索信息（如果有session的话）
+				if (session) {
+					try {
+						const sessionResponse = await fetch("/api/get-search-info", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ session }),
+						});
+						if (sessionResponse.ok) {
+							const sessionData = await sessionResponse.json();
+							if (sessionData.searchResults || sessionData.searchWebPages) {
+								setSearchInfo({
+									searchResults: sessionData.searchResults,
+									searchWebPages: sessionData.searchWebPages,
+								});
+							}
+						}
+					} catch (error) {
+						console.error("获取搜索信息失败:", error);
+					}
+				}
+
 				setProgress(100);
 				setIsError(false);
 				setIsCompleted(true);
@@ -546,11 +575,20 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 				{analysisResult
 					? (
-							<WriterAnalysisResult
-								analysisResult={analysisResult}
-								getScoreColor={getScoreColor}
-								getScoreBgColor={getScoreBgColor}
-							/>
+							<>
+								{/* 搜索凭证 - 如果有搜索结果则显示 */}
+								{searchInfo?.searchResults && (
+									<SearchCredentials
+										searchResults={searchInfo.searchResults}
+										searchWebPages={searchInfo.searchWebPages}
+									/>
+								)}
+								<WriterAnalysisResult
+									analysisResult={analysisResult}
+									getScoreColor={getScoreColor}
+									getScoreBgColor={getScoreBgColor}
+								/>
+							</>
 						)
 					: (
 							<WriterAnalysisResultPlaceholder />
