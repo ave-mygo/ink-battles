@@ -17,6 +17,7 @@ export const verifyArticleValue = async (
 	articleText: string,
 	mode: string = "default",
 	modelId: string,
+	modelName: string,
 	fingerprint: string,
 ): Promise<{
 	success: boolean;
@@ -27,12 +28,21 @@ export const verifyArticleValue = async (
 	const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
 	const sha1 = crypto.SHA1(normalizedText).toString();
 
-	// 2. 查缓存
-	const cached = (await db_find(db_name, db_table, {
+	// 2. 查缓存（优先使用 modelName，兼容旧数据的 modelId）
+	let cached = (await db_find(db_name, db_table, {
 		"metadata.sha1": sha1,
 		"article.input.mode": mode,
-		"metadata.modelId": modelId,
+		"metadata.modelName": modelName,
 	})) as DatabaseAnalysisRecord | null;
+
+	// 如果通过 modelName 未找到，尝试用 modelId 查找（向后兼容）
+	if (!cached) {
+		cached = (await db_find(db_name, db_table, {
+			"metadata.sha1": sha1,
+			"article.input.mode": mode,
+			"metadata.modelId": modelId,
+		})) as DatabaseAnalysisRecord | null;
+	}
 
 	if (cached) {
 		return { success: true };
@@ -48,11 +58,11 @@ export const verifyArticleValue = async (
 		},
 	});
 
-	const modelName: string = AppConfig.system_models.validator.model || "gemini-2.0-flash";
+	const validatorModelName: string = AppConfig.system_models.validator.model || "gemini-2.0-flash";
 
 	try {
 		const response = await client.models.generateContent({
-			model: modelName,
+			model: validatorModelName,
 			config: {
 				// 启用 Google 搜索接地
 				tools: [

@@ -44,10 +44,11 @@ export async function POST(request: NextRequest) {
 		const sha1 = crypto.SHA1(normalizedText).toString();
 
 		// 1. 检查数据库缓存（通过 sha1 比对）
+		// 优先使用 modelName 查询，兼容旧数据的 modelId
 		const cached = await db_find(db_name, db_table, {
 			"metadata.sha1": sha1,
 			"article.input.mode": mode,
-			"metadata.modelId": modelId,
+			"metadata.modelName": gradingModel.model,
 		});
 
 		// 如果找到缓存且 sha1 匹配，直接返回缓存结果
@@ -156,7 +157,7 @@ export async function POST(request: NextRequest) {
 							sha1,
 							ip,
 							fingerprint,
-							modelId,
+							modelName: gradingModel.model,
 							uid,
 							session, // 传递 session 用于成功后删除
 						}).catch(err => console.error("异步保存数据库失败:", err));
@@ -230,7 +231,7 @@ async function saveToDatabase({
 	sha1,
 	ip,
 	fingerprint,
-	modelId,
+	modelName,
 	uid,
 	session,
 }: {
@@ -241,7 +242,7 @@ async function saveToDatabase({
 	sha1: string;
 	ip: string | null;
 	fingerprint: string | null;
-	modelId: string;
+	modelName: string;
 	uid: number | null;
 	session: string;
 }) {
@@ -282,7 +283,7 @@ async function saveToDatabase({
 					sha1,
 					ip,
 					fingerprint,
-					modelId,
+					modelName, // 新增：保存模型名称
 				},
 				timestamp: new Date().toISOString(),
 			},
