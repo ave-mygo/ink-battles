@@ -616,25 +616,39 @@ graph LR;subgraph 核心层;A[\\"主角\\"]-->B[\\"核心冲突\\"];end;subgraph
 以下是返回的JSON格式示例（**必须严格遵守，禁止包含任何Markdown格式**）：
 \`\`\`json
 {
-  "overallAssessment": "",
-  "title": "",
-  "ratingTag": "",
-  "finalTag": "",
-  "summary": "",
-  "tags": ["", "", ""],
-  "dimensions": [
-    { "name": "🎭 人物塑造力", "score": 0, "description": "此处必须提供详尽分析..." },
-    // ...其他15个维度
-  ],
-  "strengths": ["", ""],
-  "improvements": ["", ""],
-  "mermaid_diagrams": [
-    {
-      "type": "graph",
-      "title": "情节结构图",
-      "code": "graph TD;A[\\"开篇\\"] --> B[\\"冲突\\"];B --> C[\\"发展\\"];C --> D[\\"高潮\\"];D --> E[\\"结局\\"]"
-    }
-  ]
+    "overallAssessment": "",
+    "title": "",
+    "ratingTag": "",
+    "finalTag": "",
+    "summary": "",
+    "tags": ["","",""],
+    "dimensions": [
+        { "name": "🎭 人物塑造力","score": 0,"description": "" },
+        { "name": "🧠 结构复杂度","score": 0,"description": "" },
+        { "name": "🔀 情节反转密度", "score": 0, "description": "" },
+        { "name": "💔 情感穿透力", "score": 0, "description": "" },
+        { "name": "🎨 文体魅力", "score": 0, "description": "" },
+        { "name": "🌀 先锋性/实验性", "score": 0, "description": "" },
+        { "name": "😂 幽默感/自嘲力", "score": 0, "description": "" },
+        { "name": "🌍 主题深度", "score": 0, "description": "" },
+        { "name": "🏺 文化底蕴性", "score": 0, "description": "" },
+        { "name": "🛠️ 作者产出速度", "score": 0, "description": "" },
+        { "name": "📚 引用张力（互文性）", "score": 0, "description": "" },
+        { "name": "🪤 谜团操控力与读者诱导性", "score": 0, "description": "" },
+        { "name": "🧷 稳定性/完成度", "score": 0, "description": "" },
+        { "name": "🧬 语言原创性", "score": 0, "description": "" },
+        { "name": "👑 经典性", "score": 1.0, "description": "" },
+        { "name": "🧑‍🚀 新锐性", "score": 1.0, "description": "" }
+    ],
+    "strengths": ["",""],
+    "improvements": ["",""],
+    "mermaid_diagrams": [
+        {
+            "type": "graph",
+            "title": "情节结构图",
+            "code": "graph TD;A[\\"开篇\\"] --> B[\\"冲突\\"];B --> C[\\"发展\\"];C --> D[\\"高潮\\"];D --> E[\\"结局\\"]"
+        }
+    ]
 }
 \`\`\`
 
