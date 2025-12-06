@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: SharePageProps): Promise<Meta
 	}
 
 	return {
-		title: `分析记录分享`,
+		title: `分析记录分享 - ${id}`,
 		description: `由 ${result.sharer ? result.sharer.displayName : "匿名用户"} 分享的作家战力分析记录`,
 	};
 }

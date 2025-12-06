@@ -1,7 +1,6 @@
-import { getSiteUrl } from "@/lib/seo";
+import { createCanonical } from "@/lib/seo";
 
 export default function robots() {
-	const base = getSiteUrl();
 	return {
 		rules: [
 			// 通用爬虫规则
@@ -26,6 +25,6 @@ export default function robots() {
 				disallow: ["/api/", "/dashboard/"],
 			},
 		],
-		sitemap: `${base}/sitemap.xml`,
+		sitemap: createCanonical("/sitemap.xml"),
 	};
 }
