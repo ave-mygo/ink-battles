@@ -3,8 +3,15 @@ import { getSiteUrl } from "@/lib/seo";
 import { getPublicRecordsForSitemap } from "@/utils/dashboard";
 
 /**
+ * ISR 重新验证时间（秒）
+ * 每小时重新生成一次 sitemap
+ */
+export const revalidate = 3600;
+
+/**
  * 生成网站 sitemap
  * 包含静态页面和动态的公开分享页面
+ * 使用 ISR 确保在构建后也能更新
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const base = getSiteUrl();
