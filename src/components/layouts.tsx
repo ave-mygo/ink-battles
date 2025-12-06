@@ -304,7 +304,11 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 				setStreamContent(prev => `${prev}开始分析，校验文章内容...\n`);
 
 				fingerprint = await getFingerprintId();
-				const verifyResult = await verifyArticleValue(articleText, selectedModeName.join(","), selectedModelId, fingerprint);
+				// 获取当前选中模型的名称
+				const modelIndex = Number.parseInt(selectedModelId, 10);
+				const currentModel = availableGradingModels[modelIndex];
+				const currentModelName = currentModel?.model || "";
+				const verifyResult = await verifyArticleValue(articleText, selectedModeName.join(","), selectedModelId, currentModelName, fingerprint);
 
 				if (!verifyResult.success) {
 					throw new Error(`校验失败: ${verifyResult.error || "文章内容不符合分析标准"}`);

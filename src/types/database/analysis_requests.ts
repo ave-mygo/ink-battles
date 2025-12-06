@@ -28,6 +28,8 @@ export interface DatabaseAnalysisRecord {
 		ip: string | null;
 		/** 浏览器指纹 */
 		fingerprint: string | null;
+		/** 模型名称 */
+		modelName?: string;
 	};
 	/** 记录时间戳 */
 	timestamp: string;
