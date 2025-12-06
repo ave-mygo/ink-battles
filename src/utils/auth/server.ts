@@ -40,7 +40,15 @@ export async function registerUser(email: string, password: string): Promise<{ s
 
 	const passwordHash = await bcrypt.hash(password, 10);
 	const createdAt = new Date();
-	const ok = await db_insert(db_name, "users", { uid, email, passwordHash, createdAt });
+	const ok = await db_insert(db_name, "users", {
+		uid,
+		email,
+		passwordHash,
+		loginMethod: "email",
+		isActive: true,
+		createdAt,
+		updatedAt: createdAt,
+	});
 	if (!ok) {
 		return { success: false, message: "注册失败，请重试" };
 	}
