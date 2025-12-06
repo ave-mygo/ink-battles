@@ -28,9 +28,9 @@ services:
     #   - ink-battles-network
     # 限制日志大小，防止占满磁盘
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "10m"
+        max-size: 10m
         max-file: "3"
 
   # # ============================================
