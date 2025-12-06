@@ -130,6 +130,32 @@ export const verifyArticleValue = async (
 			return { success: false, error: "AI验证服务无响应" };
 		}
 
+		// 提取 Google 搜索引擎使用的网页信息
+		let searchWebPages: Array<{ uri: string; title?: string }> = [];
+		try {
+			// 从响应的候选答案中提取 groundingMetadata
+			if (response.candidates?.[0]?.groundingMetadata) {
+				const groundingMetadata = response.candidates[0].groundingMetadata;
+
+				// 提取搜索入口点（searchEntryPoint）中的渲染内容
+				if (groundingMetadata.searchEntryPoint) {
+					// 搜索入口点通常包含渲染的HTML内容，但我们主要关注groundingChunks
+				}
+
+				// 提取 groundingChunks 中的网页信息
+				if (groundingMetadata.groundingChunks) {
+					searchWebPages = groundingMetadata.groundingChunks
+						.filter((chunk: any) => chunk.web)
+						.map((chunk: any) => ({
+							uri: chunk.web.uri,
+							title: chunk.web.title || undefined,
+						}));
+				}
+			}
+		} catch (error) {
+			console.warn("提取搜索网页信息失败:", error);
+		}
+
 		// 更健壮的 JSON 提取逻辑
 		// 1. 尝试从 Markdown 代码块中提取 (优化正则避免回溯)
 		const codeBlockMatch = rawText.match(/```json\n?([\s\S]*?)\n?```/);
@@ -178,6 +204,7 @@ export const verifyArticleValue = async (
 			session,
 			sha1,
 			searchResults,
+			searchWebPages: searchWebPages.length > 0 ? searchWebPages : undefined,
 			used: false,
 			createdAt: new Date(),
 		});
