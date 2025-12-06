@@ -14,20 +14,22 @@ export interface BasicPageInfo {
 }
 
 /**
- * 获取站点基础 URL（去掉尾部斜杠）
+ * 获取站点基础 URL（规范化，去掉尾部斜杠）
  */
 export function getSiteUrl(): string {
 	const base = getConfig().app.base_url || "http://localhost:3000";
-	return base.endsWith("/") ? base.slice(0, -1) : base;
+	// 使用 URL 对象规范化，确保格式正确
+	const url = new URL(base);
+	return url.origin + url.pathname.replace(/\/$/, "");
 }
 
 /**
  * 生成规范化 URL
+ * 使用 new URL() 自动处理路径拼接，防止双斜杠问题
  */
 export function createCanonical(pathname: string): string {
 	const base = getSiteUrl();
-	const path = pathname.startsWith("/") ? pathname : `/${pathname}`;
-	return `${base}${path}`;
+	return new URL(pathname, base).href;
 }
 
 /**
