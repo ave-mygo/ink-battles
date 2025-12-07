@@ -29,6 +29,7 @@ interface GradingModelConfig {
 	features: string[];
 	advantages?: string[];
 	usageScenario?: string;
+	warning?: string;
 }
 
 interface FriendLinkConfig {
