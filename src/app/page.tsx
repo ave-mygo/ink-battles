@@ -10,6 +10,7 @@ import {
 	buildHowToJsonLd,
 	buildSoftwareApplicationJsonLd,
 	createPageMetadata,
+	getSiteUrl,
 } from "@/lib/seo";
 
 // 强制动态渲染，确保配置在运行时读取
@@ -41,7 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
 	const noticeConf = getConfig().app.notice;
-	const { app: { base_url: siteUrl } } = getConfig();
+	const siteUrl = getSiteUrl();
 	// 在服务器端获取评分模型配置，传递给客户端组件
 	const availableGradingModels = getAvailableGradingModels().map(model => ({
 		name: model.name,
@@ -52,6 +53,7 @@ export default async function Home() {
 		features: model.features,
 		advantages: model.advantages,
 		usageScenario: model.usageScenario,
+		warning: model.warning,
 	}));
 
 	return (

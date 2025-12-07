@@ -24,4 +24,6 @@ export interface GradingModelConfig {
 	advantages?: string[];
 	/** 使用场景说明 */
 	usageScenario?: string;
+	/** 隐私警告信息（可选） */
+	warning?: string;
 }
