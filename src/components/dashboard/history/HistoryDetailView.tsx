@@ -155,7 +155,7 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 			)}
 
 			{/* 分析结果 */}
-			<AnalysisResultDisplay result={record.article.output} readonly={true} />
+			<AnalysisResultDisplay result={record.article.output} modelName={record.metadata?.modelName} readonly={true} />
 		</div>
 	);
 }

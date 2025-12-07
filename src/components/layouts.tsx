@@ -111,6 +111,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 	const [selectedMode, setSelectedMode] = useState<string[]>([]);
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
 	const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+	const [currentAnalysisModelName, setCurrentAnalysisModelName] = useState<string>("");
 	const [isModesExpanded, setIsModesExpanded] = useState(false);
 	const [selectedModeName, setSelectedModeName] = useState<string[]>([]);
 	const [streamContent, setStreamContent] = useState("");
@@ -314,6 +315,8 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 				const modelIndex = Number.parseInt(selectedModelId, 10);
 				const currentModel = availableGradingModels[modelIndex];
 				const currentModelName = currentModel?.model || "";
+				// 保存当前分析使用的模型名称
+				setCurrentAnalysisModelName(currentModelName);
 				const verifyResult = await verifyArticleValue(articleText, selectedModeName.join(","), selectedModelId, currentModelName, fingerprint);
 
 				if (!verifyResult.success) {
@@ -587,6 +590,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 									analysisResult={analysisResult}
 									getScoreColor={getScoreColor}
 									getScoreBgColor={getScoreBgColor}
+									modelName={currentAnalysisModelName}
 								/>
 							</>
 						)

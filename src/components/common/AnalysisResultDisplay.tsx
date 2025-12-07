@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 
 interface AnalysisResultDisplayProps {
 	result: AnalysisOutput;
+	modelName?: string;
 	readonly?: boolean;
 }
 
@@ -42,7 +43,7 @@ function getScoreBgColor(score: number): string {
  * 可复用于历史记录详情页和公开分享页面
  * 功能与首页 WriterAnalysisResult 完全一致
  */
-export function AnalysisResultDisplay({ result }: AnalysisResultDisplayProps) {
+export function AnalysisResultDisplay({ result, modelName }: AnalysisResultDisplayProps) {
 	// 解析result JSON字符串
 	let data: AnalysisResult | null = null;
 	try {
@@ -67,6 +68,7 @@ export function AnalysisResultDisplay({ result }: AnalysisResultDisplayProps) {
 	const improvements = data.improvements || [];
 	const mermaidDiagrams = data.mermaid_diagrams || [];
 	const overallScore = data.overallScore || result.overallScore || 0;
+	const displayModelName = modelName || result.modelName;
 
 	return (
 		<div className="gap-6 grid md:grid-cols-3">
@@ -83,6 +85,11 @@ export function AnalysisResultDisplay({ result }: AnalysisResultDisplayProps) {
 						{overallScore}
 					</div>
 					<div className="text-xs text-slate-400 mb-2 dark:text-slate-500">凑Minato</div>
+					{displayModelName && (
+						<div className="text-xs text-blue-600 mb-3 px-3 py-1.5 border border-blue-200 rounded-full bg-blue-50 inline-block dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/30">
+							使用模型：{displayModelName}
+						</div>
+					)}
 					{data.title && (
 						<div className="text-lg font-semibold mb-2 dark:text-slate-100">{data.title}</div>
 					)}
