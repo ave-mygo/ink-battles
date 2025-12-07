@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SendVerificationEmail } from "@/utils/common/mail";
 import { bindEmailAccount, unbindAfdianAccount, unbindEmailAccount, unbindQQAccount } from "@/utils/dashboard/account-bindings";
 
 interface AccountBindingsProps {
@@ -37,7 +38,9 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 	const router = useRouter();
 	const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
 	const [showEmailDialog, setShowEmailDialog] = useState(false);
-	const [emailForm, setEmailForm] = useState({ email: "", password: "" });
+	const [emailForm, setEmailForm] = useState({ email: "", password: "", code: "" });
+	const [codeSent, setCodeSent] = useState(false);
+	const [countdown, setCountdown] = useState(0);
 
 	const [unbindConfirm, setUnbindConfirm] = useState<{
 		open: boolean;
@@ -101,6 +104,45 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 	};
 
 	/**
+	 * 发送验证码
+	 */
+	const handleSendCode = async () => {
+		if (!emailForm.email) {
+			toast.error("请先输入邮箱地址");
+			return;
+		}
+
+		if (countdown > 0) {
+			return;
+		}
+
+		setLoading({ ...loading, sendCode: true });
+		try {
+			const result = await SendVerificationEmail(emailForm.email, "register");
+			if (result.success) {
+				toast.success("验证码已发送，请查收邮箱");
+				setCodeSent(true);
+				setCountdown(60);
+				const timer = setInterval(() => {
+					setCountdown((prev) => {
+						if (prev <= 1) {
+							clearInterval(timer);
+							return 0;
+						}
+						return prev - 1;
+					});
+				}, 1000);
+			} else {
+				toast.error(result.message);
+			}
+		} catch {
+			toast.error("发送验证码失败，请稍后重试");
+		} finally {
+			setLoading({ ...loading, sendCode: false });
+		}
+	};
+
+	/**
 	 * 处理邮箱绑定
 	 */
 	const handleEmailBind = async () => {
@@ -109,13 +151,29 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 			return;
 		}
 
+		if (!emailForm.code) {
+			toast.error("请输入验证码");
+			return;
+		}
+
+		if (!emailForm.password) {
+			toast.error("请输入密码");
+			return;
+		}
+		if (emailForm.password.length < 8) {
+			toast.error("密码至少 8 位字符");
+			return;
+		}
+
 		setLoading({ ...loading, email: true });
 		try {
-			const result = await bindEmailAccount(emailForm.email, emailForm.password || undefined);
+			const result = await bindEmailAccount(emailForm.email, emailForm.code, emailForm.password);
 			if (result.success) {
 				toast.success(result.message);
 				setShowEmailDialog(false);
-				setEmailForm({ email: "", password: "" });
+				setEmailForm({ email: "", password: "", code: "" });
+				setCodeSent(false);
+				setCountdown(0);
 				// 刷新页面以更新绑定状态
 				router.refresh();
 			} else {
@@ -276,7 +334,7 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 					<DialogHeader>
 						<DialogTitle>绑定邮箱</DialogTitle>
 						<DialogDescription>
-							请输入您的邮箱地址和密码（可选）
+							请输入您的邮箱地址并通过验证码验证
 						</DialogDescription>
 					</DialogHeader>
 					<div className="py-4 space-y-4">
@@ -291,16 +349,40 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="password">密码（可选）</Label>
+							<Label htmlFor="code">验证码</Label>
+							<div className="flex gap-2">
+								<Input
+									id="code"
+									type="text"
+									placeholder="请输入验证码"
+									value={emailForm.code}
+									onChange={e => setEmailForm({ ...emailForm, code: e.target.value })}
+									onKeyDown={e => e.key === "Enter" && !loading.email && handleEmailBind()}
+									className="flex-1"
+								/>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={handleSendCode}
+									disabled={loading.sendCode || countdown > 0 || !emailForm.email}
+									className="cursor-pointer whitespace-nowrap"
+								>
+									{countdown > 0 ? `${countdown}秒后重试` : codeSent ? "重新发送" : "发送验证码"}
+								</Button>
+							</div>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="password">密码</Label>
 							<Input
 								id="password"
 								type="password"
-								placeholder="设置密码以使用邮箱登录"
+								placeholder="请设置登录密码（至少 8 位，包含 2 种类型）"
 								value={emailForm.password}
 								onChange={e => setEmailForm({ ...emailForm, password: e.target.value })}
+								onKeyDown={e => e.key === "Enter" && !loading.email && handleEmailBind()}
 							/>
 							<p className="text-xs text-slate-500">
-								如果不设置密码，您将只能通过第三方方式登录
+								必须包含：大写、小写、数字、特殊字符中的任意 2 种
 							</p>
 						</div>
 					</div>
