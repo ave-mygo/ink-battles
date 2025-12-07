@@ -650,22 +650,22 @@ graph LR;subgraph 核心层;A[\\"主角\\"]-->B[\\"核心冲突\\"];end;subgraph
     "summary": "",
     "tags": ["","",""],
     "dimensions": [
-        { "name": "🎭 人物塑造力","score": 0,"description": "" },
-        { "name": "🧠 结构复杂度","score": 0,"description": "" },
-        { "name": "🔀 情节反转密度", "score": 0, "description": "" },
-        { "name": "💔 情感穿透力", "score": 0, "description": "" },
-        { "name": "🎨 文体魅力", "score": 0, "description": "" },
-        { "name": "🌀 先锋性/实验性", "score": 0, "description": "" },
-        { "name": "😂 幽默感/自嘲力", "score": 0, "description": "" },
-        { "name": "🌍 主题深度", "score": 0, "description": "" },
-        { "name": "🏺 文化底蕴性", "score": 0, "description": "" },
-        { "name": "🛠️ 作者产出速度", "score": 0, "description": "" },
-        { "name": "📚 引用张力（互文性）", "score": 0, "description": "" },
-        { "name": "🪤 谜团操控力与读者诱导性", "score": 0, "description": "" },
-        { "name": "🧷 稳定性/完成度", "score": 0, "description": "" },
-        { "name": "🧬 语言原创性", "score": 0, "description": "" },
-        { "name": "👑 经典性", "score": 1.0, "description": "" },
-        { "name": "🧑‍🚀 新锐性", "score": 1.0, "description": "" }
+        { "name": "🎭 人物塑造力","score": 0,"description": "（最多5分）" },
+        { "name": "🧠 结构复杂度","score": 0,"description": "（最多5分）" },
+        { "name": "🔀 情节反转密度", "score": 0, "description": "（最多5分）" },
+        { "name": "💔 情感穿透力", "score": 0, "description": "（最多5分）" },
+        { "name": "🎨 文体魅力", "score": 0, "description": "（最多5分） },
+        { "name": "🌀 先锋性/实验性", "score": 0, "description": "（最多5分）" },
+        { "name": "😂 幽默感/自嘲力", "score": 0, "description": "（最多5分）" },
+        { "name": "🌍 主题深度", "score": 0, "description": "（最多5分）" },
+        { "name": "🏺 文化底蕴性", "score": 0, "description": "（最多5分）" },
+        { "name": "🛠️ 作者产出速度", "score": 0, "description": "（最多5分）" },
+        { "name": "📚 引用张力（互文性）", "score": 0, "description": "（最多5分）" },
+        { "name": "🪤 谜团操控力与读者诱导性", "score": 0, "description": "（最多5分）" },
+        { "name": "🧷 稳定性/完成度", "score": 0, "description": "（最多5分）" },
+        { "name": "🧬 语言原创性", "score": 0, "description": "（最多5分）" },
+        { "name": "👑 经典性", "score": 1.0, "description": "（最多2倍）" },
+        { "name": "🧑‍🚀 新锐性", "score": 1.0, "description": "（最多1.5倍）" }
     ],
     "strengths": ["",""],
     "improvements": ["",""],
@@ -685,7 +685,7 @@ graph LR;subgraph 核心层;A[\\"主角\\"]-->B[\\"核心冲突\\"];end;subgraph
 - **finalTag**: 生成一句面向读者的内容推荐语（15-30字）。采用“[独特的叙事手法/氛围] + [核心题材/故事类型] + [带给读者的深层体验/价值]”的格式。此字段需具体展示文章写了什么以及好在哪里，是作品的核心卖点总结。
 - **summary**: 一个字符串。请生成一个**全知视角的硬核故事梗概**。要求：1. **逻辑还原**：按时间线或因果链条，客观陈述故事的起因、经过、关键转折和最终结局（或当前断点），不得遗漏核心情节。2. **去评论化**：严禁包含任何主观评价、风格分析或读后感（这些属于overallAssessment），只陈述"发生了什么"。3. **简明扼要**：去除冗余修饰，用最干练的语言概括故事骨架，确保读者能快速掌握文章的完整脉络和核心事件 (string)。
 - **tags**: 请为以下文本生成一个字符串数组形式的标签列表。标签应包含5-12个关键词。1. **优先匹配**：若涉及特定动漫/游戏/小说（如BangDream, MyGO, 少女歌剧等），必须优先列出。2. **多维覆盖**：包含题材（如“赛博朋克”）、风格（如“慢热”、“意识流”）及特殊元素（如“性转”、“群像剧”）。(string[])
-- **dimensions**: 必须是一个包含全部16个维度的数组。每个对象必须包含 \`name\` (维度名称), \`score\` (该维度的得分或权重值), \`description\` (**必须提供详尽且基于证据的分析**。请引用文本中的具体情节、对话或描写作为依据，解释为何给出该分数，避免空泛的评价。**禁止使用Markdown格式**) (string)。
+- **dimensions**: 必须是一个包含全部16个维度的数组除去"👑 经典性"和"🧑‍🚀 新锐性"以外满分都是5分, "👑 经典性"权重最多赋予2分，"🧑‍🚀 新锐性"权重最多赋予1.5分。每个对象必须包含 \`name\` (维度名称), \`score\` (该维度的得分或权重值), \`description\` (**必须提供详尽且基于证据的分析**。请引用文本中的具体情节、对话或描写作为依据，解释为何给出该分数，避免空泛的评价。**禁止使用Markdown格式**) (string)。
 - **strengths**: 一个字符串数组，总结作品的3-5个主要优点。每个优点需具体说明好在哪里（例如：不仅写“文笔好”，要写“环境描写细腻，有效烘托了压抑的氛围”） (string[])。
 - **improvements**: 一个字符串数组。**请根据文本篇幅动态调整**：如果是短篇，提出3-5条建议；**如果是长篇或结构复杂的文章，请提供5-8条具体的、深度的改进建议**。建议应涵盖剧情逻辑、节奏把控、人物弧光等方面 (string[])。
 - **mermaid_diagrams**: 一个数组，包含1-3个Mermaid图表对象。每个对象必须包含 \`type\` (图表类型，如graph/flowchart)、\`title\` (图表标题)、\`code\` (Mermaid代码，**必须使用分号分隔每行，严禁使用换行符**)。图表应详细梳理作品的深层逻辑，如复杂的人物关系网或多线并行的情节结构 (object[])。
