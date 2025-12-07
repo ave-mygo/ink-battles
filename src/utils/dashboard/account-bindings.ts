@@ -4,7 +4,9 @@ import type { AuthUserInfo } from "@/types/users/user";
 import bcrypt from "bcryptjs";
 import { db_collection_afd_orders, db_name } from "@/lib/constants";
 import { db_find, db_update } from "@/lib/db";
+import { isPasswordValid } from "@/lib/password-strength";
 import { getCurrentUserInfo } from "@/utils/auth/server";
+import { VerifyEmailCode } from "@/utils/common/mail";
 import "server-only";
 
 /**
@@ -52,14 +54,29 @@ export const unbindQQAccount = async (): Promise<{ success: boolean; message: st
 /**
  * 绑定邮箱
  * @param email 邮箱地址
- * @param password 密码（可选）
+ * @param code 验证码
+ * @param password 密码
  * @returns 绑定结果
  */
-export const bindEmailAccount = async (email: string, password?: string): Promise<{ success: boolean; message: string }> => {
+export const bindEmailAccount = async (email: string, code: string, password: string): Promise<{ success: boolean; message: string }> => {
 	try {
 		const currentUser = await getCurrentUserInfo();
 		if (!currentUser) {
 			return { success: false, message: "用户未登录" };
+		}
+
+		// 验证密码
+		if (!password) {
+			return { success: false, message: "请输入密码" };
+		}
+		if (!isPasswordValid(password)) {
+			return { success: false, message: "密码强度不足：至少 8 位，且包含大写、小写、数字、特殊字符中的任意 2 种" };
+		}
+
+		// 验证邮箱验证码
+		const verifyResult = await VerifyEmailCode(email, code, "register");
+		if (!verifyResult.success) {
+			return { success: false, message: verifyResult.message };
 		}
 
 		// 检查该邮箱是否已被其他账号使用
@@ -76,13 +93,9 @@ export const bindEmailAccount = async (email: string, password?: string): Promis
 		// 更新用户信息
 		const updateData: any = {
 			email,
+			passwordHash: await bcrypt.hash(password, 10),
 			updatedAt: new Date(),
 		};
-
-		// 如果提供了密码，也更新密码
-		if (password) {
-			updateData.passwordHash = await bcrypt.hash(password, 10);
-		}
 
 		const success = await db_update(
 			db_name,
