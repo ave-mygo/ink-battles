@@ -137,6 +137,7 @@ const SignInForm = () => {
 						<div className="space-y-2">
 							<div className="flex items-center justify-between">
 								<Label htmlFor="password">密码</Label>
+								<a href="/forgot-password" className="text-primary text-xs font-medium hover:underline">忘记密码？</a>
 							</div>
 							<div className="relative">
 								<Lock className="text-muted-foreground h-4 w-4 left-3 top-3 absolute" />

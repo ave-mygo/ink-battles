@@ -120,10 +120,10 @@ export const sendEmail = async (options: EmailOptions): Promise<EmailResult> => 
 export const sendVerificationEmail = async (
 	email: string,
 	code: string,
-	type: "register" | "login" = "register",
+	type: "register" | "login" | "reset-password" = "register",
 ): Promise<EmailResult> => {
 	const brand = NEXT_PUBLIC_APP_NAME || "Rikki|狸希";
-	const actionText = type === "register" ? "账户注册" : "账户登录";
+	const actionText = type === "register" ? "账户注册" : type === "login" ? "账户登录" : "重置密码";
 	const subject = `欢迎使用 作家战力分析系统 Ink Battles | ${brand}`;
 
 	// 反垃圾邮件优化的HTML模板

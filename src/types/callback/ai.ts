@@ -81,4 +81,6 @@ export interface AnalysisOutput {
 	overallScore: number;
 	/** 标签列表 */
 	tags: string[];
+	/** 使用的AI模型名称 */
+	modelName?: string;
 }

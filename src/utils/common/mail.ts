@@ -10,7 +10,7 @@ import { consumeInviteCode, isInviteCodeRequired, validateInviteCode } from "@/u
 
 import "server-only";
 
-type VerificationType = "register" | "login";
+type VerificationType = "register" | "login" | "reset-password";
 
 /**
  * 发送邮箱验证码（SMTP）
