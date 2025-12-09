@@ -201,6 +201,12 @@ const SignUpForm = () => {
 									className="pl-9"
 									value={email}
 									onChange={e => setEmail(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											e.preventDefault();
+											document.getElementById("code")?.focus();
+										}
+									}}
 									placeholder="请输入邮箱地址"
 									type="email"
 								/>
@@ -217,6 +223,12 @@ const SignUpForm = () => {
 										className="pl-9"
 										value={code}
 										onChange={e => setCode(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												e.preventDefault();
+												document.getElementById("password")?.focus();
+											}
+										}}
 										placeholder="6位数字"
 									/>
 								</div>
@@ -246,6 +258,12 @@ const SignUpForm = () => {
 									className="pl-9"
 									value={password}
 									onChange={e => setPassword(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											e.preventDefault();
+											document.getElementById("confirmPassword")?.focus();
+										}
+									}}
 									placeholder="请输入密码"
 									type="password"
 								/>
@@ -260,6 +278,16 @@ const SignUpForm = () => {
 									className="pl-9"
 									value={confirmPassword}
 									onChange={e => setConfirmPassword(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											e.preventDefault();
+											if (inviteCodeRequired) {
+												document.getElementById("inviteCode")?.focus();
+											} else {
+												handleSubmit();
+											}
+										}
+									}}
 									placeholder="再次输入密码"
 									type="password"
 								/>
@@ -280,6 +308,7 @@ const SignUpForm = () => {
 										className="pl-9"
 										value={inviteCode}
 										onChange={e => setInviteCode(e.target.value.toUpperCase())}
+										onKeyDown={e => e.key === "Enter" && handleSubmit()}
 										placeholder="请输入邀请码"
 									/>
 								</div>
