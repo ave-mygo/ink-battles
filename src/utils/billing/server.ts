@@ -6,6 +6,7 @@ import {
 	db_collection_afd_orders,
 	db_collection_user_billing,
 	db_name,
+	MONTHLY_GRANT_BASE,
 	NEW_USER_BONUS,
 } from "@/lib/constants";
 import { db_find, db_insert, db_update } from "@/lib/db";
@@ -43,7 +44,7 @@ export async function initializeUserBilling(uid: number): Promise<boolean> {
 	const initialBilling: UserBilling = {
 		uid,
 		totalAmount: 0,
-		grantCallsBalance: 0, // 初始没有赠送次数，需要等第一次刷新
+		grantCallsBalance: MONTHLY_GRANT_BASE, // 初始化直接给当月免费额度
 		paidCallsBalance: NEW_USER_BONUS, // 新用户赠送20次
 		lastGrantRefresh: now,
 		createdAt: now,
