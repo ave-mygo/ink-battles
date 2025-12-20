@@ -364,6 +364,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 			const reader = response.body.getReader();
 			const decoder = new TextDecoder();
 			let fullContent = "";
+			let _chunkCount = 0;
 
 			setProgress(20);
 
@@ -375,16 +376,23 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 					} catch {}
 					break;
 				}
-				if (done)
+				if (done) {
 					break;
+				}
 
 				const chunk = decoder.decode(value, { stream: true });
+				_chunkCount++;
 				fullContent += chunk;
 				setStreamContent(prev => prev + chunk);
 
 				// 基于内容长度给一点额外的进度反馈，增加活跃感
 				const progressValue = Math.min(95, 20 + (fullContent.length / 2000) * 60);
 				setProgress(prev => Math.max(prev, progressValue));
+			}
+
+			// 检查是否收到了内容
+			if (fullContent.trim() === "") {
+				throw new Error("服务器返回空内容，可能是AI模型服务异常");
 			}
 
 			if (progressIntervalRef.current) {
@@ -401,19 +409,26 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 				// 获取搜索信息（如果有session的话）
 				if (session) {
 					try {
+						console.log(`尝试获取搜索信息，session: ${session}`);
 						const sessionResponse = await fetch("/api/get-search-info", {
 							method: "POST",
 							headers: { "Content-Type": "application/json" },
 							body: JSON.stringify({ session }),
 						});
+
 						if (sessionResponse.ok) {
 							const sessionData = await sessionResponse.json();
+							console.log(`获取到搜索信息:`, sessionData);
 							if (sessionData.searchResults || sessionData.searchWebPages) {
 								setSearchInfo({
 									searchResults: sessionData.searchResults,
 									searchWebPages: sessionData.searchWebPages,
 								});
 							}
+						} else {
+							console.log(`获取搜索信息失败，状态码: ${sessionResponse.status}`);
+							const errorData = await sessionResponse.json().catch(() => ({}));
+							console.log(`错误详情:`, errorData);
 						}
 					} catch (error) {
 						console.error("获取搜索信息失败:", error);
