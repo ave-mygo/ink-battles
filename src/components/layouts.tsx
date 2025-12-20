@@ -352,7 +352,10 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 			if (!response.ok) {
 				const errorData = await response.json().catch(() => ({}));
-				throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+				const error = new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+				// 将错误响应数据附加到错误对象上
+				(error as any).errorData = errorData;
+				throw error;
 			}
 
 			if (!response.body)
@@ -440,11 +443,23 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 			setProgress(0);
 
 			let errorMessage = "分析过程中发生错误";
-			if (error.name === "AbortError")
-				errorMessage = "请求被取消或超时";
-			else errorMessage = error.message || errorMessage;
+			let debugInfo = "";
 
-			setStreamContent(prev => `${prev}\n❌ ${errorMessage}\n`);
+			if (error.name === "AbortError") {
+				errorMessage = "请求被取消或超时";
+			} else {
+				errorMessage = error.message || errorMessage;
+			}
+
+			// 如果是 fetch 错误，尝试解析响应中的调试信息
+			if ((error as any).errorData) {
+				const errorData = (error as any).errorData;
+				if (errorData.requestId || errorData.fingerprint || errorData.session) {
+					debugInfo = `\n\n调试信息:\n请求ID: ${errorData.requestId || "N/A"}\n指纹: ${errorData.fingerprint || "N/A"}\n会话: ${errorData.session || "N/A"}`;
+				}
+			}
+
+			setStreamContent(prev => `${prev}\n❌ ${errorMessage}${debugInfo}\n`);
 
 			const isMobile = window.innerWidth < 768;
 			if (retryCount < (isMobile ? 3 : 2) && !errorMessage.includes("校验失败") && !errorMessage.includes("取消")) {

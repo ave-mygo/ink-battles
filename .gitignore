@@ -42,3 +42,5 @@ config.toml
 next-env.d.ts
 
 output
+
+scripts/py

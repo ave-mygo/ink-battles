@@ -160,6 +160,16 @@ export default function StreamingDisplay({
 										<li>• 刷新页面重试</li>
 										<li>• 切换到WiFi网络（移动端）</li>
 									</ul>
+									{streamContent.includes("调试信息:") && (
+										<div className="text-xs font-mono mt-3 p-2 rounded bg-gray-100 dark:bg-gray-800">
+											<p className="text-gray-600 mb-1 dark:text-gray-400">技术支持信息（可提供给客服）：</p>
+											<div className="text-gray-800 dark:text-gray-200">
+												{streamContent.split("调试信息:")[1]?.split("\n").slice(0, 4).map((line, idx) => (
+													<div key={idx}>{line.trim()}</div>
+												))}
+											</div>
+										</div>
+									)}
 								</div>
 							)}
 						</div>
