@@ -11,18 +11,33 @@ import { getCurrentUserInfo } from "@/utils/auth/server";
 import { deductCallBalance, hasAvailableCalls } from "@/utils/billing/server";
 
 export async function POST(request: NextRequest) {
+	// 生成请求ID用于追踪
+	const requestId = crypto.lib.WordArray.random(8).toString();
+	const fingerprint = request.headers.get("x-fingerprint") || "unknown";
+	const session = request.headers.get("x-session") || "unknown";
+
 	try {
 		const { articleText, mode, modelId } = await request.json();
 
 		// 输入验证
 		if (!articleText || typeof articleText !== "string") {
-			return Response.json({ error: "文章内容不能为空" }, { status: 400 });
+			return Response.json({
+				error: "文章内容不能为空",
+				requestId,
+				fingerprint,
+				session,
+			}, { status: 400 });
 		}
 
 		// 获取选择的评分模型
 		const gradingModel = getGradingModel(modelId);
 		if (!gradingModel) {
-			return Response.json({ error: "无效的评分模型" }, { status: 400 });
+			return Response.json({
+				error: "无效的评分模型",
+				requestId,
+				fingerprint,
+				session,
+			}, { status: 400 });
 		}
 
 		// 获取当前用户信息
@@ -35,7 +50,12 @@ export async function POST(request: NextRequest) {
 		// 如果是高级模型，必须登录
 		if (isPremiumModel && !uid) {
 			return Response.json(
-				{ error: "高级模型需要登录后使用，请先登录" },
+				{
+					error: "高级模型需要登录后使用，请先登录",
+					requestId,
+					fingerprint,
+					session,
+				},
 				{ status: 401 },
 			);
 		}
@@ -61,16 +81,24 @@ export async function POST(request: NextRequest) {
 		}
 		// 2. 权限与Session校验
 		const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null;
-		const fingerprint = request.headers.get("x-fingerprint");
-		const session = request.headers.get("x-session");
 
-		if (!session) {
-			return Response.json({ error: "缺少会话标识，请刷新页面重试" }, { status: 400 });
+		if (!session || session === "unknown") {
+			return Response.json({
+				error: "缺少会话标识，请刷新页面重试",
+				requestId,
+				fingerprint,
+				session,
+			}, { status: 400 });
 		}
 
 		const sessionRecords = await db_find(db_name, "sessions", { session });
 		if (!sessionRecords) {
-			return Response.json({ error: "该会话标识不存在或已被使用，请刷新页面重试" }, { status: 400 });
+			return Response.json({
+				error: "该会话标识不存在或已被使用，请刷新页面重试",
+				requestId,
+				fingerprint,
+				session,
+			}, { status: 400 });
 		}
 
 		// 检查 session 是否过期（30 分钟）
@@ -80,7 +108,12 @@ export async function POST(request: NextRequest) {
 		if (now - sessionCreatedAt > SESSION_TTL) {
 			// 过期则删除并返回错误
 			await db_delete(db_name, "sessions", { session });
-			return Response.json({ error: "会话已过期，请重新提交分析" }, { status: 400 });
+			return Response.json({ 
+				error: "会话已过期，请重新提交分析",
+				requestId,
+				fingerprint,
+				session
+			}, { status: 400 });
 		}
 
 		// 如果是高级模型，检查是否有可用次数
@@ -88,7 +121,12 @@ export async function POST(request: NextRequest) {
 			const hasCalls = await hasAvailableCalls(uid);
 			if (!hasCalls) {
 				return Response.json(
-					{ error: "调用次数不足，请前往计费管理页面充值或兑换订单" },
+					{ 
+						error: "调用次数不足，请前往计费管理页面充值或兑换订单",
+						requestId,
+						fingerprint,
+						session
+					},
 					{ status: 403 },
 				);
 			}
@@ -171,6 +209,8 @@ export async function POST(request: NextRequest) {
 					}
 				} catch (error) {
 					console.error("流式响应出错:", error);
+					const errorMsg = `\n\n❌ 流式传输错误\n错误信息: ${(error as Error).message}\n请求ID: ${requestId}\n指纹: ${fingerprint}\n会话: ${session}`;
+					controller.enqueue(encoder.encode(errorMsg));
 					controller.error(error);
 				}
 			},
@@ -178,14 +218,21 @@ export async function POST(request: NextRequest) {
 
 		return new Response(readable, {
 			headers: {
-				"Content-Type": "text/plain; charset=utf-8",
+				"Content-Type": "text/stream; charset=utf-8",
 				"Cache-Control": "no-cache",
 				"Connection": "keep-alive",
+				"Transfer-Encoding": "chunked",
 			},
 		});
 	} catch (error) {
 		console.error("分析请求出错:", error);
-		return Response.json({ error: "服务器内部错误", detail: (error as Error).message }, { status: 500 });
+		return Response.json({ 
+			error: "服务器内部错误", 
+			detail: (error as Error).message,
+			requestId,
+			fingerprint,
+			session
+		}, { status: 500 });
 	}
 }
 
@@ -215,9 +262,10 @@ function createTextStreamResponse(text: string) {
 
 	return new Response(readable, {
 		headers: {
-			"Content-Type": "text/plain; charset=utf-8",
+			"Content-Type": "text/stream; charset=utf-8",
 			"Cache-Control": "no-cache",
 			"Connection": "keep-alive",
+			"Transfer-Encoding": "chunked",
 		},
 	});
 }
