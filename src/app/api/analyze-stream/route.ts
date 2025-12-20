@@ -16,6 +16,9 @@ export async function POST(request: NextRequest) {
 	const fingerprint = request.headers.get("x-fingerprint") || "unknown";
 	const session = request.headers.get("x-session") || "unknown";
 
+	// 获取请求的 AbortSignal，用于取消后端请求
+	const abortSignal = request.signal;
+
 	try {
 		const { articleText, mode, modelId } = await request.json();
 
@@ -108,11 +111,11 @@ export async function POST(request: NextRequest) {
 		if (now - sessionCreatedAt > SESSION_TTL) {
 			// 过期则删除并返回错误
 			await db_delete(db_name, "sessions", { session });
-			return Response.json({ 
+			return Response.json({
 				error: "会话已过期，请重新提交分析",
 				requestId,
 				fingerprint,
-				session
+				session,
 			}, { status: 400 });
 		}
 
@@ -121,11 +124,11 @@ export async function POST(request: NextRequest) {
 			const hasCalls = await hasAvailableCalls(uid);
 			if (!hasCalls) {
 				return Response.json(
-					{ 
+					{
 						error: "调用次数不足，请前往计费管理页面充值或兑换订单",
 						requestId,
 						fingerprint,
-						session
+						session,
 					},
 					{ status: 403 },
 				);
@@ -137,6 +140,8 @@ export async function POST(request: NextRequest) {
 		const searchWebPages = sessionRecords.searchWebPages || null;
 
 		// 4. 准备 OpenAI 请求
+		console.log(`[${fingerprint}:${requestId}] 准备OpenAI请求，baseURL: ${gradingModel.base_url}, model: ${gradingModel.model}`);
+
 		const openAI = new OpenAI({
 			apiKey: gradingModel.api_key,
 			baseURL: gradingModel.base_url,
@@ -159,30 +164,111 @@ export async function POST(request: NextRequest) {
 
 		messages.push({ role: "user", content: articleText });
 
+		console.log(`[${fingerprint}:${requestId}] 消息数量: ${messages.length}, 用户内容长度: ${articleText.length}`);
+
 		// 5. 发起流式请求
-		const stream = await openAI.chat.completions.create({
-			model: gradingModel.model,
-			messages,
-			temperature: gradingModel.model.includes("gpt-5-nano") ? 1 : 0.3,
-			stream: true,
-			response_format: { type: "json_object" },
-			seed: fingerprint ? Number.parseInt(fingerprint) : undefined,
-		});
+		let stream: any;
+		try {
+			stream = await openAI.chat.completions.create({
+				model: gradingModel.model,
+				messages,
+				temperature: gradingModel.model.includes("gpt-5-nano") ? 1 : 0.3,
+				stream: true,
+				response_format: { type: "json_object" },
+				seed: fingerprint ? Number.parseInt(fingerprint) : undefined,
+			}, {
+				// 传递 AbortSignal 给 OpenAI 请求
+				signal: abortSignal,
+			});
+
+			console.log(`[${fingerprint}:${requestId}] OpenAI流式请求已创建`);
+		} catch (apiError) {
+			// 检查是否是取消错误
+			if (abortSignal.aborted) {
+				console.log(`[${fingerprint}:${requestId}] 请求被前端取消`);
+				return new Response("", { status: 499 }); // 499 Client Closed Request
+			}
+
+			console.error(`[${fingerprint}:${requestId}] OpenAI API调用失败:`, apiError);
+			return Response.json({
+				error: `AI模型调用失败: ${(apiError as Error).message}`,
+				requestId,
+				fingerprint,
+				session,
+				modelInfo: {
+					name: gradingModel.name,
+					model: gradingModel.model,
+					baseURL: gradingModel.base_url,
+				},
+			}, { status: 500 });
+		}
 
 		// 6. 构建流式响应
 		const encoder = new TextEncoder();
 		let accumulatedContent = ""; // 用于存储完整内容以便存库
 
+		console.log(`[${fingerprint}:${requestId}] 开始流式请求，模型: ${gradingModel.model}`);
+
 		const readable = new ReadableStream({
 			async start(controller) {
 				try {
-					for await (const chunk of stream) {
-						const content = chunk.choices[0]?.delta?.content || "";
-						if (content) {
-							accumulatedContent += content;
-							controller.enqueue(encoder.encode(content));
-						}
+					let chunkCount = 0;
+					let streamCancelled = false;
+
+					// 监听取消信号
+					const onAbort = () => {
+						streamCancelled = true;
+						console.log(`[${fingerprint}:${requestId}] 流被前端取消，已处理 ${chunkCount} 个chunk`);
+						controller.close();
+					};
+
+					if (abortSignal.aborted) {
+						onAbort();
+						return;
 					}
+
+					abortSignal.addEventListener("abort", onAbort);
+
+					try {
+						for await (const chunk of stream) {
+							// 检查是否被取消
+							if (streamCancelled || abortSignal.aborted) {
+								console.log(`[${fingerprint}:${requestId}] 检测到取消信号，停止处理流`);
+								break;
+							}
+
+							const content = chunk.choices[0]?.delta?.content || "";
+							if (content) {
+								chunkCount++;
+								accumulatedContent += content;
+								controller.enqueue(encoder.encode(content));
+
+								// 每100个chunk记录一次日志
+								if (chunkCount % 100 === 0) {
+									console.log(`[${fingerprint}:${requestId}] 已处理 ${chunkCount} 个chunk，累计长度: ${accumulatedContent.length}`);
+								}
+							}
+						}
+					} finally {
+						// 清理事件监听器
+						abortSignal.removeEventListener("abort", onAbort);
+					}
+
+					console.log(`[${fingerprint}:${requestId}] 流式请求完成，总chunk数: ${chunkCount}，最终内容长度: ${accumulatedContent.length}，是否被取消: ${streamCancelled}`);
+
+					// 如果被取消，不进行后续处理
+					if (streamCancelled || abortSignal.aborted) {
+						console.log(`[${fingerprint}:${requestId}] 请求被取消，跳过数据保存和计费扣减`);
+						return;
+					}
+
+					// 如果没有收到任何内容，发送错误信息
+					if (accumulatedContent.trim() === "") {
+						const errorMsg = `❌ AI模型返回空内容\n请求ID: ${requestId}\n模型: ${gradingModel.model}\n这可能是模型服务异常，请稍后重试`;
+						controller.enqueue(encoder.encode(errorMsg));
+						console.error(`[${fingerprint}:${requestId}] AI模型返回空内容`);
+					}
+
 					controller.close();
 
 					// 7. 异步保存结果到数据库 (流结束后执行)
@@ -200,19 +286,30 @@ export async function POST(request: NextRequest) {
 							modelName: gradingModel.model,
 							uid,
 							session, // 传递 session 用于成功后删除
-						}).catch(err => console.error("异步保存数据库失败:", err)); // 如果是高级模型且用户已登录，扣减调用次数
+						}).catch(err => console.error(`[${fingerprint}:${requestId}] 异步保存数据库失败:`, err)); // 如果是高级模型且用户已登录，扣减调用次数
 						if (isPremiumModel && uid) {
 							deductCallBalance(uid).catch(err =>
-								console.error("扣减调用次数失败:", err),
+								console.error(`[${fingerprint}:${requestId}] 扣减调用次数失败:`, err),
 							);
 						}
 					}
 				} catch (error) {
-					console.error("流式响应出错:", error);
+					// 检查是否是取消错误
+					if (abortSignal.aborted) {
+						console.log(`[${fingerprint}:${requestId}] 流处理被取消`);
+						return;
+					}
+
+					console.error(`[${fingerprint}:${requestId}] 流式响应出错:`, error);
 					const errorMsg = `\n\n❌ 流式传输错误\n错误信息: ${(error as Error).message}\n请求ID: ${requestId}\n指纹: ${fingerprint}\n会话: ${session}`;
 					controller.enqueue(encoder.encode(errorMsg));
 					controller.error(error);
 				}
+			},
+
+			// 添加 cancel 方法处理流被取消的情况
+			cancel(reason) {
+				console.log(`[${fingerprint}:${requestId}] ReadableStream被取消:`, reason);
 			},
 		});
 
@@ -226,12 +323,12 @@ export async function POST(request: NextRequest) {
 		});
 	} catch (error) {
 		console.error("分析请求出错:", error);
-		return Response.json({ 
-			error: "服务器内部错误", 
+		return Response.json({
+			error: "服务器内部错误",
 			detail: (error as Error).message,
 			requestId,
 			fingerprint,
-			session
+			session,
 		}, { status: 500 });
 	}
 }

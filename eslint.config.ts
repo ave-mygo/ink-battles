@@ -25,7 +25,7 @@ const atf = antfu({
 		"antfu/top-level-function": "off",
 		"react-hooks/exhaustive-deps": "off",
 		"eslinttailwindcss/no-custom-classname": "off",
-		"no-console": ["warn", { allow: ["warn", "error"] }],
+		"no-console": "off",
 		"style/brace-style": ["error", "1tbs", { allowSingleLine: true }],
 		"react/no-array-index-key": "off",
 	},
