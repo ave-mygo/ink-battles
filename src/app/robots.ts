@@ -2,13 +2,7 @@ import type { MetadataRoute } from "next";
 import process from "node:process";
 import { getSiteUrl } from "@/lib/seo";
 
-/**
- * 动态生成 robots.txt
- * 根据环境自动配置搜索引擎爬取规则
- *
- * 使用动态渲染确保 URL 不会在构建时固定为 localhost
- */
-export const revalidate = 600;
+export const dynamic = "force-dynamic";
 
 export default function robots(): MetadataRoute.Robots {
 	const siteUrl = getSiteUrl();
