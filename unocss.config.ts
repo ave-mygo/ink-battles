@@ -1,19 +1,8 @@
-// unocss.config.ts
-import { presetWind4 } from "@unocss/preset-wind4";
-import { defineConfig } from "unocss";
+import { defineConfig, presetWind4 } from 'unocss'
 
 export default defineConfig({
-	presets: [
-		presetWind4({
-			dark: "media",
-		}),
-	],
-	content: {
-		pipeline: {
-			include: [
-				/\.(vue|svelte|[jt]sx|mdx?|astro|elm|php|phtml|html)($|\?)/,
-				"(components|src)/**/*.{js,ts}",
-			],
-		},
-	},
-});
+  presets: [presetWind4()], // 禁用默认 preset
+  rules: [
+    // 你的自定义规则
+  ]
+})
