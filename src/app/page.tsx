@@ -13,8 +13,8 @@ import {
 	getSiteUrl,
 } from "@/lib/seo";
 
-// 强制动态渲染，确保配置在运行时读取
-export const dynamic = "force-dynamic";
+// ISR: 每小时重新生成一次
+export const revalidate = 3600;
 
 export async function generateMetadata(): Promise<Metadata> {
 	return createPageMetadata({

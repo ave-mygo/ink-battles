@@ -272,6 +272,23 @@ export async function toggleRecordPublic(
 			return { success: false, message: "更新失败" };
 		}
 
+		// 立即更新 sitemap（不等待结果，避免阻塞用户操作）
+		if (isPublic) {
+			// 设为公开：更新 sitemap 并重新验证分享页面
+			import("@/utils/seo/revalidate").then(({ revalidateOnShareUpdate }) => {
+				revalidateOnShareUpdate(recordId).catch(err =>
+					console.error("更新 sitemap 失败:", err),
+				);
+			});
+		} else {
+			// 设为私密：从 sitemap 中移除
+			import("@/utils/seo/revalidate").then(({ revalidateOnShareDelete }) => {
+				revalidateOnShareDelete().catch(err =>
+					console.error("更新 sitemap 失败:", err),
+				);
+			});
+		}
+
 		return {
 			success: true,
 			data: { public: isPublic },
@@ -310,11 +327,23 @@ export async function deleteAnalysisRecord(recordId: string): Promise<{
 			return { success: false, message: "无权删除此记录" };
 		}
 
+		// 检查记录是否是公开的
+		const wasPublic = record.settings?.public === true;
+
 		// 执行删除
 		const deleteResult = await db_delete(db_name, db_table, { _id: record._id });
 
 		if (!deleteResult) {
 			return { success: false, message: "删除失败" };
+		}
+
+		// 如果删除的是公开记录，立即更新 sitemap
+		if (wasPublic) {
+			import("@/utils/seo/revalidate").then(({ revalidateOnShareDelete }) => {
+				revalidateOnShareDelete().catch(err =>
+					console.error("更新 sitemap 失败:", err),
+				);
+			});
 		}
 
 		return {

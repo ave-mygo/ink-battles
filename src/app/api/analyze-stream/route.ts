@@ -212,6 +212,16 @@ export async function POST(request: NextRequest) {
 		const readable = new ReadableStream({
 			async start(controller) {
 				try {
+					// 首先发送搜索凭据信息（使用特殊标记）
+					if (searchResults || searchWebPages) {
+						const credentialsData = JSON.stringify({
+							__search_credentials__: true,
+							searchResults,
+							searchWebPages,
+						});
+						controller.enqueue(encoder.encode(`__SEARCH_CREDENTIALS__:${credentialsData}\n`));
+					}
+
 					let chunkCount = 0;
 					let streamCancelled = false;
 

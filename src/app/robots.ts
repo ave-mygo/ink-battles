@@ -1,30 +1,56 @@
-import { createCanonical } from "@/lib/seo";
+import type { MetadataRoute } from "next";
+import process from "node:process";
+import { getSiteUrl } from "@/lib/seo";
 
-export default function robots() {
+/**
+ * 动态生成 robots.txt
+ * 根据环境自动配置搜索引擎爬取规则
+ *
+ * 使用动态渲染确保 URL 不会在构建时固定为 localhost
+ */
+export const revalidate = 600; // 10 分钟
+
+export default function robots(): MetadataRoute.Robots {
+	const siteUrl = getSiteUrl();
+	const isProduction = process.env.NODE_ENV === "production";
+
 	return {
 		rules: [
-			// 通用爬虫规则
 			{
 				userAgent: "*",
-				allow: "/",
-				disallow: ["/api/", "/dashboard/"],
-			},
-			// 针对主流 AI 搜索引擎的优化（确保它们能正确索引）
-			{
-				userAgent: [
-					"GPTBot", // OpenAI
-					"ChatGPT-User", // ChatGPT
-					"Google-Extended", // Google Bard/Gemini
-					"anthropic-ai", // Claude
-					"Claude-Web", // Claude
-					"PerplexityBot", // Perplexity
-					"Bytespider", // 字节跳动
-					"Applebot-Extended", // Apple Intelligence
+				allow: ["/", "/about", "/sponsors", "/share/"],
+				disallow: [
+					"/api/",
+					"/_next/",
+					"/*.json$",
+					"/admin/",
 				],
+				// 生产环境允许爬取，开发环境禁止
+				...(isProduction ? {} : { disallow: "/" }),
+			},
+			// Google 爬虫优化
+			{
+				userAgent: "Googlebot",
 				allow: "/",
-				disallow: ["/api/", "/dashboard/"],
+				disallow: ["/api/", "/_next/"],
+				crawlDelay: 0,
+			},
+			// 百度爬虫优化
+			{
+				userAgent: "Baiduspider",
+				allow: "/",
+				disallow: ["/api/", "/_next/"],
+				crawlDelay: 1,
+			},
+			// Bing 爬虫优化
+			{
+				userAgent: "Bingbot",
+				allow: "/",
+				disallow: ["/api/", "/_next/"],
+				crawlDelay: 0,
 			},
 		],
-		sitemap: createCanonical("/sitemap.xml"),
+		sitemap: `${siteUrl}/sitemap.xml`,
+		host: siteUrl,
 	};
 }

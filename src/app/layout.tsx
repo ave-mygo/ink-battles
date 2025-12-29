@@ -24,11 +24,66 @@ export const metadata: Metadata = {
 	metadataBase: new URL(config.app.base_url),
 	title: {
 		template: "%s | 作家战力分析系统",
-		default: "作家战力分析系统",
+		default: "作家战力分析系统 - 基于AI的专业文本分析工具",
 	},
-	description: "基于AI技术的专业文本分析工具，为您的创作提供深度洞察",
+	description: "作家战力分析系统是一款基于先进AI技术的文本分析工具，为创作者提供多维度写作评估、内容质量打分、风格分析等功能。支持小说、文章、剧本等多种文体，帮助作家提升创作水平。",
+	keywords: [
+		"作家战力",
+		"文本分析",
+		"AI写作",
+		"内容评估",
+		"写作工具",
+		"创作辅助",
+		"文章分析",
+		"小说分析",
+		"写作质量",
+		"文本评分",
+	],
+	authors: [{ name: "Ink Battles" }],
+	creator: "Ink Battles",
+	publisher: "Ink Battles",
 	icons: {
 		icon: "/favicon.png",
+		apple: "/favicon.png",
+	},
+	robots: {
+		index: true,
+		follow: true,
+		nocache: false,
+		googleBot: {
+			index: true,
+			follow: true,
+			"max-video-preview": -1,
+			"max-image-preview": "large",
+			"max-snippet": -1,
+		},
+	},
+	openGraph: {
+		type: "website",
+		locale: "zh_CN",
+		url: config.app.base_url,
+		siteName: "作家战力分析系统",
+		title: "作家战力分析系统 - 基于AI的专业文本分析工具",
+		description: "基于先进AI技术的文本分析工具，为创作者提供多维度写作评估、内容质量打分、风格分析等功能",
+		images: [
+			{
+				url: "/opengraph-image",
+				width: 1200,
+				height: 630,
+				alt: "作家战力分析系统",
+			},
+		],
+	},
+	twitter: {
+		card: "summary_large_image",
+		title: "作家战力分析系统 - 基于AI的专业文本分析工具",
+		description: "基于先进AI技术的文本分析工具，为创作者提供多维度写作评估",
+		images: ["/opengraph-image"],
+	},
+	verification: {
+		// 添加搜索引擎验证码（需要时填写）
+		// google: "your-google-verification-code",
+		// baidu: "your-baidu-verification-code",
 	},
 };
 
