@@ -382,6 +382,33 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 				const chunk = decoder.decode(value, { stream: true });
 				_chunkCount++;
+
+				// 检查是否包含搜索凭据标记
+				if (chunk.includes("__SEARCH_CREDENTIALS__:")) {
+					const credentialsMatch = chunk.match(/__SEARCH_CREDENTIALS__:(.+)\n/);
+					if (credentialsMatch) {
+						try {
+							const credentialsData = JSON.parse(credentialsMatch[1]);
+							if (credentialsData.__search_credentials__) {
+								console.log("收到搜索凭据:", credentialsData);
+								setSearchInfo({
+									searchResults: credentialsData.searchResults,
+									searchWebPages: credentialsData.searchWebPages,
+								});
+							}
+						} catch (e) {
+							console.error("解析搜索凭据失败:", e);
+						}
+						// 移除搜索凭据标记，不显示在流内容中
+						const cleanChunk = chunk.replace(/__SEARCH_CREDENTIALS__:.+\n/, "");
+						if (cleanChunk) {
+							fullContent += cleanChunk;
+							setStreamContent(prev => prev + cleanChunk);
+						}
+						continue;
+					}
+				}
+
 				fullContent += chunk;
 				setStreamContent(prev => prev + chunk);
 
@@ -405,35 +432,6 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 			if (parsedResult) {
 				setAnalysisResult(parsedResult);
-
-				// 获取搜索信息（如果有session的话）
-				if (session) {
-					try {
-						console.log(`尝试获取搜索信息，session: ${session}`);
-						const sessionResponse = await fetch("/api/get-search-info", {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ session }),
-						});
-
-						if (sessionResponse.ok) {
-							const sessionData = await sessionResponse.json();
-							console.log(`获取到搜索信息:`, sessionData);
-							if (sessionData.searchResults || sessionData.searchWebPages) {
-								setSearchInfo({
-									searchResults: sessionData.searchResults,
-									searchWebPages: sessionData.searchWebPages,
-								});
-							}
-						} else {
-							console.log(`获取搜索信息失败，状态码: ${sessionResponse.status}`);
-							const errorData = await sessionResponse.json().catch(() => ({}));
-							console.log(`错误详情:`, errorData);
-						}
-					} catch (error) {
-						console.error("获取搜索信息失败:", error);
-					}
-				}
 
 				setProgress(100);
 				setIsError(false);
