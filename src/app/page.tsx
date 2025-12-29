@@ -13,8 +13,8 @@ import {
 	getSiteUrl,
 } from "@/lib/seo";
 
-// ISR: 每小时重新生成一次
-export const revalidate = 3600;
+// 动态渲染，确保每次都读取最新的 config.toml
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
 	return createPageMetadata({

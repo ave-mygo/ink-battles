@@ -8,7 +8,7 @@ import { getSiteUrl } from "@/lib/seo";
  *
  * 使用动态渲染确保 URL 不会在构建时固定为 localhost
  */
-export const revalidate = 600; // 10 分钟
+export const revalidate = 600;
 
 export default function robots(): MetadataRoute.Robots {
 	const siteUrl = getSiteUrl();
