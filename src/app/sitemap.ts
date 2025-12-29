@@ -2,17 +2,8 @@ import type { MetadataRoute } from "next";
 import { createCanonical } from "@/lib/seo";
 import { getPublicRecordsForSitemap } from "@/utils/dashboard";
 
-/**
- * ISR 重新验证时间（秒）
- * 每 10 分钟重新生成一次 sitemap，确保动态内容及时更新
- */
-export const revalidate = 600;
+export const dynamic = "force-dynamic";
 
-/**
- * 生成网站 sitemap
- * 包含静态页面和动态的公开分享页面
- * 使用 ISR 确保在构建后也能更新
- */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 	const now = new Date().toISOString();
 
