@@ -34,6 +34,15 @@ const getConfigInstance = (): RuntimeConfig => {
 };
 
 /**
+ * 获取评分模型的稳定ID
+ * @param model 评分模型配置
+ * @returns 稳定ID
+ */
+const getGradingModelId = (model: GradingModelConfig): string => {
+	return model.id ?? model.model;
+};
+
+/**
  * 获取完整配置对象
  */
 export const getConfig = (): Config => {
@@ -66,6 +75,17 @@ export const getGradingModel = (modelIndex: string | number): GradingModelConfig
 		return null;
 	}
 	const model = config.grading_models[index];
+	return model?.enabled ? model : null;
+};
+
+/**
+ * 获取特定评分模型（通过稳定ID）
+ * @param id 评分模型ID
+ * @returns 匹配的评分模型或 null
+ */
+export const getGradingModelById = (id: string): GradingModelConfig | null => {
+	const config = getConfigInstance();
+	const model = config.grading_models.find(item => getGradingModelId(item) === id);
 	return model?.enabled ? model : null;
 };
 
