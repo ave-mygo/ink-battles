@@ -47,12 +47,28 @@ const MONGO_HOST = config?.mongodb?.host || "127.0.0.1";
 const MONGO_PORT = config?.mongodb?.port || 27017;
 const MONGO_USER = config?.mongodb?.user;
 const MONGO_PASS = config?.mongodb?.password;
+const MONGO_REPLICA_SET = config?.mongodb?.replicaSet || config?.mongodb?.replica_set; // 支持副本集
 const DB_NAME = config?.mongodb?.database || "ink_battles";
 const COLLECTION_USER_BILLING = "user_billing";
 
-const uri = MONGO_USER && MONGO_PASS
-	? `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PORT}`
-	: `mongodb://${MONGO_HOST}:${MONGO_PORT}`;
+// 构建 MongoDB URI
+let uri;
+if (MONGO_REPLICA_SET && MONGO_REPLICA_SET !== "false" && MONGO_REPLICA_SET !== false) {
+	// 副本集模式
+	const authPart = MONGO_USER && MONGO_PASS ? `${MONGO_USER}:${MONGO_PASS}@` : "";
+	uri = `mongodb://${authPart}${MONGO_HOST}:${MONGO_PORT}/?replicaSet=${MONGO_REPLICA_SET}&directConnection=true`;
+	console.log(`📡 使用副本集模式: ${MONGO_REPLICA_SET} (直连)`);
+} else {
+	// 单机模式
+	uri = MONGO_USER && MONGO_PASS
+		? `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PORT}/?directConnection=true`
+		: `mongodb://${MONGO_HOST}:${MONGO_PORT}/?directConnection=true`;
+	console.log(`📡 使用单机模式 (直连)`);
+}
+
+// 显示连接信息（隐藏密码）
+const displayUri = uri.replace(/:[^:@]+@/, ":****@");
+console.log(`🔗 MongoDB URI: ${displayUri}`);
 
 /**
  * 解析命令行参数
@@ -111,12 +127,8 @@ function parseArgs(args) {
 	const paidCalls = Number.parseInt(args[paramIndex + 1]) || 0;
 	const note = args[paramIndex + 2] || "";
 
-	if (grantCalls < 0 || paidCalls < 0) {
-		throw new Error("赠送次数不能为负数");
-	}
-
 	if (grantCalls === 0 && paidCalls === 0) {
-		throw new Error("至少需要赠送一种类型的次数");
+		throw new Error("至少需要赠送一种类型的次数（可以为负数表示扣减）");
 	}
 
 	return {
@@ -180,8 +192,20 @@ async function grantUserCalls(targetConfig, grantCalls, paidCalls, note) {
 	try {
 		// 连接数据库
 		console.log("🔌 正在连接数据库...");
-		client = new MongoClient(uri);
+		console.log(`   主机: ${MONGO_HOST}:${MONGO_PORT}`);
+		console.log(`   数据库: ${DB_NAME}`);
+		console.log(`   认证: ${MONGO_USER ? "是" : "否"}`);
+		console.log(`   副本集: ${MONGO_REPLICA_SET || "否"}`);
+
+		client = new MongoClient(uri, {
+			serverSelectionTimeoutMS: 10000,
+			connectTimeoutMS: 10000,
+			socketTimeoutMS: 45000,
+		});
 		await client.connect();
+
+		// 验证连接
+		await client.db(DB_NAME).command({ ping: 1 });
 		console.log("✅ 数据库连接成功");
 
 		const db = client.db(DB_NAME);
@@ -199,8 +223,8 @@ async function grantUserCalls(targetConfig, grantCalls, paidCalls, note) {
 
 		console.log(`\n📊 找到 ${totalUsers} 个符合条件的用户`);
 		console.log(`目标: ${getTargetDescription(targetConfig)}`);
-		console.log(`赠送次数: ${grantCalls}`);
-		console.log(`付费次数: ${paidCalls}`);
+		console.log(`赠送次数: ${grantCalls > 0 ? `+${grantCalls}` : grantCalls}`);
+		console.log(`付费次数: ${paidCalls > 0 ? `+${paidCalls}` : paidCalls}`);
 		if (note) {
 			console.log(`备注: ${note}`);
 		}
@@ -218,10 +242,10 @@ async function grantUserCalls(targetConfig, grantCalls, paidCalls, note) {
 			},
 		};
 
-		if (grantCalls > 0) {
+		if (grantCalls !== 0) {
 			updateDoc.$inc.grantCallsBalance = grantCalls;
 		}
-		if (paidCalls > 0) {
+		if (paidCalls !== 0) {
 			updateDoc.$inc.paidCallsBalance = paidCalls;
 		}
 
@@ -234,20 +258,25 @@ async function grantUserCalls(targetConfig, grantCalls, paidCalls, note) {
 		console.log(`实际更新数: ${result.modifiedCount}`);
 
 		// 记录操作日志
-		const logCollection = db.collection("admin_operations");
-		const logEntry = {
-			operation: "grant_user_calls",
-			targetConfig,
-			grantCalls,
-			paidCalls,
-			note,
-			matchedCount: result.matchedCount,
-			modifiedCount: result.modifiedCount,
-			executedAt: new Date(),
-		};
+		try {
+			const logCollection = db.collection("admin_operations");
+			const logEntry = {
+				operation: "grant_user_calls",
+				targetConfig,
+				grantCalls,
+				paidCalls,
+				note,
+				matchedCount: result.matchedCount,
+				modifiedCount: result.modifiedCount,
+				executedAt: new Date(),
+				executedBy: process.env.USER || process.env.USERNAME || "unknown",
+			};
 
-		await logCollection.insertOne(logEntry);
-		console.log("📝 操作日志已记录");
+			await logCollection.insertOne(logEntry);
+			console.log("📝 操作日志已记录");
+		} catch (logError) {
+			console.warn("⚠️  记录操作日志失败:", logError.message);
+		}
 
 		// 保存操作报告到文件
 		const outputDir = path.join(__dirname, "../output");
@@ -293,9 +322,25 @@ async function grantUserCalls(targetConfig, grantCalls, paidCalls, note) {
 				console.log(`${index + 1}. UID: ${user.uid}, 赠送余额: ${user.grantCallsBalance}, 付费余额: ${user.paidCallsBalance}`);
 			});
 		}
-
 	} catch (error) {
 		console.error("\n❌ 错误:", error.message);
+
+		// 提供更详细的错误信息
+		if (error.message.includes("timed out")) {
+			console.error("\n💡 连接超时可能的原因:");
+			console.error("   1. MongoDB 服务未启动");
+			console.error("   2. 主机地址或端口配置错误");
+			console.error("   3. 防火墙阻止连接");
+			console.error("   4. 网络不可达");
+			console.error("\n🔍 请检查:");
+			console.error(`   - MongoDB 是否在 ${MONGO_HOST}:${MONGO_PORT} 运行`);
+			console.error(`   - 尝试: mongo ${MONGO_HOST}:${MONGO_PORT}`);
+		} else if (error.message.includes("Authentication failed")) {
+			console.error("\n💡 认证失败，请检查:");
+			console.error("   - 用户名和密码是否正确");
+			console.error("   - 用户是否有访问该数据库的权限");
+		}
+
 		process.exit(1);
 	} finally {
 		if (client) {
@@ -329,12 +374,13 @@ async function main() {
   node scripts/grant-user-calls.js --all 3 0 "全体用户春节福利"
 
 参数说明：
-  赠送次数: 增加的每月刷新赠送次数
-  付费次数: 增加的付费调用次数
+  赠送次数: 增加的每月刷新赠送次数（可以为负数表示扣减）
+  付费次数: 增加的付费调用次数（可以为负数表示扣减）
   备注: 操作备注（可选）
 
 注意事项：
-  - 赠送次数和付费次数至少有一个大于0
+  - 赠送次数和付费次数至少有一个不为0
+  - 负数表示扣减余额
   - 操作会记录到admin_operations集合中
   - 大批量操作会生成详细的报告文件
 		`);
