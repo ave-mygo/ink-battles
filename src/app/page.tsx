@@ -45,6 +45,7 @@ export default async function Home() {
 	const siteUrl = getSiteUrl();
 	// 在服务器端获取评分模型配置，传递给客户端组件
 	const availableGradingModels = getAvailableGradingModels().map(model => ({
+		id: model.id ?? model.model,
 		name: model.name,
 		model: model.model,
 		description: model.description,

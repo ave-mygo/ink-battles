@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import crypto from "crypto-js";
 import OpenAI from "openai";
-import { getGradingModel } from "@/config";
+import { getGradingModelById } from "@/config";
 import { buildSystemPrompt, calculateFinalScore, getModeInstructions } from "@/lib/ai";
 
 import { db_name, db_table } from "@/lib/constants";
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		// 获取选择的评分模型
-		const gradingModel = getGradingModel(modelId);
+		const gradingModel = getGradingModelById(modelId);
 		if (!gradingModel) {
 			return Response.json({
 				error: "无效的评分模型",

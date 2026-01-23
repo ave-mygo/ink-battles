@@ -29,9 +29,7 @@ export default function WriterModelSelector({
 	onModelChange,
 	disabled = false,
 }: WriterModelSelectorProps) {
-	// selectedModelId 现在是索引字符串
-	const selectedIndex = Number.parseInt(selectedModelId, 10);
-	const selectedModel = availableModels[selectedIndex];
+	const selectedModel = availableModels.find(model => model.id === selectedModelId);
 
 	return (
 		<Card className="border-0 bg-white/80 flex flex-col h-full shadow-lg backdrop-blur-sm dark:bg-slate-900/40">
@@ -61,8 +59,8 @@ export default function WriterModelSelector({
 								<SelectValue placeholder="请选择评分模型" />
 							</SelectTrigger>
 							<SelectContent>
-								{availableModels.map((model, index) => (
-									<SelectItem key={`model-${index}`} value={String(index)}>
+								{availableModels.map(model => (
+									<SelectItem key={model.id} value={model.id}>
 										<div className="flex gap-2 w-full items-center">
 											<div className="flex flex-1 gap-2 items-center">
 												{model.premium && <Crown className="text-yellow-600 h-3 w-3" />}
