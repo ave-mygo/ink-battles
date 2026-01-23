@@ -136,25 +136,25 @@ export default function WriterModelSelector({
 												</div>
 											</div>
 
-										<div className="flex flex-1 flex-col justify-between">
-											<div className="text-xs text-slate-600 dark:text-slate-400">
-												{selectedModel.usageScenario}
-											</div>
-										</div>
-										
-										{/* 隐私警告 - 独立显示区域 */}
-										{selectedModel.warning && (
-											<div className="mt-3 p-3 border-2 border-orange-400 rounded-lg bg-orange-50 shadow-sm dark:border-orange-600 dark:bg-orange-950/50">
-												<div className="flex gap-2 items-start">
-													<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
-													<p className="text-sm text-orange-800 font-medium leading-relaxed dark:text-orange-200">
-														{selectedModel.warning}
-													</p>
+											<div className="flex flex-1 flex-col justify-between">
+												<div className="text-xs text-slate-600 dark:text-slate-400">
+													{selectedModel.usageScenario}
 												</div>
 											</div>
-										)}
-									</div>
-								)
+
+											{/* 隐私警告 - 独立显示区域 */}
+											{selectedModel.warning && (
+												<div className="mt-3 p-3 border-2 border-orange-400 rounded-lg bg-orange-50 shadow-sm dark:border-orange-600 dark:bg-orange-950/50">
+													<div className="flex gap-2 items-start">
+														<AlertTriangle className="text-orange-600 mt-0.5 shrink-0 h-4 w-4 dark:text-orange-400" />
+														<p className="text-sm text-orange-800 leading-relaxed font-medium dark:text-orange-200">
+															{selectedModel.warning}
+														</p>
+													</div>
+												</div>
+											)}
+										</div>
+									)
 								: (
 										<div className="p-4 border border-slate-200 rounded-lg bg-slate-50/50 flex flex-1 items-center justify-center dark:border-slate-700 dark:bg-slate-800/30">
 											<p className="text-sm text-slate-500 dark:text-slate-400">
