@@ -66,20 +66,27 @@ export async function registerUser(email: string, password: string): Promise<{ s
  * @returns { success, message } 登录结果对象，包含是否成功和提示信息
  */
 export async function LoginUser(email: string, password: string): Promise<{ success: boolean; message: string }> {
+	// 类型校验
 	const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 	const normalizedPassword = typeof password === "string" ? password : "";
 
 	if (!normalizedEmail || !normalizedPassword) {
-		return { success: false, message: "邮箱和密码不能为空" };
+		return { success: false, message: "邮箱或密码错误" };
+	}
+
+	// 邮箱格式校验
+	const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/u;
+	if (!emailRegex.test(normalizedEmail)) {
+		return { success: false, message: "邮箱或密码错误" };
 	}
 
 	const user = await db_find(db_name, "users", { email: normalizedEmail });
 	if (!user) {
-		return { success: false, message: "用户不存在" };
+		return { success: false, message: "邮箱或密码错误" };
 	}
 	const match = await bcrypt.compare(normalizedPassword, user.passwordHash);
 	if (!match) {
-		return { success: false, message: "密码错误" };
+		return { success: false, message: "邮箱或密码错误" };
 	}
 	const secret = new TextEncoder().encode(JWT_SECRET || "dev_secret_change_me");
 	const token = await new SignJWT({ uid: user.uid })

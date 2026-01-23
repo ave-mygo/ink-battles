@@ -12,25 +12,29 @@ import "server-only";
  */
 export async function sendResetPasswordCode(email: string) {
 	try {
+		// 类型校验
+		const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
 		// 验证邮箱格式
 		const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/u;
-		if (!email || !emailRegex.test(email)) {
+		if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
 			return { success: false, message: "请输入有效的邮箱地址" };
 		}
 
 		// 检查用户是否存在
-		const user = await db_find(db_name, "users", { email });
-		if (!user) {
-			return { success: false, message: "该邮箱未注册" };
+		const user = await db_find(db_name, "users", { email: normalizedEmail });
+
+		// 无论用户是否存在，都返回相同的消息（防止账户枚举）
+		// 只有用户存在时才真正发送验证码
+		if (user) {
+			const result = await SendVerificationEmail(normalizedEmail, "reset-password");
+			if (!result.success) {
+				return { success: false, message: result.message || "发送失败，请稍后再试" };
+			}
 		}
 
-		// 发送验证码
-		const result = await SendVerificationEmail(email, "reset-password");
-		if (!result.success) {
-			return { success: false, message: result.message || "发送失败" };
-		}
-
-		return { success: true, message: "验证码已发送" };
+		// 统一返回消息（即使用户不存在也返回相同消息）
+		return { success: true, message: "如果该邮箱已注册，您将收到重置密码的验证码" };
 	} catch (error) {
 		console.error("发送重置密码验证码失败:", error);
 		return { success: false, message: "发送失败，请稍后再试" };
@@ -64,18 +68,23 @@ export async function verifyResetPasswordCode(email: string, code: string) {
  */
 export async function resetPassword(email: string, code: string, password: string) {
 	try {
-		if (!email || !code || !password) {
+		// 类型校验
+		const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+		const normalizedCode = typeof code === "string" ? code : "";
+		const normalizedPassword = typeof password === "string" ? password : "";
+
+		if (!normalizedEmail || !normalizedCode || !normalizedPassword) {
 			return { success: false, message: "请提供完整信息" };
 		}
 
 		// 验证验证码
-		const verifyResult = await VerifyEmailCode(email, code, "reset-password");
+		const verifyResult = await VerifyEmailCode(normalizedEmail, normalizedCode, "reset-password");
 		if (!verifyResult.success) {
 			return { success: false, message: "验证码无效或已过期" };
 		}
 
 		// 验证密码强度
-		if (!isPasswordValid(password)) {
+		if (!isPasswordValid(normalizedPassword)) {
 			return {
 				success: false,
 				message: "密码至少 8 位，且包含大写、小写、数字、特殊字符中的任意 2 种",
@@ -83,20 +92,21 @@ export async function resetPassword(email: string, code: string, password: strin
 		}
 
 		// 检查用户是否存在
-		const user = await db_find(db_name, "users", { email });
+		const user = await db_find(db_name, "users", { email: normalizedEmail });
 		if (!user) {
-			return { success: false, message: "用户不存在" };
+			// 验证码正确但用户不存在（异常情况），返回通用错误
+			return { success: false, message: "重置密码失败，请重新申请验证码" };
 		}
 
 		// 加密新密码
 		const salt = await bcryptjs.genSalt(10);
-		const passwordHash = await bcryptjs.hash(password, salt);
+		const passwordHash = await bcryptjs.hash(normalizedPassword, salt);
 
 		// 更新密码
 		const updateResult = await db_update(
 			db_name,
 			"users",
-			{ email },
+			{ email: normalizedEmail },
 			{ passwordHash },
 		);
 
