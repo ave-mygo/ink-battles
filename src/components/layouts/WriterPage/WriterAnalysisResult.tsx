@@ -121,7 +121,8 @@ export default function WriterAnalysisResult({
 					<div className="text-xs text-slate-400 mb-2 dark:text-slate-500">凑Minato</div>
 					{modelName && (
 						<div className="text-xs text-blue-600 mb-3 px-3 py-1.5 border border-blue-200 rounded-full bg-blue-50 inline-block dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/30">
-							使用模型：{modelName}
+							使用模型：
+							{modelName}
 						</div>
 					)}
 					<div className="text-lg font-semibold mb-2 dark:text-slate-100">{analysisResult.title}</div>
