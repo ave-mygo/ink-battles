@@ -19,6 +19,7 @@ interface SystemModelConfig {
 }
 
 interface GradingModelConfig {
+	id?: string;
 	name: string;
 	api_key: string;
 	base_url: string;

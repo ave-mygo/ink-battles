@@ -8,6 +8,8 @@
  * 不包含 api_key 和 base_url 等敏感信息
  */
 export interface GradingModelConfig {
+	/** 稳定模型ID */
+	id: string;
 	/** 模型显示名称 */
 	name: string;
 	/** 模型标识符 */

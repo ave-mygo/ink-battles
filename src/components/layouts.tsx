@@ -135,9 +135,11 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		fingerprint: string;
 	} | null>(null);
 	const DEFAULT_INDEX = 2;
-	const defaultModelId = String(DEFAULT_INDEX < availableGradingModels.length ? DEFAULT_INDEX : 0);
+	const fallbackModelId = availableGradingModels[DEFAULT_INDEX]?.id
+		?? availableGradingModels[0]?.id
+		?? "";
 
-	const STORAGE_KEY = "writer.selectedModelIndex";
+	const STORAGE_KEY = "writer.selectedModelId";
 	const subscribe = (callback: () => void) => {
 		if (typeof window === "undefined")
 			return () => { };
@@ -157,14 +159,19 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		try {
 			if (typeof window !== "undefined") {
 				const saved = window.localStorage.getItem(STORAGE_KEY);
-				const index = Number.parseInt(saved || "", 10);
-				if (!Number.isNaN(index) && index >= 0 && index < availableGradingModels.length)
-					return String(index);
+				if (saved && availableGradingModels.some(model => model.id === saved))
+					return saved;
+				const legacyIndex = Number.parseInt(saved || "", 10);
+				if (!Number.isNaN(legacyIndex)) {
+					const legacyModelId = availableGradingModels[legacyIndex]?.id;
+					if (legacyModelId)
+						return legacyModelId;
+				}
 			}
 		} catch { }
-		return defaultModelId;
+		return fallbackModelId;
 	};
-	const getServerSnapshot = () => defaultModelId;
+	const getServerSnapshot = () => fallbackModelId;
 	const selectedModelId = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
 	const setSelectedModelId = (id: string) => {
@@ -312,8 +319,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 				fingerprint = await getFingerprintId();
 				// 获取当前选中模型的名称
-				const modelIndex = Number.parseInt(selectedModelId, 10);
-				const currentModel = availableGradingModels[modelIndex];
+				const currentModel = availableGradingModels.find(model => model.id === selectedModelId);
 				const currentModelName = currentModel?.model || "";
 				// 保存当前分析使用的模型名称
 				setCurrentAnalysisModelName(currentModelName);
