@@ -5,8 +5,8 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Check, Copy, Globe, Lock } from "lucide-react";
 import { useState } from "react";
-import { AnalysisResultDisplay } from "@/components/common/AnalysisResultDisplay";
 import { SearchCredentials } from "@/components/common/SearchCredentials";
+import { UnifiedAnalysisDisplay } from "@/components/common/UnifiedAnalysisDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -155,7 +155,7 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 			)}
 
 			{/* 分析结果 */}
-			<AnalysisResultDisplay result={record.article.output} modelName={record.metadata?.modelName} readonly={true} />
+			<UnifiedAnalysisDisplay result={record.article.output} modelName={record.metadata?.modelName} />
 		</div>
 	);
 }
