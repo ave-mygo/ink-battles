@@ -6,11 +6,11 @@ import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Ta
 import { useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { SearchCredentials } from "@/components/common/SearchCredentials";
+import { UnifiedAnalysisDisplay } from "@/components/common/UnifiedAnalysisDisplay";
 import StreamingDisplay from "@/components/layouts/WriterPage/streaming-display";
 import WriterAnalysisHeader from "@/components/layouts/WriterPage/WriterAnalysisHeader";
 import WriterAnalysisInput from "@/components/layouts/WriterPage/WriterAnalysisInput";
 import WriterAnalysisModes from "@/components/layouts/WriterPage/WriterAnalysisModes";
-import WriterAnalysisResult from "@/components/layouts/WriterPage/WriterAnalysisResult";
 import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/WriterAnalysisResultPlaceholder";
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
@@ -527,26 +527,6 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		}
 	};
 
-	const getScoreColor = (score: number) => {
-		if (score >= 80)
-			return "text-green-600 dark:text-green-400";
-		if (score >= 60)
-			return "text-blue-600 dark:text-blue-400";
-		if (score >= 40)
-			return "text-yellow-600 dark:text-yellow-400";
-		return "text-red-600 dark:text-red-400";
-	};
-
-	const getScoreBgColor = (score: number) => {
-		if (score >= 80)
-			return "bg-green-50 dark:bg-green-950/30";
-		if (score >= 60)
-			return "bg-blue-50 dark:bg-blue-950/30";
-		if (score >= 40)
-			return "bg-yellow-50 dark:bg-yellow-950/30";
-		return "bg-red-50 dark:bg-red-950/30";
-	};
-
 	return (
 		<div className="min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">
 			<div className="mx-auto px-4 py-6 container max-w-7xl sm:py-8">
@@ -620,11 +600,12 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 										searchWebPages={searchInfo.searchWebPages}
 									/>
 								)}
-								<WriterAnalysisResult
+								<UnifiedAnalysisDisplay
 									analysisResult={analysisResult}
-									getScoreColor={getScoreColor}
-									getScoreBgColor={getScoreBgColor}
 									modelName={currentAnalysisModelName}
+									showShare
+									showSponsor
+									showPercentile
 								/>
 							</>
 						)

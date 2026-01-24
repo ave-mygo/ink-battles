@@ -282,25 +282,32 @@ export async function POST(request: NextRequest) {
 					controller.close();
 
 					// 7. 异步保存结果到数据库 (流结束后执行)
+					// 修复：确保保存成功后才扣费，避免用户被扣费但数据未保存
 					if (accumulatedContent.trim()) {
-					// 使用 setImmediate 或不 await 保证不阻塞流关闭
-						saveToDatabase({
-							accumulatedContent,
-							articleText,
-							mode,
-							searchResults,
-							searchWebPages,
-							sha1,
-							ip,
-							fingerprint,
-							modelName: gradingModel.model,
-							uid,
-							session, // 传递 session 用于成功后删除
-						}).catch(err => console.error(`[${fingerprint}:${requestId}] 异步保存数据库失败:`, err)); // 如果是高级模型且用户已登录，扣减调用次数
-						if (isPremiumModel && uid) {
-							deductCallBalance(uid).catch(err =>
-								console.error(`[${fingerprint}:${requestId}] 扣减调用次数失败:`, err),
-							);
+						try {
+							await saveToDatabase({
+								accumulatedContent,
+								articleText,
+								mode,
+								searchResults,
+								searchWebPages,
+								sha1,
+								ip,
+								fingerprint,
+								modelName: gradingModel.model,
+								uid,
+								session, // 传递 session 用于成功后删除
+							});
+							console.log(`[${fingerprint}:${requestId}] 数据库保存成功`);
+
+							// 只有数据库保存成功后才扣减调用次数
+							if (isPremiumModel && uid) {
+								await deductCallBalance(uid);
+								console.log(`[${fingerprint}:${requestId}] 调用次数扣减成功`);
+							}
+						} catch (err) {
+							console.error(`[${fingerprint}:${requestId}] 保存失败，跳过扣费:`, err);
+							// 保存失败时保留 session，允许用户重试
 						}
 					}
 				} catch (error) {
