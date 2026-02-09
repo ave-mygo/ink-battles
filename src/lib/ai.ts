@@ -5,11 +5,25 @@ import crypto from "crypto-js";
 import { getConfig } from "@/config";
 import { db_name, db_table } from "@/lib/constants";
 
-import { db_find, db_insert, db_read, ensureTTLIndex } from "@/lib/db";
+import { db_count, db_find, db_insert, ensureTTLIndex } from "@/lib/db";
 
 import { generateSessionId } from "@/utils/auth/sessions";
 
 import "server-only";
+
+/**
+ * 百分位数计算结果
+ */
+export interface ScorePercentileResult {
+	/** 百分位数值 (0-100) */
+	percentile: number;
+	/** 总样本数 */
+	totalSamples: number;
+	/** 使用的模型名称 */
+	modelName: string;
+	/** 是否有足够的数据进行计算 */
+	hasEnoughData: boolean;
+}
 
 const AppConfig = getConfig();
 
@@ -1054,28 +1068,52 @@ export const getModeInstructions = async (mode: string | string[]): Promise<stri
 };
 
 /**
- * 计算给定分数在所有分析记录中的百分位数
+ * 计算给定分数在所有分析记录中的百分位数（按模型分组）
  * @param currentScore 当前分数
- * @returns 百分位数字符串（如 "75.3"），如果计算失败则返回 null
+ * @param modelName 使用的模型名称
+ * @returns 百分位数计算结果，如果计算失败则返回 null
  */
-export const getScorePercentile = async (currentScore: number): Promise<string | null> => {
+export const getScorePercentile = async (
+	currentScore: number,
+	modelName: string,
+): Promise<ScorePercentileResult | null> => {
 	try {
-		// 使用正确的类型定义从 analysis_requests 集合中读取数据
-		const records = await db_read(db_name, "analysis_requests", {}, { sort: { "article.output.overallScore": -1 } }) as DatabaseAnalysisRecord[];
-		const totalScores = records.length;
+		// 直接在数据库层面进行计数查询，避免读取所有数据到本地
+		// 只查询相同模型的记录，避免多模型评分标准不一致导致的分层问题
+		const totalSamples = await db_count(
+			db_name,
+			"analysis_requests",
+			{ "metadata.modelName": modelName },
+		);
 
-		if (totalScores === 0) {
-			return null;
+		if (totalSamples === 0) {
+			return {
+				percentile: 0,
+				totalSamples: 0,
+				modelName,
+				hasEnoughData: false,
+			};
 		}
 
 		// 计算有多少记录的总分小于等于当前分数
-		const higherOrEqualScores = records.filter(record =>
-			record.article?.output?.overallScore != null && record.article.output.overallScore <= currentScore,
-		).length;
+		const higherOrEqualScores = await db_count(
+			db_name,
+			"analysis_requests",
+			{
+				"metadata.modelName": modelName,
+				"article.output.overallScore": { $lte: currentScore },
+			},
+		);
 
 		// 计算百分位数：当前分数超过了多少百分比的其他分数
-		const percentile = ((higherOrEqualScores / totalScores) * 100).toFixed(1);
-		return percentile;
+		const percentile = (higherOrEqualScores / totalSamples) * 100;
+
+		return {
+			percentile: Number(percentile.toFixed(1)),
+			totalSamples,
+			modelName,
+			hasEnoughData: totalSamples >= 10, // 至少需要10个样本才认为有足够数据
+		};
 	} catch (error) {
 		console.error("Error calculating percentile:", error);
 		return null;

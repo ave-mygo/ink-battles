@@ -24,7 +24,7 @@ const COLLECTIONS = [
 
 // 数据库连接配置
 function getMongoClient() {
-	const MONGO_HOST = process.env.MONGO_HOST || "192.168.3.4";
+	const MONGO_HOST = process.env.MONGO_HOST || "192.168.3.2";
 	let MONGO_PORT = (process.env.MONGO_PORT || 27017).toString();
 	const MONGO_USER = process.env.MONGO_USER;
 	const MONGO_PASS = process.env.MONGO_PASS;

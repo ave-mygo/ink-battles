@@ -51,6 +51,7 @@ interface RuntimeConfig {
 		port: number;
 		user?: string;
 		password?: string;
+		directConnection?: boolean;
 	};
 	afdian: {
 		api_token: string;
