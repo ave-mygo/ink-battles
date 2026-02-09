@@ -34,10 +34,23 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 	};
 
 	const polygonPoints = values.map((v, i) => pointFor(i, v)).map(p => `${p.x},${p.y}`).join(" ");
+	// 生成一个唯一的ID，防止页面上有多个图表时渐变ID冲突
+	const chartId = React.useId().replace(/:/g, "");
 
 	return (
-		<svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto">
-			{/* 网格层 */}
+		<svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto overflow-visible">
+			<defs>
+				<linearGradient id={`${chartId}-radar-gradient`} x1="0" y1="0" x2="0" y2="1">
+					<stop offset="0%" stopColor="rgb(59, 130, 246)" stopOpacity="0.3" />
+					<stop offset="100%" stopColor="rgb(59, 130, 246)" stopOpacity="0.05" />
+				</linearGradient>
+				<filter id={`${chartId}-glow`} x="-20%" y="-20%" width="140%" height="140%">
+					<feGaussianBlur stdDeviation="2" result="blur" />
+					<feComposite in="SourceGraphic" in2="blur" operator="over" />
+				</filter>
+			</defs>
+
+			{/* 网格层 - 使用圆形网格看起来更现代，或者保持多边形但优化样式 */}
 			{Array.from({ length: levels }).map((_, levelIdx) => {
 				const levelValue = (levelIdx + 1) * (5 / levels);
 				const points = labels.map((_, i) => pointFor(i, levelValue))
@@ -48,9 +61,10 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 						key={levelIdx}
 						points={points}
 						fill="none"
-						stroke="rgba(148, 163, 184, 0.4)" /* slate-400/40 for light, will be overridden by CSS */
+						stroke="currentColor"
 						strokeWidth={1}
-						className="stroke-slate-400/40 dark:stroke-slate-500/60"
+						strokeDasharray="4 4"
+						className="text-slate-200 dark:text-slate-700/50"
 					/>
 				);
 			})}
@@ -65,9 +79,9 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 						y1={center}
 						x2={x}
 						y2={y}
-						stroke="rgba(148, 163, 184, 0.5)"
+						stroke="currentColor"
 						strokeWidth={1}
-						className="stroke-slate-400/50 dark:stroke-slate-500/70"
+						className="text-slate-200 dark:text-slate-700/50"
 					/>
 				);
 			})}
@@ -75,21 +89,33 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 			{/* 数据区 */}
 			<polygon
 				points={polygonPoints}
-				fill="rgba(59, 130, 246, 0.25)" /* blue-500/25 */
-				stroke="rgba(59, 130, 246, 0.9)" /* blue-500/90 */
+				fill={`url(#${chartId}-radar-gradient)`}
+				stroke="rgb(59, 130, 246)"
 				strokeWidth={2}
-				className="fill-blue-500/25 stroke-blue-500/90 dark:fill-blue-400/30 dark:stroke-blue-400/90"
+				className="drop-shadow-sm"
 			/>
 
 			{/* 顶点标记 */}
 			{values.map((v, i) => {
 				const { x, y } = pointFor(i, v);
-				return <circle key={`dot-${i}`} cx={x} cy={y} r={3} fill="rgb(59, 130, 246)" className="fill-blue-500 dark:fill-blue-400" />;
+				return (
+					<g key={`dot-${i}`}>
+						<circle
+							cx={x}
+							cy={y}
+							r={4}
+							fill="white"
+							stroke="rgb(59, 130, 246)"
+							strokeWidth={2}
+							className="dark:fill-slate-900"
+						/>
+					</g>
+				);
 			})}
 
 			{/* 标签 */}
 			{labels.map((label, i) => {
-				const { x, y } = pointFor(i, 5.35); // 标签放在圆外一点
+				const { x, y } = pointFor(i, 5.6); // 稍微往外移一点，给点空间
 				return (
 					<text
 						key={`label-${i}`}

@@ -1,7 +1,8 @@
 "use client";
 
 import { Crown, FileText, Gift, Upload, Users, X, Zap } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
