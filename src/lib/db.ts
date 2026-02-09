@@ -31,24 +31,27 @@ export async function mongoClient(): Promise<MongoClient> {
 	}
 
 	const AppConfig = getConfig(); // 获取配置
-	const MONGO_HOST = AppConfig.mongodb.host || "192.168.3.4";
+	const MONGO_HOST = AppConfig.mongodb.host || "192.168.3.2";
 	let MONGO_PORT: string = (AppConfig.mongodb.port || 27017).toString();
 	const MONGO_USER = AppConfig.mongodb.user;
 	const MONGO_PASS = AppConfig.mongodb.password;
 
 	MONGO_PORT = Number.isNaN(Number.parseInt(MONGO_PORT)) ? "27017" : Number.parseInt(MONGO_PORT).toString();
 
+	// 构建 MongoDB 连接 URI
+	const directConnection = (AppConfig.mongodb as any).directConnection !== false; // 默认启用
 	const uri = MONGO_USER && MONGO_PASS
-		? `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PORT}`
-		: `mongodb://${MONGO_HOST}:${MONGO_PORT}`;
+		? `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PORT}/?directConnection=${directConnection}`
+		: `mongodb://${MONGO_HOST}:${MONGO_PORT}/?directConnection=${directConnection}`;
 
 	connectionPromise = (async () => {
 		const client = new MongoClient(uri, {
 			maxPoolSize: 10,
 			minPoolSize: 2,
 			maxIdleTimeMS: 30000,
-			serverSelectionTimeoutMS: 5000,
+			serverSelectionTimeoutMS: 15000,
 			socketTimeoutMS: 45000,
+			connectTimeoutMS: 10000,
 			// 添加连接池监控
 			monitorCommands: true,
 		});
@@ -79,7 +82,7 @@ export async function mongoClient(): Promise<MongoClient> {
  * @param {number} timeout - 超时时间（毫秒）
  * @returns {Promise<void>} 连接成功或超时错误
  */
-async function connectWithTimeout(client: MongoClient, timeout: number = 5000): Promise<void> {
+async function connectWithTimeout(client: MongoClient, timeout: number = 20000): Promise<void> {
 	return Promise.race<void>([
 		client.connect().then(() => undefined),
 		new Promise<void>((_, reject) => setTimeout(() => reject(new Error("连接数据库超时")), timeout)),
