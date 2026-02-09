@@ -222,12 +222,12 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 				</CardHeader>
 				<CardContent className="gap-6 grid">
 					{/* 邮箱账号 */}
-					<div className="p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+					<div className="p-4 border rounded-lg flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div className="flex items-center space-x-4">
-							<div className="text-blue-600 rounded-full bg-blue-100 flex h-10 w-10 items-center justify-center dark:text-blue-400 dark:bg-blue-900/30 shrink-0">
+							<div className="text-blue-600 rounded-full bg-blue-100 flex shrink-0 h-10 w-10 items-center justify-center dark:text-blue-400 dark:bg-blue-900/30">
 								<Mail className="h-5 w-5" />
 							</div>
-							<div className="space-y-1 min-w-0 flex-1">
+							<div className="flex-1 min-w-0 space-y-1">
 								<p className="text-sm leading-none font-medium flex gap-2 items-center">
 									邮箱账号
 									{bindings.loginMethod === "email" && (
@@ -241,24 +241,24 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 						</div>
 						{bindings.email.bound
 							? (
-									<Button variant="outline" size="sm" onClick={handleEmailUnbind} disabled={loading.email} className="w-full sm:w-auto cursor-pointer">
+									<Button variant="outline" size="sm" onClick={handleEmailUnbind} disabled={loading.email} className="w-full cursor-pointer sm:w-auto">
 										解绑
 									</Button>
 								)
 							: (
-									<Button size="sm" onClick={() => setShowEmailDialog(true)} disabled={loading.email} className="w-full sm:w-auto cursor-pointer">
+									<Button size="sm" onClick={() => setShowEmailDialog(true)} disabled={loading.email} className="w-full cursor-pointer sm:w-auto">
 										绑定
 									</Button>
 								)}
 					</div>
 
 					{/* QQ 账号 */}
-					<div className="p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+					<div className="p-4 border rounded-lg flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div className="flex items-center space-x-4">
-							<div className="text-[#12B7F5] rounded-full bg-[#12B7F5]/10 flex h-10 w-10 items-center justify-center shrink-0">
+							<div className="text-[#12B7F5] rounded-full bg-[#12B7F5]/10 flex shrink-0 h-10 w-10 items-center justify-center">
 								<Icon icon="mingcute:qq-fill" className="h-5 w-5" />
 							</div>
-							<div className="space-y-1 min-w-0 flex-1">
+							<div className="flex-1 min-w-0 space-y-1">
 								<p className="text-sm leading-none font-medium flex gap-2 items-center">
 									QQ 账号
 									{bindings.loginMethod === "qq" && (
@@ -272,7 +272,7 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 						</div>
 						{bindings.qq.bound
 							? (
-									<Button variant="outline" size="sm" onClick={handleQQUnbind} disabled={loading.qq} className="w-full sm:w-auto cursor-pointer">
+									<Button variant="outline" size="sm" onClick={handleQQUnbind} disabled={loading.qq} className="w-full cursor-pointer sm:w-auto">
 										解绑
 									</Button>
 								)
@@ -280,7 +280,7 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 									<Button
 										size="sm"
 										variant="outline"
-										className="hover:text-[#12B7F5] hover:border-[#12B7F5] hover:bg-[#12B7F5]/10 w-full sm:w-auto cursor-pointer"
+										className="w-full cursor-pointer hover:text-[#12B7F5] hover:border-[#12B7F5] hover:bg-[#12B7F5]/10 sm:w-auto"
 										onClick={handleQQBind}
 										disabled={loading.qq}
 									>
@@ -290,12 +290,12 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 					</div>
 
 					{/* 爱发电账号 */}
-					<div className="p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+					<div className="p-4 border rounded-lg flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div className="flex items-center space-x-4">
-							<div className="text-[#946ce6] rounded-full bg-[#946ce6]/10 flex h-10 w-10 items-center justify-center shrink-0">
+							<div className="text-[#946ce6] rounded-full bg-[#946ce6]/10 flex shrink-0 h-10 w-10 items-center justify-center">
 								<Icon icon="simple-icons:afdian" className="h-5 w-5" />
 							</div>
-							<div className="space-y-1 min-w-0 flex-1">
+							<div className="flex-1 min-w-0 space-y-1">
 								<p className="text-sm leading-none font-medium flex gap-2 items-center">
 									爱发电
 									{bindings.loginMethod === "afd" && (
@@ -309,7 +309,7 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 						</div>
 						{bindings.afdian.bound
 							? (
-									<Button variant="outline" size="sm" onClick={handleAfdianUnbind} disabled={loading.afdian} className="w-full sm:w-auto cursor-pointer">
+									<Button variant="outline" size="sm" onClick={handleAfdianUnbind} disabled={loading.afdian} className="w-full cursor-pointer sm:w-auto">
 										解绑
 									</Button>
 								)
@@ -317,7 +317,7 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 									<Button
 										size="sm"
 										variant="outline"
-										className="hover:text-[#946ce6] hover:border-[#946ce6] hover:bg-[#946ce6]/10 w-full sm:w-auto cursor-pointer"
+										className="w-full cursor-pointer hover:text-[#946ce6] hover:border-[#946ce6] hover:bg-[#946ce6]/10 sm:w-auto"
 										onClick={handleAfdianBind}
 										disabled={loading.afdian}
 									>
@@ -343,7 +343,7 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 							<Input
 								id="email"
 								type="email"
-								placeholder="your@email.com"
+								placeholder="填写您的邮箱地址"
 								value={emailForm.email}
 								onChange={e => setEmailForm({ ...emailForm, email: e.target.value })}
 							/>

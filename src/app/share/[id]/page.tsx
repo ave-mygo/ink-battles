@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HistoryDetailView } from "@/components/dashboard/history/HistoryDetailView";
 import { Button } from "@/components/ui/button";
-
+import { getScorePercentile } from "@/lib/ai";
 import { getPublicAnalysisRecord } from "@/utils/dashboard";
 
 interface SharePageProps {
@@ -39,6 +39,16 @@ export default async function SharePage({ params }: SharePageProps) {
 	}
 
 	const { sharer } = result;
+
+	// 在服务端获取百分位数据
+	const record = result.data;
+	let percentileData = null;
+	if (record.metadata?.modelName && record.article?.output?.overallScore) {
+		percentileData = await getScorePercentile(
+			record.article.output.overallScore,
+			record.metadata.modelName,
+		);
+	}
 
 	return (
 		<div className="p-4 min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">
@@ -79,8 +89,12 @@ export default async function SharePage({ params }: SharePageProps) {
 				)}
 
 				{/* 分析记录详情 - 不显示原文内容 */}
-				<HistoryDetailView record={result.data} showShareControls={false} showOriginalText={false} />
-
+				<HistoryDetailView
+					record={result.data}
+					showShareControls={false}
+					showOriginalText={false}
+					percentileData={percentileData}
+				/>
 				{/* CTA 按钮 */}
 				<div className="pt-6 flex justify-center">
 					<Button size="lg" asChild>

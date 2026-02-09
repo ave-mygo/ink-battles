@@ -1,12 +1,12 @@
 "use client";
 
+import type { ScorePercentileResult } from "@/lib/ai";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Check, Copy, Globe, Lock } from "lucide-react";
 import { useState } from "react";
-import { SearchCredentials } from "@/components/common/SearchCredentials";
-import { UnifiedAnalysisDisplay } from "@/components/common/UnifiedAnalysisDisplay";
+import { AnalysisResults } from "@/components/common/analysis/AnalysisResults";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,13 +19,15 @@ interface HistoryDetailViewProps {
 	showShareControls: boolean;
 	/** 是否显示原文内容，默认为 true */
 	showOriginalText?: boolean;
+	/** 百分位数据（由服务端传入） */
+	percentileData?: ScorePercentileResult | null;
 }
 
 /**
  * 历史记录详情视图组件
  * 用于详细页面和公开分享页面
  */
-export function HistoryDetailView({ record, showShareControls, showOriginalText = true }: HistoryDetailViewProps) {
+export function HistoryDetailView({ record, showShareControls, showOriginalText = true, percentileData }: HistoryDetailViewProps) {
 	const [isPublic, setIsPublic] = useState(record.settings?.public || false);
 	const [copied, setCopied] = useState(false);
 	const timestamp = new Date(record.timestamp);
@@ -147,15 +149,12 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 			)}
 
 			{/* 搜索凭据 - 如果有搜索结果则显示 */}
-			{record.article.input.search?.searchResults && (
-				<SearchCredentials
-					searchResults={record.article.input.search.searchResults}
-					searchWebPages={record.article.input.search.searchWebPages}
-				/>
-			)}
-
-			{/* 分析结果 */}
-			<UnifiedAnalysisDisplay result={record.article.output} modelName={record.metadata?.modelName} />
+			<AnalysisResults
+				result={record.article.output}
+				searchInfo={record.article.input.search}
+				modelName={record.metadata?.modelName}
+				percentileData={percentileData}
+			/>
 		</div>
 	);
 }

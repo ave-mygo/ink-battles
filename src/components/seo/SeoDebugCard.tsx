@@ -2,7 +2,8 @@
 /* eslint unocss/order: off */
 import { env } from "node:process";
 import { Copy } from "lucide-react";
-import React, { useState } from "react";
+import * as React from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { createPageMetadata } from "@/lib/seo";

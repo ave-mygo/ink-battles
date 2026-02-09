@@ -1,12 +1,12 @@
 "use client";
 
+import type { ScorePercentileResult } from "@/lib/ai";
 import type { AnalysisResult } from "@/types/callback/ai";
 import type { GradingModelConfig } from "@/types/common/config";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
 import { useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
-import { SearchCredentials } from "@/components/common/SearchCredentials";
-import { UnifiedAnalysisDisplay } from "@/components/common/UnifiedAnalysisDisplay";
+import { AnalysisResults } from "@/components/common/analysis/AnalysisResults";
 import StreamingDisplay from "@/components/layouts/WriterPage/streaming-display";
 import WriterAnalysisHeader from "@/components/layouts/WriterPage/WriterAnalysisHeader";
 import WriterAnalysisInput from "@/components/layouts/WriterPage/WriterAnalysisInput";
@@ -14,7 +14,7 @@ import WriterAnalysisModes from "@/components/layouts/WriterPage/WriterAnalysisM
 import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/WriterAnalysisResultPlaceholder";
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
-import { verifyArticleValue } from "@/lib/ai";
+import { getScorePercentile, verifyArticleValue } from "@/lib/ai";
 import { getFingerprintId } from "@/lib/fingerprint";
 import { calculateFinalScore } from "@/lib/utils-client";
 
@@ -125,6 +125,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		searchResults?: string;
 		searchWebPages?: Array<{ uri: string; title?: string }>;
 	} | null>(null);
+	const [percentileData, setPercentileData] = useState<ScorePercentileResult | null>(null);
 
 	const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const isCancelledRef = useRef(false);
@@ -229,6 +230,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		setSelectedModeName([]);
 		setAnalysisResult(null);
 		setSearchInfo(null);
+		setPercentileData(null);
 		setStreamContent("");
 		setShowStreamingDisplay(false);
 		setIsError(false);
@@ -439,6 +441,19 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 			if (parsedResult) {
 				setAnalysisResult(parsedResult);
 
+				// 获取百分位数据
+				if (parsedResult.overallScore && currentAnalysisModelName) {
+					getScorePercentile(parsedResult.overallScore, currentAnalysisModelName)
+						.then((data) => {
+							if (data) {
+								setPercentileData(data);
+							}
+						})
+						.catch((error) => {
+							console.error("获取百分位数据失败:", error);
+						});
+				}
+
 				setProgress(100);
 				setIsError(false);
 				setIsCompleted(true);
@@ -592,22 +607,14 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 				{analysisResult
 					? (
-							<>
-								{/* 搜索凭证 - 如果有搜索结果则显示 */}
-								{searchInfo?.searchResults && (
-									<SearchCredentials
-										searchResults={searchInfo.searchResults}
-										searchWebPages={searchInfo.searchWebPages}
-									/>
-								)}
-								<UnifiedAnalysisDisplay
-									analysisResult={analysisResult}
-									modelName={currentAnalysisModelName}
-									showShare
-									showSponsor
-									showPercentile
-								/>
-							</>
+							<AnalysisResults
+								analysisResult={analysisResult}
+								searchInfo={searchInfo}
+								modelName={currentAnalysisModelName}
+								percentileData={percentileData}
+								showShare
+								showSponsor
+							/>
 						)
 					: (
 							<WriterAnalysisResultPlaceholder />
