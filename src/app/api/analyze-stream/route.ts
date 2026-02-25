@@ -420,13 +420,24 @@ async function saveToDatabase({
 		let parsedResult;
 		try {
 			parsedResult = JSON.parse(jsonContent);
-		} catch {
-			// 解析失败也保存原始内容
-			parsedResult = { raw: accumulatedContent };
+		} catch (parseError) {
+			// JSON 解析失败，不保存到数据库，不扣费
+			console.error("JSON 解析失败，不保存到数据库:", parseError);
+			throw new Error("无效的 JSON 格式，不计入有效请求");
+		}
+
+		// 验证是否为有效的 AnalysisResult
+		if (!isValidAnalysisResult(parsedResult)) {
+			console.error("返回结果不符合 AnalysisResult 格式，不保存到数据库");
+			throw new Error("返回结果格式无效，不计入有效请求");
 		}
 
 		const tags = parsedResult.tags || [];
+		// calculateFinalScore 会修改 parsedResult.dimensions（添加 originalScore 和修改 description）
 		const overallScore = await calculateFinalScore(parsedResult);
+
+		// 保存修正后的完整结果（包含 originalScore 和修正后的 description）
+		const finalResult = JSON.stringify(parsedResult);
 
 		await db_insert(
 			db_name,
@@ -442,7 +453,11 @@ async function saveToDatabase({
 							searchWebPages: searchWebPages || undefined,
 						},
 					},
-					output: { result: jsonContent, overallScore, tags },
+					output: {
+						result: finalResult, // 保存修正后的完整结果
+						overallScore,
+						tags,
+					},
 				},
 				metadata: {
 					sha1,
@@ -459,5 +474,69 @@ async function saveToDatabase({
 	} catch (e) {
 		console.error("保存数据库逻辑异常:", e);
 		// 如果保存失败，不删除 session，以便重试
+		throw e; // 重新抛出错误，让调用方知道保存失败
 	}
+}
+
+/**
+ * 验证是否为有效的 AnalysisResult
+ * @param result 待验证的对象
+ * @returns 是否有效
+ */
+function isValidAnalysisResult(result: any): boolean {
+	// 检查必需字段
+	if (!result || typeof result !== "object") {
+		return false;
+	}
+
+	// 检查必需的字符串字段
+	const requiredStringFields = ["title", "ratingTag", "finalTag", "overallAssessment", "summary"];
+	for (const field of requiredStringFields) {
+		if (typeof result[field] !== "string" || result[field].trim() === "") {
+			console.error(`缺少或无效的必需字段: ${field}`);
+			return false;
+		}
+	}
+
+	// 检查 tags 数组
+	if (!Array.isArray(result.tags) || result.tags.length === 0) {
+		console.error("缺少或无效的 tags 数组");
+		return false;
+	}
+
+	// 检查 dimensions 数组
+	if (!Array.isArray(result.dimensions) || result.dimensions.length === 0) {
+		console.error("缺少或无效的 dimensions 数组");
+		return false;
+	}
+
+	// 验证每个 dimension 的结构
+	for (const dimension of result.dimensions) {
+		if (!dimension.name || typeof dimension.name !== "string") {
+			console.error("dimension 缺少 name 字段");
+			return false;
+		}
+		if (typeof dimension.score !== "number" || dimension.score < 0 || dimension.score > 5) {
+			console.error(`dimension ${dimension.name} 的 score 无效: ${dimension.score}`);
+			return false;
+		}
+		if (!dimension.description || typeof dimension.description !== "string") {
+			console.error(`dimension ${dimension.name} 缺少 description 字段`);
+			return false;
+		}
+	}
+
+	// 检查 strengths 和 improvements 数组
+	if (!Array.isArray(result.strengths) || result.strengths.length === 0) {
+		console.error("缺少或无效的 strengths 数组");
+		return false;
+	}
+
+	if (!Array.isArray(result.improvements) || result.improvements.length === 0) {
+		console.error("缺少或无效的 improvements 数组");
+		return false;
+	}
+
+	// 所有验证通过
+	return true;
 }

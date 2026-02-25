@@ -1,22 +1,75 @@
-"use client";
+"use server";
+import type { ScorePercentileResult } from "@/types/ai";
+
+import { db_name } from "@/lib/constants";
+import { db_count } from "@/lib/db";
+import "server-only";
+
+/**
+ * 计算给定分数在所有分析记录中的百分位数（按模型分组）
+ * @param currentScore 当前分数
+ * @param modelName 使用的模型名称
+ * @returns 百分位数计算结果，如果计算失败则返回 null
+ */
+export const getScorePercentile = async (
+	currentScore: number,
+	modelName: string,
+): Promise<ScorePercentileResult | null> => {
+	try {
+		// 直接在数据库层面进行计数查询，避免读取所有数据到本地
+		// 只查询相同模型的记录，避免多模型评分标准不一致导致的分层问题
+		const totalSamples = await db_count(
+			db_name,
+			"analysis_requests",
+			{ "metadata.modelName": modelName },
+		);
+
+		if (totalSamples === 0) {
+			return {
+				percentile: 0,
+				totalSamples: 0,
+				modelName,
+				hasEnoughData: false,
+			};
+		}
+
+		// 计算有多少记录的总分小于等于当前分数
+		const higherOrEqualScores = await db_count(
+			db_name,
+			"analysis_requests",
+			{
+				"metadata.modelName": modelName,
+				"article.output.overallScore": { $lte: currentScore },
+			},
+		);
+
+		// 计算百分位数：当前分数超过了多少百分比的其他分数
+		const percentile = (higherOrEqualScores / totalSamples) * 100;
+
+		return {
+			percentile: Number(percentile.toFixed(1)),
+			totalSamples,
+			modelName,
+			hasEnoughData: totalSamples >= 10, // 至少需要10个样本才认为有足够数据
+		};
+	} catch (error) {
+		console.error("Error calculating percentile:", error);
+		return null;
+	}
+};
 
 /**
  * 计算最终战力值并四舍五入到最多 2 位小数
  * @param parsedResult - 包含 dimensions 数组的解析结果
- * @param parsedResult.dimensions - 分析维度数组
  * @returns 最终得分（number），最多保留两位小数
  */
-export const calculateFinalScore = (parsedResult: {
-	/** 分析维度数组 */
+export const calculateFinalScore = async (parsedResult: {
 	dimensions: Array<{
-		/** 维度名称 */
 		name: string;
-		/** 维度得分 (0-5) */
 		score: number;
-		/** 维度详细描述 */
 		description?: string;
 	}>;
-}): number => {
+}): Promise<number> => {
 	if (!parsedResult.dimensions || !Array.isArray(parsedResult.dimensions)) {
 		return 0;
 	}
@@ -36,9 +89,13 @@ export const calculateFinalScore = (parsedResult: {
 
 	// 检查基础分触发条件（保底机制）
 	// 条件一：≥ 6 个基础维度的原始评分 > 3.5
-	const countAbove35 = baseDimensions.filter(d => d.score > 3.5).length;
+	const countAbove35 = baseDimensions.filter(
+		(d: { score: number }) => d.score > 3.5,
+	).length;
 	// 条件二：≥ 3 个基础维度的原始评分 > 4.0
-	const countAbove40 = baseDimensions.filter(d => d.score > 4.0).length;
+	const countAbove40 = baseDimensions.filter(
+		(d: { score: number }) => d.score > 4.0,
+	).length;
 
 	const MIN_DIMENSION_SCORE = 3;
 	const shouldTriggerFloor = countAbove35 >= 6 || countAbove40 >= 3;
