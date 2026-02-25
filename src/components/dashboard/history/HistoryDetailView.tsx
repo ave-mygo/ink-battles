@@ -153,6 +153,7 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 				result={record.article.output}
 				searchInfo={record.article.input.search}
 				modelName={record.metadata?.modelName}
+				modeName={record.article.input.mode}
 				percentileData={percentileData}
 			/>
 		</div>

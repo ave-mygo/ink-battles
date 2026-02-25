@@ -6,52 +6,88 @@ import { db_count } from "@/lib/db";
 import "server-only";
 
 /**
- * 计算给定分数在所有分析记录中的百分位数（按模型分组）
+ * 计算单项百分位数据
+ * @param currentScore 当前分数
+ * @param filter MongoDB 查询过滤条件
+ * @returns 百分位数据
+ */
+const calculatePercentile = async (
+	currentScore: number,
+	filter: Record<string, unknown>,
+): Promise<{ percentile: number; totalSamples: number; hasEnoughData: boolean }> => {
+	const totalSamples = await db_count(db_name, "analysis_requests", filter);
+
+	if (totalSamples === 0) {
+		return { percentile: 0, totalSamples: 0, hasEnoughData: false };
+	}
+
+	const lowerOrEqualCount = await db_count(db_name, "analysis_requests", {
+		...filter,
+		"article.output.overallScore": { $lte: currentScore },
+	});
+
+	const percentile = (lowerOrEqualCount / totalSamples) * 100;
+
+	return {
+		percentile: Number(percentile.toFixed(1)),
+		totalSamples,
+		hasEnoughData: totalSamples >= 10,
+	};
+};
+
+/**
+ * 计算给定分数在所有分析记录中的百分位数（支持三种维度）
+ * 1. 按模型分组
+ * 2. 按模式分组（可选）
+ * 3. 按模式+模型分组（可选）
  * @param currentScore 当前分数
  * @param modelName 使用的模型名称
+ * @param modeName 使用的评分模式名称（可选）
  * @returns 百分位数计算结果，如果计算失败则返回 null
  */
 export const getScorePercentile = async (
 	currentScore: number,
 	modelName: string,
+	modeName?: string,
 ): Promise<ScorePercentileResult | null> => {
 	try {
-		// 直接在数据库层面进行计数查询，避免读取所有数据到本地
-		// 只查询相同模型的记录，避免多模型评分标准不一致导致的分层问题
-		const totalSamples = await db_count(
-			db_name,
-			"analysis_requests",
-			{ "metadata.modelName": modelName },
-		);
+		// 1. 按模型分组的百分位（保持原有逻辑）
+		const byModel = await calculatePercentile(currentScore, {
+			"metadata.modelName": modelName,
+		});
 
-		if (totalSamples === 0) {
-			return {
-				percentile: 0,
-				totalSamples: 0,
+		const result: ScorePercentileResult = {
+			percentile: byModel.percentile,
+			totalSamples: byModel.totalSamples,
+			modelName,
+			hasEnoughData: byModel.hasEnoughData,
+		};
+
+		// 2. 按模式分组的百分位（如果提供了 modeName）
+		if (modeName) {
+			const modeFilter = { "article.input.mode": modeName };
+
+			const byMode = await calculatePercentile(currentScore, modeFilter);
+			result.byMode = {
+				...byMode,
+				modeName,
+			};
+
+			// 3. 按模式+模型分组的百分位
+			const modeModelFilter = {
+				"metadata.modelName": modelName,
+				"article.input.mode": modeName,
+			};
+
+			const byModeAndModel = await calculatePercentile(currentScore, modeModelFilter);
+			result.byModeAndModel = {
+				...byModeAndModel,
+				modeName,
 				modelName,
-				hasEnoughData: false,
 			};
 		}
 
-		// 计算有多少记录的总分小于等于当前分数
-		const higherOrEqualScores = await db_count(
-			db_name,
-			"analysis_requests",
-			{
-				"metadata.modelName": modelName,
-				"article.output.overallScore": { $lte: currentScore },
-			},
-		);
-
-		// 计算百分位数：当前分数超过了多少百分比的其他分数
-		const percentile = (higherOrEqualScores / totalSamples) * 100;
-
-		return {
-			percentile: Number(percentile.toFixed(1)),
-			totalSamples,
-			modelName,
-			hasEnoughData: totalSamples >= 10, // 至少需要10个样本才认为有足够数据
-		};
+		return result;
 	} catch (error) {
 		console.error("Error calculating percentile:", error);
 		return null;

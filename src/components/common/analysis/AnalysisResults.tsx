@@ -25,6 +25,8 @@ export function AnalysisResults({
 	searchInfo,
 	// 模型名称
 	modelName,
+	// 评分模式名称
+	modeName,
 	// 百分位信息
 	percentileData,
 	// 额外功能开关
@@ -54,6 +56,8 @@ export function AnalysisResults({
 	} | null;
 	// 模型名称（可从外部传入）
 	modelName?: string;
+	// 评分模式名称（可从外部传入）
+	modeName?: string;
 	// 是否显示分享按钮
 	showShare?: boolean;
 	// 是否显示赞助按钮和文案
@@ -158,6 +162,7 @@ export function AnalysisResults({
 					finalTag={data.finalTag}
 					dimensions={dimensions}
 					modelName={displayModelName}
+					modeName={modeName}
 					showShare={showShare}
 					showSponsor={showSponsor}
 					percentileData={percentileData}

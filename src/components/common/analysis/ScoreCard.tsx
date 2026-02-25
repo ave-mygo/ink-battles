@@ -1,7 +1,7 @@
 "use client";
 
 import type { ScorePercentileResult } from "@/types/ai";
-import { Copy, Heart, Share, Share2, Star } from "lucide-react";
+import { Copy, Heart, Share, Share2, Star, Trophy } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { RadarChart } from "@/components/layouts/WriterPage/RadarChart";
@@ -78,6 +78,8 @@ interface ScoreCardProps {
 	finalTag?: string;
 	dimensions: Dimension[];
 	modelName?: string;
+	/** 评分模式名称，为空字符串时显示"默认模式" */
+	modeName?: string;
 	showShare?: boolean;
 	showSponsor?: boolean;
 	showPercentile?: boolean;
@@ -97,6 +99,7 @@ export function ScoreCard({
 	finalTag,
 	dimensions,
 	modelName,
+	modeName,
 	showShare = false,
 	showSponsor = false,
 	percentileData,
@@ -188,6 +191,13 @@ export function ScoreCard({
 							{modelName}
 						</div>
 					)}
+					{modeName !== undefined && (
+						<div className="text-[10px] text-slate-500 mt-1 px-2 py-0.5 border border-slate-200 rounded-md bg-slate-100 dark:text-slate-400 dark:border-slate-700/50 dark:bg-slate-800">
+							模式:
+							{" "}
+							{modeName || "默认模式"}
+						</div>
+					)}
 				</div>
 
 				{title && (
@@ -242,24 +252,74 @@ export function ScoreCard({
 				{
 					percentileData
 						? (
-								<div className="text-sm text-slate-600 mt-4 dark:text-slate-300">
-									你的作品评分超过了在本站评分记录中（
-									{percentileData.modelName}
-									模型，共
-									{" "}
-									{percentileData.totalSamples}
-									{" "}
-									个样本）
-									<span className="text-red-500 font-bold dark:text-red-400">
-										{percentileData.percentile}
-										%
-									</span>
-									{" "}
-									的作品
-									{!percentileData.hasEnoughData && (
-										<span className="text-xs text-slate-400 ml-2 dark:text-slate-500">
-											（样本量较少，仅供参考）
-										</span>
+								<div className="mt-6 p-4 border border-slate-100 rounded-xl bg-slate-50/80 dark:border-slate-800/60 dark:bg-slate-900/40">
+									<div className="text-sm text-slate-700 font-medium mb-3 flex gap-2 items-center justify-center dark:text-slate-200">
+										<Trophy className="text-yellow-500 h-4 w-4" />
+										击败了多少作品？
+									</div>
+									<div className="flex flex-col gap-3">
+										{/* 1. 按模型的百分位 */}
+										<div className="p-3 border border-slate-100 rounded-lg bg-white flex shadow-sm items-center justify-between dark:border-slate-700/50 dark:bg-slate-800/80">
+											<span className="text-sm text-slate-600 mr-4 truncate dark:text-slate-300" title={`使用相同模型 (${percentileData.modelName})`}>
+												使用相同模型
+											</span>
+											<div className="flex shrink-0 gap-1 items-baseline">
+												<span className="text-xl text-slate-800 font-bold dark:text-slate-100">
+													{percentileData.percentile}
+													%
+												</span>
+												<span className="text-xs text-slate-400">
+													/
+													{percentileData.totalSamples}
+													份
+												</span>
+											</div>
+										</div>
+
+										{/* 2. 按模式的百分位 */}
+										{percentileData.byMode && (
+											<div className="p-3 border border-slate-100 rounded-lg bg-white flex shadow-sm items-center justify-between dark:border-slate-700/50 dark:bg-slate-800/80">
+												<span className="text-sm text-slate-600 mr-4 truncate dark:text-slate-300" title={`使用相同模式 (${percentileData.byMode.modeName || "默认模式"})`}>
+													使用相同模式
+												</span>
+												<div className="flex shrink-0 gap-1 items-baseline">
+													<span className="text-xl text-slate-800 font-bold dark:text-slate-100">
+														{percentileData.byMode.percentile}
+														%
+													</span>
+													<span className="text-xs text-slate-400">
+														/
+														{percentileData.byMode.totalSamples}
+														份
+													</span>
+												</div>
+											</div>
+										)}
+
+										{/* 3. 按模式+模型的百分位 */}
+										{percentileData.byModeAndModel && (
+											<div className="p-3 border border-slate-100 rounded-lg bg-white flex shadow-sm items-center justify-between dark:border-slate-700/50 dark:bg-slate-800/80">
+												<span className="text-sm text-slate-600 mr-4 truncate dark:text-slate-300" title="使用相同模式 + 同模型">
+													使用相同模式 + 模型
+												</span>
+												<div className="flex shrink-0 gap-1 items-baseline">
+													<span className="text-xl text-slate-800 font-bold dark:text-slate-100">
+														{percentileData.byModeAndModel.percentile}
+														%
+													</span>
+													<span className="text-xs text-slate-400">
+														/
+														{percentileData.byModeAndModel.totalSamples}
+														份
+													</span>
+												</div>
+											</div>
+										)}
+									</div>
+									{(!percentileData.hasEnoughData || (percentileData.byMode && !percentileData.byMode.hasEnoughData) || (percentileData.byModeAndModel && !percentileData.byModeAndModel.hasEnoughData)) && (
+										<div className="text-[10px] text-slate-400 mt-3 text-center dark:text-slate-500">
+											* 部分维度样本量较少，百分位仅供参考
+										</div>
 									)}
 								</div>
 							)

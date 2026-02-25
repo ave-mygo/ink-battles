@@ -35,6 +35,7 @@ export default async function HistoryDetailPage({ params }: HistoryDetailPagePro
 		percentileData = await getScorePercentile(
 			record.article.output.overallScore,
 			record.metadata.modelName,
+			record.article.input.mode,
 		);
 	}
 

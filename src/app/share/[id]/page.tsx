@@ -47,6 +47,7 @@ export default async function SharePage({ params }: SharePageProps) {
 		percentileData = await getScorePercentile(
 			record.article.output.overallScore,
 			record.metadata.modelName,
+			record.article.input.mode,
 		);
 	}
 

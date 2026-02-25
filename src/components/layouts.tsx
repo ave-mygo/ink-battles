@@ -450,7 +450,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 					: (availableGradingModels.find(model => model.id === selectedModelId)?.model || "");
 
 				if (parsedResult.overallScore && analysisModelName) {
-					getScorePercentile(parsedResult.overallScore, analysisModelName)
+					getScorePercentile(parsedResult.overallScore, analysisModelName, selectedModeName.join(","))
 						.then((data) => {
 							if (data) {
 								setPercentileData(data);
@@ -618,6 +618,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 								analysisResult={analysisResult}
 								searchInfo={searchInfo}
 								modelName={currentAnalysisModelName}
+								modeName={selectedModeName.join(",")}
 								percentileData={percentileData}
 								showShare
 								showSponsor
