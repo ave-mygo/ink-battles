@@ -2,7 +2,7 @@
  * 数据库记录相关类型定义
  */
 
-import type { AnalysisInput, AnalysisOutput } from "@/types/callback/ai";
+import type { AnalysisInput, AnalysisOutput } from "@/types/ai";
 
 /**
  * 数据库文章分析记录完整结构

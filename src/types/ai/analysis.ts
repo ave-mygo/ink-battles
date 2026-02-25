@@ -22,6 +22,8 @@ export interface AnalysisDimension {
 	score: number;
 	/** 维度详细描述 */
 	description: string;
+	/** 原始得分（用于兜底逻辑追踪） */
+	originalScore?: number;
 }
 
 /**
