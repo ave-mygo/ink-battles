@@ -1,6 +1,6 @@
 "use client";
 
-import type { ScorePercentileResult } from "@/lib/ai";
+import type { ScorePercentileResult } from "@/types/ai";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";

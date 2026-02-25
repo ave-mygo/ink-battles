@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { MermaidDiagram as MermaidDiagramType } from "@/types/callback/ai";
+import type { MermaidDiagram as MermaidDiagramType } from "@/types/ai";
 import { AlertTriangle, GitBranch, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import mermaid from "mermaid";
 import { Component, useCallback, useEffect, useId, useRef, useState } from "react";

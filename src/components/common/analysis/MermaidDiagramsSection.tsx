@@ -1,6 +1,6 @@
 "use client";
 
-import type { MermaidDiagram } from "@/types/callback/ai";
+import type { MermaidDiagram } from "@/types/ai";
 import MermaidDiagrams from "@/components/layouts/WriterPage/MermaidDiagram";
 
 interface MermaidDiagramsSectionProps {

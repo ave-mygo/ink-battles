@@ -1,7 +1,6 @@
 "use client";
 
-import type { ScorePercentileResult } from "@/lib/ai";
-import type { AnalysisResult } from "@/types/callback/ai";
+import type { AnalysisResult, ScorePercentileResult } from "@/types/ai";
 import type { GradingModelConfig } from "@/types/common/config";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
 import { useRef, useState, useSyncExternalStore } from "react";
@@ -257,6 +256,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 			if (jsonMatch) {
 				const jsonStr = jsonMatch[1] || jsonMatch[0];
 				const parsed = JSON.parse(jsonStr.trim());
+				// 只有当 overallScore 为 null 或 0 时才计算（避免重复计算已修正的数据）
 				if (parsed && (parsed.overallScore == null || parsed.overallScore === 0)) {
 					parsed.overallScore = calculateFinalScore(parsed);
 				}
@@ -265,6 +265,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 			// 尝试直接解析
 			const fallback = JSON.parse(content.trim());
+			// 只有当 overallScore 为 null 或 0 时才计算（避免重复计算已修正的数据）
 			if (fallback && (fallback.overallScore == null || fallback.overallScore === 0)) {
 				fallback.overallScore = calculateFinalScore(fallback);
 			}
@@ -442,8 +443,14 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 				setAnalysisResult(parsedResult);
 
 				// 获取百分位数据
-				if (parsedResult.overallScore && currentAnalysisModelName) {
-					getScorePercentile(parsedResult.overallScore, currentAnalysisModelName)
+				// 注意：使用局部变量获取模型名称，避免 React 闭包陷阱
+				// （setCurrentAnalysisModelName 不会立即更新 currentAnalysisModelName）
+				const analysisModelName = isRetry && verifyResultRef.current
+					? currentAnalysisModelName
+					: (availableGradingModels.find(model => model.id === selectedModelId)?.model || "");
+
+				if (parsedResult.overallScore && analysisModelName) {
+					getScorePercentile(parsedResult.overallScore, analysisModelName)
 						.then((data) => {
 							if (data) {
 								setPercentileData(data);

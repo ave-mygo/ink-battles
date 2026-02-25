@@ -1,6 +1,6 @@
 "use client";
 
-import type { ScorePercentileResult } from "@/lib/ai";
+import type { ScorePercentileResult } from "@/types/ai";
 import { Copy, Heart, Share, Share2, Star } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -169,8 +169,8 @@ export function ScoreCard({
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="px-6 pb-8 text-center">
-				<div className="mb-3 px-6 py-2 inline-block relative">
-					<div className={`text-8xl tracking-tight font-black bg-linear-to-br ${getScoreGradient(overallScore)} text-transparent select-none bg-clip-text drop-shadow-sm`}>
+				<div className="mb-3 px-6 py-2 max-w-full inline-block relative">
+					<div className={`text-6xl tracking-tight font-black bg-linear-to-br md:text-8xl sm:text-7xl ${getScoreGradient(overallScore)} text-transparent select-none break-all bg-clip-text drop-shadow-sm`}>
 						{overallScore}
 					</div>
 					{/* 装饰性背景光晕 - 可选 */}

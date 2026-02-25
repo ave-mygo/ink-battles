@@ -1,8 +1,7 @@
 "use client";
 
 import type { Dimension } from "@/components/common/analysis/DimensionsCard";
-import type { ScorePercentileResult } from "@/lib/ai";
-import type { AnalysisOutput, AnalysisResult } from "@/types/callback/ai";
+import type { AnalysisOutput, AnalysisResult, ScorePercentileResult } from "@/types/ai";
 import { AnalysisCard } from "@/components/common/analysis/AnalysisCard";
 import { DimensionsCard } from "@/components/common/analysis/DimensionsCard";
 import { MermaidDiagramsSection } from "@/components/common/analysis/MermaidDiagramsSection";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnalysisResult } from "@/types/callback/ai";
+import type { AnalysisResult } from "@/types/ai";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
