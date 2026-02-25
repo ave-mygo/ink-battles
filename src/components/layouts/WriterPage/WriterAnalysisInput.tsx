@@ -182,6 +182,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+	const prevArticleTextRef = useRef<string>(articleText);
 
 	// 使用客户端状态管理判断登录状态
 	const isLoggedIn = useIsAuthenticated();
@@ -271,6 +272,16 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 
 		initializeData();
 	}, [authLoading, isLoggedIn, fetchUserTierData]);
+
+	// 监听 articleText 变化，当被外部清空时同步清除文件名
+	useEffect(() => {
+		// 当 articleText 从有内容变为空时，清除文件名
+		if (prevArticleTextRef.current !== "" && articleText === "" && uploadedFileName !== null) {
+			setUploadedFileName(null);
+		}
+		// 更新 ref
+		prevArticleTextRef.current = articleText;
+	}, [articleText, uploadedFileName]);
 
 	const getCurrentLimit = useCallback(() => {
 		return tierData.limits.perRequest || Number.MAX_SAFE_INTEGER;
