@@ -1,7 +1,7 @@
 "use client";
 
 import type * as React from "react";
-import { ChevronDown, ChevronUp, CircleQuestionMark, Gauge, Lock } from "lucide-react";
+import { ChevronDown, CircleQuestionMark, Gauge, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -223,27 +223,12 @@ export default function WriterAnalysisModes({
 					className="text-slate-600 w-full transition-all duration-200 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300"
 					onClick={() => setIsModesExpanded(!isModesExpanded)}
 				>
-					{isModesExpanded
-						? (
-								<>
-									<ChevronUp className={`mr-2 h-4 w-4 transition-transform duration-200 ${
-										isModesExpanded ? "rotate-180" : "rotate-0"
-									}`}
-									/>
-									收起更多模式
-								</>
-							)
-						: (
-								<>
-									<ChevronDown className={`mr-2 h-4 w-4 transition-transform duration-200 ${
-										isModesExpanded ? "rotate-180" : "rotate-0"
-									}`}
-									/>
-									展开更多模式 (
-									{evaluationModes.length - 4}
-									)
-								</>
-							)}
+					<ChevronDown
+						className={`mr-2 h-4 w-4 transition-transform duration-200 ${
+							isModesExpanded ? "rotate-180" : "rotate-0"
+						}`}
+					/>
+					{isModesExpanded ? "收起更多模式" : `展开更多模式 (${evaluationModes.length - 4})`}
 				</Button>
 			</CardContent>
 		</Card>
