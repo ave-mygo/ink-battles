@@ -68,10 +68,12 @@ export async function POST(request: NextRequest) {
 
 		// 1. 检查数据库缓存（通过 sha1 比对）
 		// 优先使用 modelName 查询，兼容旧数据的 modelId
+		// 移除计费前缀（按次-、公益-），仅用真实模型名查询缓存
+		const cleanModelName = gradingModel.model.replace(/^(按次|公益)-/, "");
 		const cached = await db_find(db_name, db_table, {
 			"metadata.sha1": sha1,
 			"article.input.mode": mode,
-			"metadata.modelName": gradingModel.model,
+			"metadata.modelName": cleanModelName,
 		});
 
 		// 如果找到缓存且 sha1 匹配，直接返回缓存结果
@@ -294,7 +296,8 @@ export async function POST(request: NextRequest) {
 								sha1,
 								ip,
 								fingerprint,
-								modelName: gradingModel.model,
+								// 存库时去掉计费前缀（按次-、公益-），仅保留真实模型名称
+								modelName: cleanModelName,
 								uid,
 								session, // 传递 session 用于成功后删除
 							});

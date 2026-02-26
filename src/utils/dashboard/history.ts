@@ -42,6 +42,56 @@ function serializeRecords(records: unknown[]): DatabaseAnalysisRecord[] {
 }
 
 /**
+ * 为列表视图精简数据库记录
+ * 移除不必要的大型字段，只保留列表卡片渲染所需的数据
+ * @param records 原始数据库记录数组
+ * @returns 精简后的记录数组
+ */
+function lightenRecordsForList(records: DatabaseAnalysisRecord[]): DatabaseAnalysisRecord[] {
+	return records.map((record) => {
+		// 从完整 AI 结果中提取总评预览文本
+		let overallAssessmentPreview = "";
+		try {
+			const parsed = JSON.parse(record.article.output.result);
+			overallAssessmentPreview = (parsed.overallAssessment || "").substring(0, 200);
+		} catch {
+			overallAssessmentPreview = "";
+		}
+
+		return {
+			...record,
+			article: {
+				input: {
+					// 移除完整文章文本，列表视图不需要
+					articleText: "",
+					mode: record.article.input.mode,
+					search: record.article.input.search
+						? {
+								// 保留搜索状态标识，移除完整搜索结果文本
+								searchResults: record.article.input.search.searchResults ? "[已搜索]" : undefined,
+								searchWebPages: record.article.input.search.searchWebPages,
+							}
+						: undefined,
+				},
+				output: {
+					// 仅保留预览用的精简结果
+					result: JSON.stringify({ overallAssessment: overallAssessmentPreview }),
+					overallScore: record.article.output.overallScore,
+					tags: record.article.output.tags,
+					modelName: record.article.output.modelName,
+				},
+			},
+			metadata: {
+				sha1: record.metadata.sha1,
+				ip: null,
+				fingerprint: null,
+				modelName: record.metadata.modelName,
+			},
+		};
+	});
+}
+
+/**
  * 获取用户的分析历史记录列表
  * @param page 页码（从 1 开始）
  * @param limit 每页记录数（默认 10，最大 50）
@@ -73,27 +123,29 @@ export async function getUserAnalysisHistory(
 	const skip = (validatedPage - 1) * validatedLimit;
 
 	try {
-		// 获取总记录数
-		const total = await db_count(db_name, db_table, { uid: user.uid });
-
-		// 获取分页记录
-		const records = await db_read(
-			db_name,
-			db_table,
-			{ uid: user.uid },
-			{
-				sort: { timestamp: -1 }, // 按时间降序
-				skip,
-				limit: validatedLimit,
-			},
-		);
+		// 并行获取总记录数和分页记录，减少数据库等待时间
+		const [total, records] = await Promise.all([
+			db_count(db_name, db_table, { uid: user.uid }),
+			db_read(
+				db_name,
+				db_table,
+				{ uid: user.uid },
+				{
+					sort: { timestamp: -1 }, // 按时间降序
+					skip,
+					limit: validatedLimit,
+				},
+			),
+		]);
 
 		const totalPages = Math.ceil(total / validatedLimit);
+		const serialized = serializeRecords(records);
 
 		return {
 			success: true,
 			data: {
-				records: serializeRecords(records),
+				// 为列表视图精简数据，移除完整文章文本和 AI 结果
+				records: lightenRecordsForList(serialized),
 				total,
 				page: validatedPage,
 				limit: validatedLimit,
