@@ -22,6 +22,8 @@ export interface ScorePercentileResult {
 	modelName: string;
 	/** 是否有足够的数据进行计算 */
 	hasEnoughData: boolean;
+	/** 全站百分位（所有模型 + 所有模式） */
+	global?: PercentileCategory;
 	/** 按模式分组的百分位 */
 	byMode?: PercentileCategory & { modeName: string };
 	/** 按模式+模型分组的百分位 */

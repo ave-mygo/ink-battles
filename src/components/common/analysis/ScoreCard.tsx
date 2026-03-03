@@ -315,12 +315,35 @@ export function ScoreCard({
 												</div>
 											</div>
 										)}
+
+										{/* 4. 全站百分位 */}
+										{percentileData.global && (
+											<div className="p-3 border border-slate-100 rounded-lg bg-white flex shadow-sm items-center justify-between dark:border-slate-700/50 dark:bg-slate-800/80">
+												<span className="text-sm text-slate-600 mr-4 truncate dark:text-slate-300" title="全站所有作品（跨模型、跨模式、跨版本）">
+													全站所有作品
+												</span>
+												<div className="flex shrink-0 gap-1 items-baseline">
+													<span className="text-xl text-slate-800 font-bold dark:text-slate-100">
+														{percentileData.global.percentile}
+														%
+													</span>
+													<span className="text-xs text-slate-400">
+														/
+														{percentileData.global.totalSamples}
+														份
+													</span>
+												</div>
+											</div>
+										)}
 									</div>
 									{(!percentileData.hasEnoughData || (percentileData.byMode && !percentileData.byMode.hasEnoughData) || (percentileData.byModeAndModel && !percentileData.byModeAndModel.hasEnoughData)) && (
 										<div className="text-[10px] text-slate-400 mt-3 text-center dark:text-slate-500">
 											* 部分维度样本量较少，百分位仅供参考
 										</div>
 									)}
+									<div className="text-[10px] text-slate-400 mt-2 text-center dark:text-slate-500">
+										以上统计结果仅供参考。在站点迭代与模型演进过程中，评分标准可能发生调整，不同版本、不同模型、不同模式下的数据不具备完全可比性。
+									</div>
 								</div>
 							)
 						: !modelName

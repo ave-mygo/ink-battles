@@ -56,11 +56,15 @@ export const getScorePercentile = async (
 			"metadata.modelName": modelName,
 		});
 
+		// 全站百分位（不限模型、不限模式）
+		const global = await calculatePercentile(currentScore, {});
+
 		const result: ScorePercentileResult = {
 			percentile: byModel.percentile,
 			totalSamples: byModel.totalSamples,
 			modelName,
 			hasEnoughData: byModel.hasEnoughData,
+			global,
 		};
 
 		// 2. 按模式分组的百分位（如果提供了 modeName）
