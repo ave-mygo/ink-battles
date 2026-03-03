@@ -360,8 +360,26 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 			clearTimeout(timeoutId);
 
 			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({}));
-				const error = new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+				// 兼容处理：尝试解析 JSON 响应，或处理可能的 SSE 格式错误
+				let errorData: Record<string, unknown> = {};
+				const rawText = await response.text();
+
+				try {
+					// 尝试直接解析 JSON
+					errorData = JSON.parse(rawText);
+				} catch {
+					// JSON 解析失败，尝试处理 SSE 格式（带 "data: " 前缀）
+					// 移除 "data: " 前缀后再尝试解析
+					const cleanedText = rawText.replace(/^data:\s*/, "");
+					try {
+						errorData = JSON.parse(cleanedText);
+					} catch {
+						// 清理后仍解析失败，使用原始文本作为错误信息
+						errorData = { error: rawText.slice(0, 200) };
+					}
+				}
+
+				const error = new Error((errorData.error as string) || `HTTP ${response.status}: ${response.statusText}`);
 				// 将错误响应数据附加到错误对象上
 				(error as any).errorData = errorData;
 				throw error;
