@@ -71,16 +71,19 @@ export function AnalysisResults({
 	let overallScore = 0;
 
 	if (analysisResult) {
-		// 方式1：直接使用传入的结果对象
+		// 方式1：直接使用传入的结果对象（首页实时分析）
 		data = analysisResult as AnalysisResult;
 		overallScore = analysisResult.overallScore;
 	} else if (result) {
-		// 方式2：从数据库记录解析
+		// 方式2：从数据库记录解析（历史记录、分享页面）
+		// 优先使用 result.overallScore（服务端 calculateFinalScore 计算的权威值）
+		// parsedData.overallScore 可能不存在（AI 不一定返回此字段）或不准确
+		overallScore = result.overallScore || 0;
+
 		try {
 			const parsedData = typeof result.result === "string" ? JSON.parse(result.result) : result.result;
 			if (parsedData) {
 				data = parsedData;
-				overallScore = parsedData.overallScore || result.overallScore || 0;
 				// 如果没有外部传入 modelName，则使用 result 中的
 				if (!displayModelName) {
 					displayModelName = result.modelName;

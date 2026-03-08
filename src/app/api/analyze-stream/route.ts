@@ -415,7 +415,7 @@ async function saveToDatabase({
 }) {
 	try {
 		// 尝试提取 JSON
-		const codeBlockMatch = accumulatedContent.match(/```json\n?>([\s\S]+?)\n?```/);
+		const codeBlockMatch = accumulatedContent.match(/```json\n?([\s\S]+?)\n?```/);
 		const jsonObjectMatch = accumulatedContent.match(/\{[\s\S]+\}/);
 		// codeBlockMatch[1] 是捕获组内容，jsonObjectMatch[0] 是整个匹配
 		const jsonContent = codeBlockMatch ? codeBlockMatch[1].trim() : (jsonObjectMatch ? jsonObjectMatch[0].trim() : accumulatedContent);

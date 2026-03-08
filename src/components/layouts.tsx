@@ -256,8 +256,9 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 			if (jsonMatch) {
 				const jsonStr = jsonMatch[1] || jsonMatch[0];
 				const parsed = JSON.parse(jsonStr.trim());
-				// 只有当 overallScore 为 null 或 0 时才计算（避免重复计算已修正的数据）
-				if (parsed && (parsed.overallScore == null || parsed.overallScore === 0)) {
+				// AI 的 JSON 不含 overallScore 字段（由 calculateFinalScore 计算）
+				// 始终使用 calculateFinalScore 计算，确保与后端一致
+				if (parsed) {
 					parsed.overallScore = calculateFinalScore(parsed);
 				}
 				return parsed as AnalysisResult;
@@ -265,8 +266,8 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 
 			// 尝试直接解析
 			const fallback = JSON.parse(content.trim());
-			// 只有当 overallScore 为 null 或 0 时才计算（避免重复计算已修正的数据）
-			if (fallback && (fallback.overallScore == null || fallback.overallScore === 0)) {
+			// 同样始终使用 calculateFinalScore 计算
+			if (fallback) {
 				fallback.overallScore = calculateFinalScore(fallback);
 			}
 			return fallback as AnalysisResult;
