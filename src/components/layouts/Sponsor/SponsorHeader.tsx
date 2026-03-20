@@ -29,7 +29,7 @@ export default function SponsorHeader() {
 							className="text-white font-bold px-8 py-4 rounded-full shadow-lg transition-all duration-300 from-red-500 to-pink-500 bg-linear-to-r hover:shadow-xl hover:scale-105 dark:from-rose-600 dark:to-pink-600 hover:from-red-600 hover:to-pink-600 dark:hover:from-rose-500 dark:hover:to-pink-500"
 						>
 							<a
-								href="https://afdian.com/a/tianxiang"
+								href="https://ifdian.net/a/tianxiang"
 								target="_blank"
 								rel="noopener noreferrer"
 								className="flex gap-2 items-center"

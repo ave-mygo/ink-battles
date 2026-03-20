@@ -111,7 +111,7 @@ export default function OrderRedemption() {
 
 			<CardFooter className="bg-muted/10 p-6 border-t flex items-center justify-between">
 				<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary px-2" asChild>
-					<Link href="https://afdian.com/a/ink_battles" target="_blank" className="flex gap-1 items-center">
+					<Link href="https://ifdian.net/a/ink_battles" target="_blank" className="flex gap-1 items-center">
 						前往爱发电支持
 						{" "}
 						<ExternalLink className="h-3 w-3" />

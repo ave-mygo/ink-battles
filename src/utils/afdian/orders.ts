@@ -40,7 +40,7 @@ export async function getOrderDetails(orderNo: string): Promise<AfdianOrderData 
 	const params = JSON.stringify({ out_trade_no: orderNo });
 	const sign = md5(`${api_token}params${params}ts${ts}user_id${user_id}`);
 
-	const response = await fetch("https://afdian.com/api/open/query-order", {
+	const response = await fetch("https://ifdian.net/api/open/query-order", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({

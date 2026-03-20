@@ -9,7 +9,7 @@ export async function getSponsorData(page: number, per_page = 20) {
 	const params = JSON.stringify({ page, per_page });
 	const sign = md5(`${api_token}params${params}ts${ts}user_id${user_id}`);
 
-	const response = await fetch("https://afdian.com/api/open/query-sponsor", {
+	const response = await fetch("https://ifdian.net/api/open/query-sponsor", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
 		body: JSON.stringify({

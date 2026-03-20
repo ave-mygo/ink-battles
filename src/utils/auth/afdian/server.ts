@@ -54,7 +54,7 @@ export const loginOrRegisterWithAfdian = async (
 	}
 
 	try {
-		const response = await fetch("https://afdian.com/api/oauth2/access_token", {
+		const response = await fetch("https://ifdian.net/api/oauth2/access_token", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/x-www-form-urlencoded",
@@ -198,7 +198,7 @@ export const bindAfdianAccountWithCode = async (code: string): Promise<{ success
 			return { success: false, message: "用户未登录" };
 		}
 
-		const response = await fetch("https://afdian.com/api/oauth2/access_token", {
+		const response = await fetch("https://ifdian.net/api/oauth2/access_token", {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/x-www-form-urlencoded",

@@ -37,7 +37,7 @@ export default async function AfdianOAuthPage({ searchParams }: AfdianOAuthPageP
 	const { client_id, redirect_uri } = config.afdian;
 
 	// 构建爱发电授权 URL
-	const authUrl = new URL("https://afdian.com/oauth2/authorize");
+	const authUrl = new URL("https://ifdian.net/oauth2/authorize");
 	authUrl.searchParams.set("response_type", "code");
 	authUrl.searchParams.set("scope", "basic");
 	authUrl.searchParams.set("client_id", client_id);
