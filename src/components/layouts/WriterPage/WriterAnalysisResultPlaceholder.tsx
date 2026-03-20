@@ -22,7 +22,9 @@ export default function WriterAnalysisResultPlaceholder() {
 	const [tasks, setTasks] = useState<LocalTask[]>([]);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [canRefresh, setCanRefresh] = useState(true);
+	const [cooldownRemaining, setCooldownRemaining] = useState(0);
 	const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
+	const intervalRef = useRef<NodeJS.Timeout | null>(null);
 	const router = useRouter();
 	// 存储 setTasks 的稳定引用，避免在 useEffect 中直接调用
 	const setTasksRef = useRef(setTasks);
@@ -45,11 +47,14 @@ export default function WriterAnalysisResultPlaceholder() {
 		return () => window.removeEventListener("ink_battles_tasks_updated", handleUpdate);
 	}, []);
 
-	// 清理冷却 timer
+	// 清理所有 timer
 	useEffect(() => {
 		return () => {
 			if (cooldownTimerRef.current) {
 				clearTimeout(cooldownTimerRef.current);
+			}
+			if (intervalRef.current) {
+				clearInterval(intervalRef.current);
 			}
 		};
 	}, []);
@@ -64,10 +69,23 @@ export default function WriterAnalysisResultPlaceholder() {
 
 		setIsRefreshing(true);
 		setCanRefresh(false);
+		setCooldownRemaining(Math.ceil(REFRESH_COOLDOWN / 1000));
+
+		// 启动倒计时
+		intervalRef.current = setInterval(() => {
+			setCooldownRemaining((prev) => {
+				if (prev <= 1) {
+					clearInterval(intervalRef.current!);
+					return 0;
+				}
+				return prev - 1;
+			});
+		}, 1000);
 
 		// 启动冷却计时器
 		cooldownTimerRef.current = setTimeout(() => {
 			setCanRefresh(true);
+			setCooldownRemaining(0);
 		}, REFRESH_COOLDOWN);
 
 		try {
@@ -129,15 +147,14 @@ export default function WriterAnalysisResultPlaceholder() {
 		if (!task.resultId)
 			return;
 
-		// Clean up local task record
-		await deleteAnalysisTaskAction(task.taskId);
+		// Clean up local storage task record
 		const newTasks = tasks.filter(t => t.taskId !== task.taskId);
 		setTasks(newTasks);
 		localStorage.setItem("ink_battles_tasks", JSON.stringify(newTasks));
 		window.dispatchEvent(new Event("ink_battles_tasks_updated"));
 
-		// Navigate to result page with anchor
-		router.push(`/dashboard/history/${task.resultId}#analysis-results`);
+		// Navigate using taskId (one-time access token)
+		router.push(`/analysis/${task.taskId}#analysis-results`);
 	};
 
 	// 判断是否有进行中的任务
@@ -173,8 +190,26 @@ export default function WriterAnalysisResultPlaceholder() {
 							onClick={handleRefreshStatus}
 							disabled={!canRefresh || isRefreshing}
 						>
-							<RefreshCw className={`mr-1 h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`} />
-							{isRefreshing ? "更新中..." : "检查更新"}
+							{isRefreshing
+								? (
+									<>
+										<RefreshCw className="mr-1 h-3 w-3 animate-spin" />
+										刷新中...
+									</>
+								)
+								: cooldownRemaining > 0
+									? (
+										<>
+											<RefreshCw className="mr-1 h-3 w-3" />
+											刷新列表 ({cooldownRemaining}s)
+										</>
+									)
+									: (
+										<>
+											<RefreshCw className="mr-1 h-3 w-3" />
+											刷新列表
+										</>
+									)}
 						</Button>
 					)}
 				</div>

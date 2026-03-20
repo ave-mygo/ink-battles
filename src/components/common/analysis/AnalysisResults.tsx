@@ -115,7 +115,7 @@ export function AnalysisResults({
 					{analysisId
 						? (
 								<Button size="lg" className="text-base font-medium rounded-xl h-14 w-full shadow-md transition-all hover:shadow-lg hover:-translate-y-1" asChild>
-									<Link href={`/analysis/${analysisId}`}>
+									<Link href={`/dashboard/history/${analysisId}`}>
 										查看完整深度报告
 										<ArrowRight className="ml-2 h-5 w-5" />
 									</Link>

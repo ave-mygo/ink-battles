@@ -470,6 +470,7 @@ export async function getPublicRecordsForSitemap(): Promise<SitemapShareEntry[]>
  * 获取用于分析结果页的记录（放开未登录用户的查看限制，仅在有 uid 时验证所有权）
  * @param recordId 记录 ID
  * @returns 分析记录详情
+ * @deprecated 使用 getViewableAnalysisRecord 代替，支持指纹鉴权
  */
 export async function getAnalysisDetailForView(recordId: string): Promise<{
 	success: boolean;
@@ -497,6 +498,71 @@ export async function getAnalysisDetailForView(recordId: string): Promise<{
 		};
 	} catch (error) {
 		console.error("获取记录详情失败:", error);
+		return { success: false, message: "获取记录详情失败，请稍后重试" };
+	}
+}
+
+/**
+ * 通过任务 ID 获取分析记录（一次性访问令牌机制）
+ *
+ * 验证逻辑：
+ * 1. 检查 analysis_tasks 表中是否存在该任务记录
+ * 2. 如果存在且已完成，获取关联的 analysis_requests 记录
+ * 3. 访问成功后删除 analysis_tasks 中的记录（一次性令牌）
+ * 4. 返回的分析记录不包含原文内容
+ *
+ * @param taskId 任务 ID（用作访问令牌）
+ * @returns 分析记录详情（不包含原文）
+ */
+export async function getViewableAnalysisRecord(taskId: string): Promise<{
+	success: boolean;
+	data?: DatabaseAnalysisRecord;
+	message?: string;
+}> {
+	try {
+		// 1. 检查 analysis_tasks 表中是否存在该任务记录
+		const task = await db_findById(db_name, "analysis_tasks", taskId);
+
+		if (!task) {
+			return { success: false, message: "访问链接无效或已过期" };
+		}
+
+		// 2. 检查任务状态
+		if (task.status !== "completed") {
+			return { success: false, message: `分析任务${task.status === "failed" ? "失败" : "处理中"}，请稍后再试` };
+		}
+
+		// 3. 获取关联的分析记录
+		if (!task.resultId) {
+			return { success: false, message: "分析记录不存在" };
+		}
+
+		const record = await db_findById(db_name, db_table, task.resultId);
+		if (!record) {
+			return { success: false, message: "分析记录不存在" };
+		}
+
+		// 4. 删除任务记录（一次性访问令牌）
+		await db_delete(db_name, "analysis_tasks", { _id: task._id });
+
+		// 5. 移除原文内容后返回
+		const recordWithoutOriginalText = {
+			...record,
+			article: {
+				...record.article,
+				input: {
+					...record.article.input,
+					articleText: "", // 移除原文内容
+				},
+			},
+		};
+
+		return {
+			success: true,
+			data: serializeRecord(recordWithoutOriginalText),
+		};
+	} catch (error) {
+		console.error("[getViewableAnalysisRecord] 获取记录详情失败:", error);
 		return { success: false, message: "获取记录详情失败，请稍后重试" };
 	}
 }

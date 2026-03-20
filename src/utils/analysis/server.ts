@@ -1,16 +1,18 @@
 "use server";
 
-import crypto from "crypto-js";
+import type { AnalysisResult } from "@/types/ai";
 
+import crypto from "crypto-js";
 import { ObjectId } from "mongodb";
 import { headers } from "next/headers";
 import { after } from "next/server";
 import OpenAI from "openai";
-import { getGradingModelById } from "@/config";
 
+import { getGradingModelById } from "@/config";
 import { buildSystemPrompt, calculateFinalScore, getModeInstructions } from "@/lib/ai";
 import { db_name, db_table } from "@/lib/constants";
 import { db_delete, db_find, db_findById, db_insert, db_update } from "@/lib/db";
+import { parseModelOutput } from "@/lib/json-parser";
 import { getCurrentUserInfo } from "@/utils/auth/server";
 import { deductCallBalance, hasAvailableCalls } from "@/utils/billing/server";
 import "server-only";
@@ -18,9 +20,6 @@ import "server-only";
 // 预编译正则表达式，避免每次调用时重新编译
 const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
 const MODEL_PREFIX_REGEX = /^(按次|公益)-/;
-const SSE_DATA_PREFIX_REGEX = /^data:\s*/;
-const CODE_BLOCK_REGEX = /```json\n?([\s\S]+?)\n?```/;
-const JSON_OBJECT_REGEX = /\{[\s\S]+\}/;
 
 export interface SubmitAnalysisInput {
 	articleText: string;
@@ -210,29 +209,19 @@ async function updateDatabaseWithResult({
 		throw new Error("任务记录不存在");
 	}
 
-	let jsonContent = accumulatedContent;
+	// 使用健壮的 JSON 解析器处理 AI 输出
+	const parseResult = parseModelOutput<AnalysisResult>(accumulatedContent);
 
-	// 0. 首先处理 SSE 格式（移除 "data: " 前缀）
-	if (jsonContent.trim().startsWith("data: ")) {
-		jsonContent = jsonContent.replace(SSE_DATA_PREFIX_REGEX, "");
+	if (!parseResult.ok || !parseResult.data) {
+		console.error("JSON 解析失败，原始内容:", accumulatedContent, "警告:", parseResult.warnings);
+		throw new Error(`无效的 JSON 格式: ${parseResult.warnings.join(", ")}`);
 	}
 
-	const codeBlockMatch = jsonContent.match(CODE_BLOCK_REGEX);
-	if (codeBlockMatch) {
-		jsonContent = codeBlockMatch[1].trim();
-	} else {
-		const jsonObjectMatch = jsonContent.match(JSON_OBJECT_REGEX);
-		if (jsonObjectMatch) {
-			jsonContent = jsonObjectMatch[0].trim();
-		}
-	}
+	const parsedResult = parseResult.data;
 
-	let parsedResult;
-	try {
-		parsedResult = JSON.parse(jsonContent);
-	} catch {
-		console.error("JSON 解析失败，原始内容:", jsonContent);
-		throw new Error("无效的 JSON 格式");
+	// 记录被移除的无效条目（如无效的 mermaid 图表）
+	if (parseResult.removed.length > 0) {
+		console.warn(`[${taskId}] 已移除 ${parseResult.removed.length} 个无效条目:`, parseResult.removed);
 	}
 
 	if (!isValidAnalysisResult(parsedResult)) {
