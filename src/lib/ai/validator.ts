@@ -1,7 +1,7 @@
 "use server";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
-import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto-js";
+import OpenAI from "openai";
 import { getConfig } from "@/config";
 import { db_name, db_table } from "@/lib/constants";
 import { db_find, db_insert, ensureTTLIndex } from "@/lib/db";
@@ -10,6 +10,16 @@ import "server-only";
 
 const AppConfig = getConfig();
 
+// 预编译正则表达式，避免每次调用时重新编译
+const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
+const CODE_BLOCK_REGEX = /```json\n?([\s\S]*?)\n?```/;
+const JSON_OBJECT_REGEX = /\{[\s\S]*\}/;
+const CODE_BLOCK_START_REGEX = /^```json\n?/;
+const CODE_BLOCK_END_REGEX = /\n?```$/;
+const CODE_BLOCK_BACKTICK_START_REGEX = /^```\n?/;
+const SSE_DATA_PREFIX_REGEX = /^data:\s*/;
+const JSON_MATCH_REGEX = /data:\s*(\{[\s\S]*\})/;
+
 /**
  * 验证文章内容的有效性
  * @param articleText 文章文本
@@ -17,6 +27,7 @@ const AppConfig = getConfig();
  * @param modelId 模型ID
  * @param modelName 模型名称
  * @param fingerprint 用户指纹
+ * @param enableSearch 是否启用搜索（默认 true）
  * @returns 验证结果
  */
 export const verifyArticleValue = async (
@@ -25,13 +36,14 @@ export const verifyArticleValue = async (
 	modelId: string,
 	modelName: string,
 	fingerprint: string,
+	enableSearch: boolean = true,
 ): Promise<{
 	success: boolean;
 	error?: string;
 	session?: string;
 }> => {
 	// 1. 基础预处理
-	const normalizedText = articleText.replace(/[\s\p{P}\p{S}]/gu, "");
+	const normalizedText = articleText.replace(NORMALIZE_TEXT_REGEX, "");
 	const sha1 = crypto.SHA1(normalizedText).toString();
 
 	// 2. 查缓存（优先使用 modelName，兼容旧数据的 modelId）
@@ -54,27 +66,22 @@ export const verifyArticleValue = async (
 		return { success: true };
 	}
 
-	// 3. 初始化 Google GenAI 客户端
-	const client = new GoogleGenAI({
-		apiKey: AppConfig.system_models.validator.api_key,
-		httpOptions: {
-			baseUrl: AppConfig.system_models.validator.base_url,
-		},
+	// 3. 根据 enableSearch 选择使用哪个模型配置
+	const modelConfig = enableSearch
+		? AppConfig.system_models.validator
+		: AppConfig.system_models.validator_only;
+
+	// 3. 初始化 OpenAI 客户端
+	const client = new OpenAI({
+		apiKey: modelConfig.api_key,
+		baseURL: modelConfig.base_url,
 	});
 
-	const validatorModelName: string = AppConfig.system_models.validator.model || "gemini-2.0-flash";
+	const validatorModelName: string = modelConfig.model || "gemini-2.0-flash";
 
 	try {
-		const response = await client.models.generateContent({
-			model: validatorModelName,
-			config: {
-				// 启用 Google 搜索接地
-				tools: [
-					{
-						googleSearch: {},
-					},
-				],
-				systemInstruction: `你是一个严格的内容验证专家。请分析用户输入的文本内容，判断其有效性，并在必要时使用 Google 搜索工具查找相关资料并总结关键信息。
+		// 构建提示词 - 根据是否启用搜索来决定是否包含搜索相关指导
+		const validationGuide = `你是一个严格的内容验证专家。请分析用户输入的文本内容，判断其有效性。
 
 ### 1. 内容有效性校验
 - **核心目标**：拦截一切明显无意义或会严重浪费Tokens的内容。
@@ -85,14 +92,16 @@ export const verifyArticleValue = async (
 - **判定为"有效"的情况（即使内容不完整或非传统文章形式，只要有意义，均视为有效）**：
   - 程序代码、配置文件、日志片段、命令行输出、公式、列表、片段化笔记、短语、单个句子等。
   - 任何非上述"无效"规则涵盖的内容。
+`;
 
+		const searchGuide = `
 ### 2. 搜索执行与总结
 - **何时搜索**：
   - **经典文章**：原文来自知名文学作品、历史文献、学术论文、教科书、百科全书、正式出版物等 → **必须搜索**
   - **同人作品**：基于现有作品或流行文化的二次创作 → **必须搜索**
   - **再创作/改编**：基于现有文章或故事的改编、改写、翻译 → **必须搜索**
   - **原创/短文**：明显为独立创作，或篇幅极短、信息量有限 → **无需搜索**
-  
+
 - **如何总结搜索结果**：
   - 提取3-8个关键词（核心人物、作品名称、重要概念、时代背景、作者名等）执行搜索
   - 仔细阅读搜索结果
@@ -103,50 +112,18 @@ export const verifyArticleValue = async (
     * 相关的重要事实或历史背景
     * 其他有助于理解文章的关键信息
   - 总结应简洁但包含关键事实，100-500字为宜
-**作者来源判断与保险机制（补充规则）**：
+`;
+
+		const authorGuide = `
+### 2. 作者来源判断与保险机制
 
 - **作者身份的基本判断原则**：
   - 在未获得**明确、可验证的现实证据**之前，**不得**将用户提交的文本直接判定为某一现实作家或既有作品的创作成果。
   - 文本在风格、语言、主题上与现实作家或经典作品存在相似性，**不构成**作者归属判断的充分条件。
 
-- **不确定来源情形的处理方式**：
-  - 若经检索后，无法确认文本对应某一已知作品或已发表文本，应明确视为**来源不确定文本**。
-  - 在来源不确定的情况下，允许作出如下说明性判断：
-    - 该文本基本可推断为用户原创作品；
-    - 亦不排除为高完成度的未发表创作；
-    - 但不得作出任何确定性的作者归属结论。
-
-- **防止误归因的安全要求**：
-  - 不得因文本完成度较高、技巧成熟，而自动推定其作者为现实中的知名作家。
-  - 不得使用"出自某某之手""显然为某作家作品"等确定性表述，除非存在清晰、可核查的事实依据。
-
 - **价值判断与作者判断的分离原则**：
   - 对文本写作水准、技巧成熟度、思想深度的评价，**必须**与作者身份判断相互独立。
   - 即便无法确认作者来源，仍可在不涉及具体归属的前提下，认可文本所体现的写作能力与完成度。
-
-- **总则**：
-  - 在任何存在判断不确定性的情况下，应优先采用**保守、去归因化**的表述方式，明确说明信息不足，而非作出推断性结论。
-
-**创作大纲与规划性文本的评分适用性说明（补充规则）**：
-
-- **文本类型识别原则**：
-  - 若用户提交的文本主要以情节提要、章节规划、世界观设定、人物关系说明、创作构想说明或整体结构蓝图为主要内容，而非完整展开的叙事文本、诗歌文本或成品章节，应视为**创作大纲或规划性文本**。
-  - 判断依据以文本的功能取向为准，即其目的是否在于"规划如何写"，而非"实际写出文本本身"。
-
-- **评分适用性声明**：
-  - 对创作大纲或规划性文本，系统仍可基于其构想完整度、结构清晰度与创意密度进行评分。
-  - **但必须明确标注：该评分仅反映构想层面的潜力与设计能力，不等同于成品文本质量，其结果不具有代表性**。
-
-- **防止完成度误判的约束要求**：
-  - 不得因文本结构完整、主题集中或设定密集，而将其评分结果直接等同于已完成作品的文学成熟度。
-  - 不得将大纲类文本的高分解释为文笔成熟、语言完成度高或已具备出版级文本质量。
-
-- **评分用途限制说明**：
-  - 大纲文本的评分结果不应作为横向比较不同作者文本水平、判断作品完成度或推断真实创作能力上限的直接依据。
-  - 该评分仅可用于辅助理解创作构想的方向性、复杂度与潜在展开价值。
-
-- **总则**：
-  - 在文本尚未以完整叙事或完整诗歌形式呈现之前，应始终区分"构想表现"与"文本实现"，避免因体裁阶段差异导致评分解释失真。
 
 ### 3. 结果返回格式
 请严格按照以下JSON格式返回结果：
@@ -155,70 +132,87 @@ export const verifyArticleValue = async (
 {
   "success": true, // 或 false
   "message": "如果success为false，提供具体原因；否则留空或简述类型。",
-  "searchSummary": "如果执行了搜索，在此总结搜索发现的关键信息；否则留空。"
+  "searchSummary": ""
 }
 \`\`\`
+`;
 
-**重要**：searchSummary 应该是你对搜索结果的总结，而不是搜索结果的原始内容。
-`,
-			},
-			contents: [
-				{
-					role: "user",
-					parts: [{ text: articleText }],
-				},
+		const systemInstruction = enableSearch
+			? `${validationGuide}运用自带的搜索能力提取相关资料并总结关键信息。${searchGuide}${authorGuide}`
+			: `${validationGuide}${authorGuide}`;
+
+		// 构建 API 请求参数
+		const requestBody: any = {
+			model: validatorModelName,
+			messages: [
+				{ role: "system", content: systemInstruction },
+				{ role: "user", content: articleText },
 			],
-		});
+		};
 
-		// 修正点：Node.js SDK 中通过 response.text 获取文本，需要手动解析 JSON
-		const rawText = response.text;
+		// 如果启用搜索，添加 tools 参数；否则添加 response_format
+		if (enableSearch) {
+			requestBody.tools = [
+				{
+					type: "function",
+					function: {
+						name: "googleSearch",
+					},
+				},
+			];
+		} else {
+			requestBody.response_format = { type: "json_object" };
+		}
+
+		const response = await client.chat.completions.create(requestBody);
+
+		// 防御性检查：验证响应对象的完整性
+		if (!response) {
+			console.error("AI验证服务返回空响应");
+			return { success: false, error: "AI验证服务无响应" };
+		}
+
+		if (!Array.isArray(response.choices) || response.choices.length === 0) {
+			console.error("AI验证服务返回异常响应结构", {
+				hasChoices: !!response.choices,
+				choicesLength: Array.isArray(response.choices) ? response.choices.length : "N/A",
+				responseKeys: Object.keys(response),
+			});
+			return { success: false, error: "AI验证服务返回了无效响应结构" };
+		}
+
+		const rawText = response.choices[0]?.message?.content || "";
+
+		console.log("AI验证原始返回内容:", rawText);
 
 		if (!rawText) {
 			console.error("AI验证返回内容为空");
 			return { success: false, error: "AI验证服务无响应" };
 		}
 
-		// 提取 Google 搜索引擎使用的网页信息
-		let searchWebPages: Array<{ uri: string; title?: string }> = [];
-		try {
-			// 从响应的候选答案中提取 groundingMetadata
-			if (response.candidates?.[0]?.groundingMetadata) {
-				const groundingMetadata = response.candidates[0].groundingMetadata;
-
-				// 提取搜索入口点（searchEntryPoint）中的渲染内容
-				if (groundingMetadata.searchEntryPoint) {
-					// 搜索入口点通常包含渲染的HTML内容，但我们主要关注groundingChunks
-				}
-
-				// 提取 groundingChunks 中的网页信息
-				if (groundingMetadata.groundingChunks) {
-					searchWebPages = groundingMetadata.groundingChunks
-						.filter((chunk: any) => chunk.web)
-						.map((chunk: any) => ({
-							uri: chunk.web.uri,
-							title: chunk.web.title || undefined,
-						}));
-				}
-			}
-		} catch (error) {
-			console.warn("提取搜索网页信息失败:", error);
-		}
+		const searchWebPages: Array<{ uri: string; title?: string }> = [];
 
 		// 更健壮的 JSON 提取逻辑
+		// 0. 首先处理 SSE 格式（移除 "data: " 前缀）
+		let processedText = rawText;
+		if (processedText.trim().startsWith("data: ")) {
+			processedText = processedText.replace(SSE_DATA_PREFIX_REGEX, "").trim();
+		}
+
 		// 1. 尝试从 Markdown 代码块中提取 (优化正则避免回溯)
-		const codeBlockMatch = rawText.match(/```json\n?([\s\S]*?)\n?```/);
+		const codeBlockMatch = processedText.match(CODE_BLOCK_REGEX);
 		let jsonContent: string;
 
 		if (codeBlockMatch) {
 			jsonContent = codeBlockMatch[1].trim();
 		} else {
 			// 2. 尝试直接匹配 JSON 对象
-			const jsonObjectMatch = rawText.match(/\{[\s\S]*\}/);
+			const jsonObjectMatch = processedText.match(JSON_OBJECT_REGEX);
 			if (jsonObjectMatch) {
 				jsonContent = jsonObjectMatch[0].trim();
 			} else {
 				// 3. 回退到原始文本（去除代码块标记）
-				jsonContent = rawText.replace(/^```json\n?/, "").replace(/^```\n?/, "").replace(/\n?```$/, "").trim();
+				jsonContent = processedText.replace(CODE_BLOCK_START_REGEX, "").replace(CODE_BLOCK_BACKTICK_START_REGEX, "").replace(CODE_BLOCK_END_REGEX, "").trim();
 			}
 		}
 
@@ -263,10 +257,33 @@ export const verifyArticleValue = async (
 			session,
 		};
 	} catch (error: any) {
-		console.error("Gemini Verify Error:", error);
+		console.error("Verify Error (API调用失败或内部处理异常):", error);
+		console.error("Error Stack:", error?.stack);
+		console.log();
+
+		// 清理错误消息中的 SSE 格式内容
+		let errorMessage = error?.message || "验证服务连接失败";
+		if (errorMessage.includes("is not valid JSON") && errorMessage.includes("data:")) {
+			errorMessage = "API节点返回了无法解析的数据格式（建议检查模型代理配置，或代理服务器返回了未预期的错误格式）";
+		} else if (errorMessage.startsWith("data: ")) {
+			// 尝试提取 JSON 部分
+			const jsonMatch = errorMessage.match(JSON_MATCH_REGEX);
+			if (jsonMatch) {
+				try {
+					const parsed = JSON.parse(jsonMatch[1]);
+					errorMessage = parsed.error || parsed.message || errorMessage;
+				} catch {
+					// 解析失败，使用清理后的文本
+					errorMessage = errorMessage.replace(SSE_DATA_PREFIX_REGEX, "").substring(0, 200);
+				}
+			} else {
+				errorMessage = errorMessage.replace(SSE_DATA_PREFIX_REGEX, "").substring(0, 200);
+			}
+		}
+
 		return {
 			success: false,
-			error: error?.message || "验证服务连接失败",
+			error: errorMessage,
 		};
 	}
 };
