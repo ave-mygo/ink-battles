@@ -3,6 +3,9 @@
 import { BarChart3 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+// 预编译正则表达式，避免每次调用时重新编译
+const CHINESE_ONLY_REGEX = /[^\u4E00-\u9FA5]/g;
+
 /**
  * 分数对应的颜色类
  */
@@ -59,7 +62,7 @@ export function DimensionsCard({ dimensions }: DimensionsCardProps) {
 			<CardContent className="space-y-4">
 				{dimensions.map((dim) => {
 					const getMaxScore = (dimensionName: string): number => {
-						const cleanName = dimensionName.replace(/[^\u4E00-\u9FA5]/g, "");
+						const cleanName = dimensionName.replace(CHINESE_ONLY_REGEX, "");
 						switch (cleanName) {
 							case "经典性":
 								return 2;

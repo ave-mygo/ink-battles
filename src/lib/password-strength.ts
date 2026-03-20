@@ -1,12 +1,18 @@
 import type { PasswordStrength } from "@/types/common/password";
 
+// 预编译正则表达式，避免每次调用时重新编译
+const LOWERCASE_REGEX = /[a-z]/;
+const UPPERCASE_REGEX = /[A-Z]/;
+const NUMBER_REGEX = /\d/;
+const SPECIAL_REGEX = /[^a-z0-9]/i;
+
 /**
  * 密码要求配置
  */
 export const PASSWORD_REQUIREMENTS = {
 	minLength: 8,
 	maxLength: 128,
-	// 仅用于提示展示，不做强制：校验规则改为“长度达标 + 任意两类”
+	// 仅用于提示展示，不做强制：校验规则改为"长度达标 + 任意两类"
 	requireLowercase: true,
 	requireUppercase: true,
 	requireNumber: true,
@@ -19,11 +25,11 @@ export const PASSWORD_REQUIREMENTS = {
 export const calculatePasswordStrength = (password: string): PasswordStrength => {
 	const requirements = {
 		length: password.length >= PASSWORD_REQUIREMENTS.minLength,
-		lowercase: /[a-z]/.test(password),
-		uppercase: /[A-Z]/.test(password),
-		number: /\d/.test(password),
-		// “特殊字符”定义为非字母、非数字（不区分大小写），且排除点号 '.'
-		special: /[^a-z0-9]/i.test(password),
+		lowercase: LOWERCASE_REGEX.test(password),
+		uppercase: UPPERCASE_REGEX.test(password),
+		number: NUMBER_REGEX.test(password),
+		// "特殊字符"定义为非字母、非数字（不区分大小写），且排除点号 '.'
+		special: SPECIAL_REGEX.test(password),
 	};
 
 	const feedback: string[] = [];

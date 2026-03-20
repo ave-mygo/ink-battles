@@ -16,6 +16,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 
+// 预编译正则表达式，避免每次调用时重新编译
+const CHINESE_ONLY_REGEX = /[^\u4E00-\u9FA5]/g;
+
 function getScoreColor(score: number): string {
 	if (score >= 80)
 		return "text-green-600 dark:text-green-400";
@@ -233,7 +236,7 @@ export function ScoreCard({
 					<div className="mb-4 mt-4">
 						{(() => {
 							const normalize = (name: string, score: number) => {
-								const cleanName = name.replace(/[^\u4E00-\u9FA5]/g, "");
+								const cleanName = name.replace(CHINESE_ONLY_REGEX, "");
 								// 经典性上限 2，新锐性上限 1.5，其余上限 5
 								const max = cleanName === "经典性" ? 2 : cleanName === "新锐性" ? 1.5 : 5;
 								// 映射到 0..5：score/max * 5

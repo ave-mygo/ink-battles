@@ -1,5 +1,8 @@
 import * as React from "react";
 
+// 预编译正则表达式，避免每次调用时重新编译
+const COLON_REGEX = /:/g;
+
 interface RadarChartProps {
 	/** 维度标签 */
 	labels: string[];
@@ -35,7 +38,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
 
 	const polygonPoints = values.map((v, i) => pointFor(i, v)).map(p => `${p.x},${p.y}`).join(" ");
 	// 生成一个唯一的ID，防止页面上有多个图表时渐变ID冲突
-	const chartId = React.useId().replace(/:/g, "");
+	const chartId = React.useId().replace(COLON_REGEX, "");
 
 	return (
 		<svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="mx-auto overflow-visible">

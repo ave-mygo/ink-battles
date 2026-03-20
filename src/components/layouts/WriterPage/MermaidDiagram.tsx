@@ -8,6 +8,10 @@ import { Component, useCallback, useEffect, useId, useRef, useState } from "reac
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+// 预编译正则表达式，避免每次调用时重新编译
+const SEMICOLON_REGEX = /;/g;
+const COLON_DASH_REGEX = /:/g;
+
 // 初始化 mermaid 配置
 mermaid.initialize({
 	startOnLoad: false,
@@ -111,8 +115,8 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 	}, []);
 
 	// 触摸缩放状态（移动端）
-	const lastTouchDistance = useRef<number | null>(null);
-	const lastScale = useRef(scale);
+	const touchDistanceRef = useRef<number | null>(null);
+	const lastScaleRef = useRef(scale);
 
 	// 计算两指间距离
 	const getTouchDistance = useCallback((touches: TouchList) => {
@@ -126,19 +130,19 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 	// 触摸开始
 	const handleTouchStart = useCallback((e: TouchEvent) => {
 		if (e.touches.length === 2) {
-			lastTouchDistance.current = getTouchDistance(e.touches);
-			lastScale.current = scale;
+			touchDistanceRef.current = getTouchDistance(e.touches);
+			lastScaleRef.current = scale;
 		}
 	}, [getTouchDistance, scale]);
 
 	// 触摸移动（双指缩放）
 	const handleTouchMove = useCallback((e: TouchEvent) => {
-		if (e.touches.length === 2 && lastTouchDistance.current !== null) {
+		if (e.touches.length === 2 && touchDistanceRef.current !== null) {
 			e.preventDefault();
 			const currentDistance = getTouchDistance(e.touches);
 			if (currentDistance !== null) {
-				const scaleRatio = currentDistance / lastTouchDistance.current;
-				const newScale = Math.min(Math.max(lastScale.current * scaleRatio, MIN_SCALE), MAX_SCALE);
+				const scaleRatio = currentDistance / touchDistanceRef.current;
+				const newScale = Math.min(Math.max(lastScaleRef.current * scaleRatio, MIN_SCALE), MAX_SCALE);
 				setScale(newScale);
 			}
 		}
@@ -146,7 +150,7 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 
 	// 触摸结束
 	const handleTouchEnd = useCallback(() => {
-		lastTouchDistance.current = null;
+		touchDistanceRef.current = null;
 	}, []);
 
 	// 绑定滚轮和触摸事件
@@ -176,7 +180,7 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 
 			try {
 				// 将分号分隔的代码转换为换行分隔
-				const formattedCode = code.replace(/;/g, "\n");
+				const formattedCode = code.replace(SEMICOLON_REGEX, "\n");
 
 				// 验证语法
 				const isValid = await mermaid.parse(formattedCode);
@@ -186,7 +190,7 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 				}
 
 				// 生成唯一 ID
-				const diagramId = `mermaid-${uniqueId.replace(/:/g, "-")}`;
+				const diagramId = `mermaid-${uniqueId.replace(COLON_DASH_REGEX, "-")}`;
 
 				// 渲染图表
 				const { svg } = await mermaid.render(diagramId, formattedCode);
@@ -270,7 +274,7 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 			>
 				<div
 					ref={containerRef}
-					className={`p-2 w-full origin-top-left transition-transform sm:p-4 ${!isRendered ? "min-h-[100px] animate-pulse" : ""}`}
+					className={`p-2 w-full origin-top-left transition-transform sm:p-4 ${!isRendered ? "min-h-25 animate-pulse" : ""}`}
 					style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}
 				/>
 			</div>

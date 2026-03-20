@@ -7,6 +7,9 @@ import { isPasswordValid } from "@/lib/password-strength";
 import { SendVerificationEmail, VerifyEmailCode } from "../common/mail";
 import "server-only";
 
+// 预编译正则表达式，避免每次调用时重新编译
+const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/u;
+
 /**
  * 发送密码重置验证码
  */
@@ -16,8 +19,7 @@ export async function sendResetPasswordCode(email: string) {
 		const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
 		// 验证邮箱格式
-		const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/u;
-		if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
+		if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
 			return { success: false, message: "请输入有效的邮箱地址" };
 		}
 

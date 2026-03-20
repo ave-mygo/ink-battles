@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { getConfig } from "@/config";
 
+// 预编译正则表达式，避免每次调用时重新编译
+const TRAILING_SLASH_REGEX = /\/$/;
+
 type Locale = "zh-CN" | "zh" | "en-US";
 
 export interface BasicPageInfo {
@@ -20,7 +23,7 @@ export function getSiteUrl(): string {
 	const base = getConfig().app.base_url || "http://localhost:3000";
 	// 使用 URL 对象规范化，确保格式正确
 	const url = new URL(base);
-	return url.origin + url.pathname.replace(/\/$/, "");
+	return url.origin + url.pathname.replace(TRAILING_SLASH_REGEX, "");
 }
 
 /**

@@ -3,19 +3,20 @@
 import type { AnalysisResult, ScorePercentileResult } from "@/types/ai";
 import type { GradingModelConfig } from "@/types/common/config";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { AnalysisResults } from "@/components/common/analysis/AnalysisResults";
-import StreamingDisplay from "@/components/layouts/WriterPage/streaming-display";
 import WriterAnalysisHeader from "@/components/layouts/WriterPage/WriterAnalysisHeader";
 import WriterAnalysisInput from "@/components/layouts/WriterPage/WriterAnalysisInput";
 import WriterAnalysisModes from "@/components/layouts/WriterPage/WriterAnalysisModes";
 import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/WriterAnalysisResultPlaceholder";
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
-import { getScorePercentile, verifyArticleValue } from "@/lib/ai";
 import { getFingerprintId } from "@/lib/fingerprint";
-import { calculateFinalScore } from "@/lib/utils-client";
+import { submitAnalysisAction } from "@/utils/analysis";
+
+// 预编译正则表达式，避免每次调用时重新编译
+const NEWLINE_REGEX = /\n/g;
 
 interface WriterAnalysisSystemProps {
 	availableGradingModels: GradingModelConfig[];
@@ -113,27 +114,44 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 	const [currentAnalysisModelName, setCurrentAnalysisModelName] = useState<string>("");
 	const [isModesExpanded, setIsModesExpanded] = useState(false);
 	const [selectedModeName, setSelectedModeName] = useState<string[]>([]);
-	const [streamContent, setStreamContent] = useState("");
-	const [showStreamingDisplay, setShowStreamingDisplay] = useState(false);
-	const [isError, setIsError] = useState(false);
-	const [isCompleted, setIsCompleted] = useState(false);
-	const [progress, setProgress] = useState(0);
-	const [retryCount, setRetryCount] = useState(0);
-	const [abortController, setAbortController] = useState<AbortController | null>(null);
+	const [analysisId, setAnalysisId] = useState<string | null>(null);
 	const [searchInfo, setSearchInfo] = useState<{
 		searchResults?: string;
 		searchWebPages?: Array<{ uri: string; title?: string }>;
 	} | null>(null);
 	const [percentileData, setPercentileData] = useState<ScorePercentileResult | null>(null);
-
-	const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const isCancelledRef = useRef(false);
-	const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	const [enableSearch, setEnableSearch] = useState(true);
 	// 缓存校验结果，重试时跳过校验
 	const verifyResultRef = useRef<{
 		session: string;
 		fingerprint: string;
 	} | null>(null);
+	// 防抖 timer，用于文本长度检查
+	const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+	// 防抖：当文本长度超过 3 万字时自动关闭搜索
+	useEffect(() => {
+		// 清除之前的 timer
+		if (searchDebounceRef.current) {
+			clearTimeout(searchDebounceRef.current);
+		}
+
+		// 设置新的防抖 timer（500ms 延迟）
+		searchDebounceRef.current = setTimeout(() => {
+			const TEXT_LIMIT = 30000;
+			if (articleText.length > TEXT_LIMIT && enableSearch) {
+				setEnableSearch(false);
+				toast.info("文本长度超过3万字，已自动关闭联网搜索校验");
+			}
+		}, 500);
+
+		// 清理函数
+		return () => {
+			if (searchDebounceRef.current) {
+				clearTimeout(searchDebounceRef.current);
+			}
+		};
+	}, [articleText, enableSearch]);
 	const DEFAULT_INDEX = 2;
 	const fallbackModelId = availableGradingModels[DEFAULT_INDEX]?.id
 		?? availableGradingModels[0]?.id
@@ -210,335 +228,15 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 	};
 
 	const handleClear = () => {
-		if (abortController) {
-			abortController.abort();
-			setAbortController(null);
-		}
-		if (retryTimeoutRef.current) {
-			clearTimeout(retryTimeoutRef.current);
-			retryTimeoutRef.current = null;
-		}
-		isCancelledRef.current = true;
-		if (progressIntervalRef.current) {
-			clearInterval(progressIntervalRef.current);
-			progressIntervalRef.current = null;
-		}
-
 		setArticleText("");
 		setSelectedMode([]);
 		setSelectedModeName([]);
 		setAnalysisResult(null);
 		setSearchInfo(null);
 		setPercentileData(null);
-		setStreamContent("");
-		setShowStreamingDisplay(false);
-		setIsError(false);
-		setIsCompleted(false);
-		setProgress(0);
-		setRetryCount(0);
+		setAnalysisId(null);
 		verifyResultRef.current = null;
 		toast.success("已清除所有内容");
-	};
-
-	const resetAnalysisState = () => {
-		setIsError(false);
-		setIsCompleted(false);
-		setProgress(0);
-		setStreamContent("");
-	};
-
-	// 简化的结果解析，不再需要处理流式标记
-	const parseStreamedResult = (content: string): AnalysisResult | null => {
-		try {
-			// 尝试匹配 Markdown JSON 代码块
-			const jsonMatch = content.match(/```json\n?([\s\S]+?)\n?```/) || content.match(/\{[\s\S]+\}/);
-
-			if (jsonMatch) {
-				const jsonStr = jsonMatch[1] || jsonMatch[0];
-				const parsed = JSON.parse(jsonStr.trim());
-				// AI 的 JSON 不含 overallScore 字段（由 calculateFinalScore 计算）
-				// 始终使用 calculateFinalScore 计算，确保与后端一致
-				if (parsed) {
-					parsed.overallScore = calculateFinalScore(parsed);
-				}
-				return parsed as AnalysisResult;
-			}
-
-			// 尝试直接解析
-			const fallback = JSON.parse(content.trim());
-			// 同样始终使用 calculateFinalScore 计算
-			if (fallback) {
-				fallback.overallScore = calculateFinalScore(fallback);
-			}
-			return fallback as AnalysisResult;
-		} catch (error) {
-			console.error("解析结果失败，内容可能不完整:", error);
-			return null;
-		}
-	};
-
-	const simulateProgress = (startTime: number) => {
-		const interval = setInterval(() => {
-			const elapsed = Date.now() - startTime;
-			const expectedDuration = 60000;
-			// 限制进度最大到 90%，剩余由真实流驱动
-			const progressValue = Math.min(90, (elapsed / expectedDuration) * 100);
-			setProgress(progressValue);
-
-			if (progressValue >= 90) {
-				clearInterval(interval);
-			}
-		}, 1000);
-		return interval;
-	};
-
-	const performAnalysis = async (isRetry = false): Promise<void> => {
-		if (isCancelledRef.current)
-			return;
-
-		const controller = new AbortController();
-		setAbortController(controller);
-
-		if (!isRetry) {
-			resetAnalysisState();
-		} else {
-			setIsError(false);
-			setIsCompleted(false);
-		}
-
-		const startTime = Date.now();
-		const progressInterval = simulateProgress(startTime);
-		progressIntervalRef.current = progressInterval as unknown as ReturnType<typeof setInterval>;
-
-		try {
-			let fingerprint: string;
-			let session: string;
-
-			// 重试时跳过校验，使用缓存的结果
-			if (isRetry && verifyResultRef.current) {
-				setStreamContent(prev => `${prev}重试分析，跳过校验...\n`);
-				({ fingerprint, session } = verifyResultRef.current);
-			} else {
-				setStreamContent(prev => `${prev}开始分析，校验文章内容...\n`);
-
-				fingerprint = await getFingerprintId();
-				// 获取当前选中模型的名称
-				const currentModel = availableGradingModels.find(model => model.id === selectedModelId);
-				const currentModelName = currentModel?.model || "";
-				// 保存当前分析使用的模型名称
-				setCurrentAnalysisModelName(currentModelName);
-				const verifyResult = await verifyArticleValue(articleText, selectedModeName.join(","), selectedModelId, currentModelName, fingerprint);
-
-				if (!verifyResult.success) {
-					throw new Error(`校验失败: ${verifyResult.error || "文章内容不符合分析标准"}`);
-				}
-
-				// 缓存校验结果供重试使用
-				session = verifyResult.session || "";
-				verifyResultRef.current = { session, fingerprint };
-			}
-
-			setStreamContent(prev => `${prev}${isRetry ? "" : "校验通过，"}正在分析中...\n`);
-			setProgress(10);
-
-			const timeoutId = setTimeout(() => controller.abort(), 120000); // 2分钟总超时
-
-			const response = await fetch("/api/analyze-stream", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"X-Fingerprint": fingerprint,
-					"X-Session": session,
-				},
-				body: JSON.stringify({
-					articleText,
-					mode: selectedModeName.join(","),
-					modelId: selectedModelId,
-				}),
-				signal: controller.signal,
-			});
-
-			clearTimeout(timeoutId);
-
-			if (!response.ok) {
-				// 兼容处理：尝试解析 JSON 响应，或处理可能的 SSE 格式错误
-				let errorData: Record<string, unknown> = {};
-				const rawText = await response.text();
-
-				try {
-					// 尝试直接解析 JSON
-					errorData = JSON.parse(rawText);
-				} catch {
-					// JSON 解析失败，尝试处理 SSE 格式（带 "data: " 前缀）
-					// 移除 "data: " 前缀后再尝试解析
-					const cleanedText = rawText.replace(/^data:\s*/, "");
-					try {
-						errorData = JSON.parse(cleanedText);
-					} catch {
-						// 清理后仍解析失败，使用原始文本作为错误信息
-						errorData = { error: rawText.slice(0, 200) };
-					}
-				}
-
-				const error = new Error((errorData.error as string) || `HTTP ${response.status}: ${response.statusText}`);
-				// 将错误响应数据附加到错误对象上
-				(error as any).errorData = errorData;
-				throw error;
-			}
-
-			if (!response.body)
-				throw new Error("响应体为空");
-
-			const reader = response.body.getReader();
-			const decoder = new TextDecoder();
-			let fullContent = "";
-			let _chunkCount = 0;
-
-			setProgress(20);
-
-			while (true) {
-				const { done, value } = await reader.read();
-				if (isCancelledRef.current) {
-					try {
-						await reader.cancel();
-					} catch {}
-					break;
-				}
-				if (done) {
-					break;
-				}
-
-				const chunk = decoder.decode(value, { stream: true });
-				_chunkCount++;
-
-				// 检查是否包含搜索凭据标记
-				if (chunk.includes("__SEARCH_CREDENTIALS__:")) {
-					const credentialsMatch = chunk.match(/__SEARCH_CREDENTIALS__:(.+)\n/);
-					if (credentialsMatch) {
-						try {
-							const credentialsData = JSON.parse(credentialsMatch[1]);
-							if (credentialsData.__search_credentials__) {
-								console.log("收到搜索凭据:", credentialsData);
-								setSearchInfo({
-									searchResults: credentialsData.searchResults,
-									searchWebPages: credentialsData.searchWebPages,
-								});
-							}
-						} catch (e) {
-							console.error("解析搜索凭据失败:", e);
-						}
-						// 移除搜索凭据标记，不显示在流内容中
-						const cleanChunk = chunk.replace(/__SEARCH_CREDENTIALS__:.+\n/, "");
-						if (cleanChunk) {
-							fullContent += cleanChunk;
-							setStreamContent(prev => prev + cleanChunk);
-						}
-						continue;
-					}
-				}
-
-				fullContent += chunk;
-				setStreamContent(prev => prev + chunk);
-
-				// 基于内容长度给一点额外的进度反馈，增加活跃感
-				const progressValue = Math.min(95, 20 + (fullContent.length / 2000) * 60);
-				setProgress(prev => Math.max(prev, progressValue));
-			}
-
-			// 检查是否收到了内容
-			if (fullContent.trim() === "") {
-				throw new Error("服务器返回空内容，可能是AI模型服务异常");
-			}
-
-			if (progressIntervalRef.current) {
-				clearInterval(progressIntervalRef.current);
-				progressIntervalRef.current = null;
-			}
-			setProgress(98);
-
-			const parsedResult = parseStreamedResult(fullContent);
-
-			if (parsedResult) {
-				setAnalysisResult(parsedResult);
-
-				// 获取百分位数据
-				// 注意：使用局部变量获取模型名称，避免 React 闭包陷阱
-				// （setCurrentAnalysisModelName 不会立即更新 currentAnalysisModelName）
-				const analysisModelName = isRetry && verifyResultRef.current
-					? currentAnalysisModelName
-					: (availableGradingModels.find(model => model.id === selectedModelId)?.model || "");
-
-				if (parsedResult.overallScore && analysisModelName) {
-					getScorePercentile(parsedResult.overallScore, analysisModelName, selectedModeName.join(","))
-						.then((data) => {
-							if (data) {
-								setPercentileData(data);
-							}
-						})
-						.catch((error) => {
-							console.error("获取百分位数据失败:", error);
-						});
-				}
-
-				setProgress(100);
-				setIsError(false);
-				setIsCompleted(true);
-				setStreamContent(prev => `${prev}\n✅ 分析完成！`);
-				toast.success("分析完成");
-
-				setTimeout(() => {
-					setShowStreamingDisplay(false);
-					setStreamContent("");
-					setProgress(0);
-				}, 3000);
-			} else {
-				throw new Error("AI返回结果格式无法解析");
-			}
-		} catch (error: any) {
-			if (progressIntervalRef.current) {
-				clearInterval(progressIntervalRef.current);
-				progressIntervalRef.current = null;
-			}
-			setIsError(true);
-			setProgress(0);
-
-			let errorMessage = "分析过程中发生错误";
-			let debugInfo = "";
-
-			if (error.name === "AbortError") {
-				errorMessage = "请求被取消或超时";
-			} else {
-				errorMessage = error.message || errorMessage;
-			}
-
-			// 如果是 fetch 错误，尝试解析响应中的调试信息
-			if ((error as any).errorData) {
-				const errorData = (error as any).errorData;
-				if (errorData.requestId || errorData.fingerprint || errorData.session) {
-					debugInfo = `\n\n调试信息:\n请求ID: ${errorData.requestId || "N/A"}\n指纹: ${errorData.fingerprint || "N/A"}\n会话: ${errorData.session || "N/A"}`;
-				}
-			}
-
-			setStreamContent(prev => `${prev}\n❌ ${errorMessage}${debugInfo}\n`);
-
-			const isMobile = window.innerWidth < 768;
-			if (retryCount < (isMobile ? 3 : 2) && !errorMessage.includes("校验失败") && !errorMessage.includes("取消")) {
-				const nextRetryCount = retryCount + 1;
-				setRetryCount(nextRetryCount);
-				setStreamContent(prev => `${prev}准备第 ${nextRetryCount} 次重试...\n`);
-
-				if (retryTimeoutRef.current)
-					clearTimeout(retryTimeoutRef.current);
-				retryTimeoutRef.current = setTimeout(() => {
-					if (!isCancelledRef.current)
-						performAnalysis(true);
-				}, 2000);
-			} else {
-				toast.error(errorMessage);
-			}
-		} finally {
-			setAbortController(null);
-		}
 	};
 
 	const handleAnalyze = async () => {
@@ -547,22 +245,49 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 			return;
 		}
 
-		isCancelledRef.current = false;
-		if (retryTimeoutRef.current) {
-			clearTimeout(retryTimeoutRef.current);
-			retryTimeoutRef.current = null;
-		}
-
 		// 新分析时清除缓存的校验结果
 		verifyResultRef.current = null;
 		setIsAnalyzing(true);
-		setShowStreamingDisplay(true);
-		setRetryCount(0);
 
 		try {
-			await performAnalysis();
+			const fingerprint = await getFingerprintId();
+			const currentModel = availableGradingModels.find(model => model.id === selectedModelId);
+			const currentModelName = currentModel?.model || "";
+			setCurrentAnalysisModelName(currentModelName);
+
+			const res = await submitAnalysisAction({
+				articleText,
+				mode: selectedModeName.join(","),
+				modelId: selectedModelId,
+				fingerprint,
+				enableSearch,
+			});
+
+			if (!res.success || !res.taskId) {
+				throw new Error(res.error || "提交任务失败");
+			}
+
+			toast.success("分析任务已提交后台处理");
+
+			// Save to local storage for the placeholder to poll
+			const activeTasksStr = localStorage.getItem("ink_battles_tasks");
+			const activeTasks = activeTasksStr ? JSON.parse(activeTasksStr) : [];
+			// Save simple title
+			const titleMatch = articleText.substring(0, 20).replace(NEWLINE_REGEX, " ");
+			activeTasks.push({
+				taskId: res.taskId,
+				title: titleMatch + (articleText.length > 20 ? "..." : ""),
+				createdAt: Date.now(),
+			});
+			localStorage.setItem("ink_battles_tasks", JSON.stringify(activeTasks));
+			// Trigger a custom event so placeholder can re-render
+			window.dispatchEvent(new Event("ink_battles_tasks_updated"));
+
+			// Clear text area to indicate successful submission
+			setArticleText("");
 		} catch (error) {
 			console.error("启动分析失败:", error);
+			toast.error((error as Error).message || "起动分析失败，请稍后重试");
 		} finally {
 			setIsAnalyzing(false);
 		}
@@ -583,6 +308,8 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 							selectedModelId={selectedModelId}
 							onModelChange={setSelectedModelId}
 							disabled={isAnalyzing}
+							enableSearch={enableSearch}
+							onEnableSearchChange={setEnableSearch}
 						/>
 					</div>
 				</div>
@@ -641,34 +368,13 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 								percentileData={percentileData}
 								showShare
 								showSponsor
+								compactMode={true}
+								analysisId={analysisId || undefined}
 							/>
 						)
 					: (
 							<WriterAnalysisResultPlaceholder />
 						)}
-
-				<StreamingDisplay
-					streamContent={streamContent}
-					isVisible={showStreamingDisplay}
-					onClose={() => {
-						if (abortController)
-							abortController.abort();
-						isCancelledRef.current = true;
-						if (retryTimeoutRef.current) {
-							clearTimeout(retryTimeoutRef.current);
-							retryTimeoutRef.current = null;
-						}
-						if (progressIntervalRef.current) {
-							clearInterval(progressIntervalRef.current);
-							progressIntervalRef.current = null;
-						}
-						setShowStreamingDisplay(false);
-						setIsAnalyzing(false);
-					}}
-					isError={isError}
-					isCompleted={isCompleted}
-					progress={progress}
-				/>
 			</div>
 		</div>
 	);

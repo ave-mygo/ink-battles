@@ -15,6 +15,9 @@ import { generateNextUID } from "@/utils/auth";
 import { initializeUserBilling } from "@/utils/billing/server";
 import "server-only";
 
+// 预编译正则表达式，避免每次调用时重新编译
+const EMAIL_REGEX = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/u;
+
 const {
 	jwt: {
 		secret: JWT_SECRET,
@@ -75,8 +78,7 @@ export async function LoginUser(email: string, password: string): Promise<{ succ
 	}
 
 	// 邮箱格式校验
-	const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/u;
-	if (!emailRegex.test(normalizedEmail)) {
+	if (!EMAIL_REGEX.test(normalizedEmail)) {
 		return { success: false, message: "邮箱或密码错误" };
 	}
 
