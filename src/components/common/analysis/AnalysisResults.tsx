@@ -2,11 +2,14 @@
 
 import type { Dimension } from "@/components/common/analysis/DimensionsCard";
 import type { AnalysisOutput, AnalysisResult, ScorePercentileResult } from "@/types/ai";
+import { AlertCircle, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { AnalysisCard } from "@/components/common/analysis/AnalysisCard";
 import { DimensionsCard } from "@/components/common/analysis/DimensionsCard";
 import { MermaidDiagramsSection } from "@/components/common/analysis/MermaidDiagramsSection";
 import { ScoreCard } from "@/components/common/analysis/ScoreCard";
 import { SearchCredentials } from "@/components/common/SearchCredentials";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 /**
@@ -17,23 +20,17 @@ import { Card, CardContent } from "@/components/ui/card";
  * 2. 传入数据库记录（历史记录、分享页面）
  */
 export function AnalysisResults({
-	// 方式1：直接传入解析后的结果对象
 	analysisResult,
-	// 方式2：传入数据库记录
 	result,
-	// 搜索信息
 	searchInfo,
-	// 模型名称
 	modelName,
-	// 评分模式名称
 	modeName,
-	// 百分位信息
 	percentileData,
-	// 额外功能开关
 	showShare = false,
 	showSponsor = false,
+	compactMode = false, // 新增精简模式
+	analysisId, // 新增 analysisId，提供给完整报告详情页
 }: {
-	// 优先使用 analysisResult（首页实时分析）
 	analysisResult?: {
 		overallScore: number;
 		overallAssessment: string;
@@ -47,23 +44,18 @@ export function AnalysisResults({
 		improvements: string[];
 		mermaid_diagrams?: Array<{ type: string; title: string; code: string }>;
 	};
-	// 或者使用 result（历史记录、分享页面）
 	result?: AnalysisOutput;
-	// 搜索信息
 	searchInfo?: {
 		searchResults?: string;
 		searchWebPages?: Array<{ uri: string; title?: string }>;
 	} | null;
-	// 模型名称（可从外部传入）
 	modelName?: string;
-	// 评分模式名称（可从外部传入）
 	modeName?: string;
-	// 是否显示分享按钮
 	showShare?: boolean;
-	// 是否显示赞助按钮和文案
 	showSponsor?: boolean;
-	// 百分位数据（由服务端传入）
 	percentileData?: ScorePercentileResult | null;
+	compactMode?: boolean;
+	analysisId?: string;
 }) {
 	// 解析数据
 	let data: AnalysisResult | null = null;
@@ -71,20 +63,14 @@ export function AnalysisResults({
 	let overallScore = 0;
 
 	if (analysisResult) {
-		// 方式1：直接使用传入的结果对象（首页实时分析）
 		data = analysisResult as AnalysisResult;
 		overallScore = analysisResult.overallScore;
 	} else if (result) {
-		// 方式2：从数据库记录解析（历史记录、分享页面）
-		// 优先使用 result.overallScore（服务端 calculateFinalScore 计算的权威值）
-		// parsedData.overallScore 可能不存在（AI 不一定返回此字段）或不准确
 		overallScore = result.overallScore || 0;
-
 		try {
 			const parsedData = typeof result.result === "string" ? JSON.parse(result.result) : result.result;
 			if (parsedData) {
 				data = parsedData;
-				// 如果没有外部传入 modelName，则使用 result 中的
 				if (!displayModelName) {
 					displayModelName = result.modelName;
 				}
@@ -103,6 +89,46 @@ export function AnalysisResults({
 					{result && <div className="text-xs text-slate-400 mt-2">result 已传入但解析失败</div>}
 				</CardContent>
 			</Card>
+		);
+	}
+
+	// 极简模式（首页使用）
+	if (compactMode) {
+		return (
+			<div className="animate-in fade-in slide-in-from-bottom-4 p-8 border border-slate-200 rounded-2xl bg-white/80 flex flex-col shadow-sm duration-500 items-center justify-center space-y-8 dark:border-slate-800 dark:bg-slate-900/80">
+				<div className="text-center space-y-4">
+					<h2 className="text-2xl text-slate-800 font-bold flex items-center justify-center dark:text-slate-100">
+						<span className="text-sm text-green-700 font-medium mr-3 px-3 py-1 border border-green-200 rounded-full bg-green-100 dark:text-green-400 dark:border-green-800 dark:bg-green-900/50">✨ 分析完成</span>
+						评测核心结果
+					</h2>
+					<div className="py-6 flex flex-col items-center justify-center">
+						<div className="text-7xl text-transparent leading-none font-black from-blue-600 to-indigo-600 bg-gradient-to-br bg-clip-text md:text-8xl dark:from-blue-400 dark:to-indigo-400">
+							{overallScore}
+						</div>
+						<p className="text-sm text-slate-500 tracking-widest font-medium mt-4 uppercase dark:text-slate-400">
+							综合战力评分
+						</p>
+					</div>
+				</div>
+
+				<div className="flex flex-col max-w-sm w-full items-center space-y-4">
+					{analysisId
+						? (
+								<Button size="lg" className="text-base font-medium rounded-xl h-14 w-full shadow-md transition-all hover:shadow-lg hover:-translate-y-1" asChild>
+									<Link href={`/analysis/${analysisId}`}>
+										查看完整深度报告
+										<ArrowRight className="ml-2 h-5 w-5" />
+									</Link>
+								</Button>
+							)
+						: (
+								<div className="text-sm text-amber-700 p-4 border border-amber-200 rounded-xl bg-amber-50 flex w-full shadow-sm items-center dark:text-amber-400 dark:border-amber-900 dark:bg-amber-950/30">
+									<AlertCircle className="mr-3 shrink-0 h-5 w-5" />
+									未能获取报告ID，请前往历史记录重试。
+								</div>
+							)}
+				</div>
+			</div>
 		);
 	}
 

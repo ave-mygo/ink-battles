@@ -1,16 +1,19 @@
 "use client";
 
 import type { GradingModelConfig } from "@/types/common/config";
-import { AlertTriangle, Brain, Clock, Crown, Settings, Sparkles, Target, Zap } from "lucide-react";
+import { AlertTriangle, Brain, Clock, Crown, Globe, Settings, Sparkles, Target, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 interface WriterModelSelectorProps {
 	availableModels: GradingModelConfig[];
 	selectedModelId: string;
 	onModelChange: (modelId: string) => void;
 	disabled?: boolean;
+	enableSearch?: boolean;
+	onEnableSearchChange?: (enabled: boolean) => void;
 }
 
 // 特性图标映射
@@ -28,6 +31,8 @@ export default function WriterModelSelector({
 	selectedModelId,
 	onModelChange,
 	disabled = false,
+	enableSearch = true,
+	onEnableSearchChange,
 }: WriterModelSelectorProps) {
 	const selectedModel = availableModels.find(model => model.id === selectedModelId);
 
@@ -166,9 +171,27 @@ export default function WriterModelSelector({
 					</div>
 				</div>
 
-				{/* 底部说明 - 简化 */}
-				<div className="text-xs text-slate-500 mt-3 pt-3 border-t space-y-1 dark:text-slate-400 dark:border-slate-700">
-					<div className="flex gap-1 items-center">
+				{/* 附加选项与说明 */}
+				<div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3 dark:border-slate-800">
+					{/* 搜索校验开关 */}
+					<div className="p-3 border border-slate-200 rounded-lg bg-white flex shadow-xs items-center justify-between dark:border-slate-700/80 dark:bg-slate-800/40">
+						<div className="flex flex-col gap-1">
+							<div className="text-sm text-slate-700 font-medium flex gap-1.5 items-center dark:text-slate-200">
+								<Globe className="text-blue-500 h-4 w-4 dark:text-blue-400" />
+								<span>联网搜索校验</span>
+							</div>
+							<div className="text-xs text-slate-500 dark:text-slate-400">
+								允许模型在分析时获取网络最新资料
+							</div>
+						</div>
+						<Switch
+							checked={enableSearch}
+							onCheckedChange={onEnableSearchChange}
+							disabled={disabled}
+						/>
+					</div>
+
+					<div className="text-xs text-slate-400 flex gap-1.5 items-center justify-center dark:text-slate-500/80">
 						<Settings className="h-3 w-3" />
 						<span>所有模型均支持多种评分模式和维度分析</span>
 					</div>

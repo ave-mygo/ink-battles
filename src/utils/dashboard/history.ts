@@ -465,3 +465,38 @@ export async function getPublicRecordsForSitemap(): Promise<SitemapShareEntry[]>
 		return [];
 	}
 }
+
+/**
+ * 获取用于分析结果页的记录（放开未登录用户的查看限制，仅在有 uid 时验证所有权）
+ * @param recordId 记录 ID
+ * @returns 分析记录详情
+ */
+export async function getAnalysisDetailForView(recordId: string): Promise<{
+	success: boolean;
+	data?: DatabaseAnalysisRecord;
+	message?: string;
+}> {
+	try {
+		const record = await db_findById(db_name, db_table, recordId);
+
+		if (!record) {
+			return { success: false, message: "记录不存在" };
+		}
+
+		// 如果该记录绑定了用户，验证当前查看者是否为该用户
+		if (record.uid) {
+			const user = await getCurrentUserInfo();
+			if (!user || user.uid !== record.uid) {
+				return { success: false, message: "无权访问此附加了用户身份的记录" };
+			}
+		}
+
+		return {
+			success: true,
+			data: serializeRecord(record),
+		};
+	} catch (error) {
+		console.error("获取记录详情失败:", error);
+		return { success: false, message: "获取记录详情失败，请稍后重试" };
+	}
+}

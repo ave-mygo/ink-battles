@@ -126,7 +126,7 @@ export default function WriterAnalysisModes({
 				<div
 					className={`transition-all duration-500 ease-out overflow-hidden ${
 						isModesExpanded
-							? "max-h-[2000px] opacity-100"
+							? "max-h-500 opacity-100"
 							: "max-h-0 opacity-0"
 					}`}
 				>
@@ -218,18 +218,20 @@ export default function WriterAnalysisModes({
 					</div>
 				</div>
 
-				<Button
-					variant="ghost"
-					className="text-slate-600 w-full transition-all duration-200 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300"
-					onClick={() => setIsModesExpanded(!isModesExpanded)}
-				>
-					<ChevronDown
-						className={`mr-2 h-4 w-4 transition-transform duration-200 ${
-							isModesExpanded ? "rotate-180" : "rotate-0"
-						}`}
-					/>
-					{isModesExpanded ? "收起更多模式" : `展开更多模式 (${evaluationModes.length - 4})`}
-				</Button>
+				<div className="flex justify-end">
+					<Button
+						variant="ghost"
+						className="text-slate-600 transition-all duration-200 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300"
+						onClick={() => setIsModesExpanded(!isModesExpanded)}
+					>
+						<ChevronDown
+							className={`mr-2 h-4 w-4 transition-transform duration-200 ${
+								isModesExpanded ? "rotate-180" : "rotate-0"
+							}`}
+						/>
+						{isModesExpanded ? "收起更多模式" : `展开更多模式 (${evaluationModes.length - 4})`}
+					</Button>
+				</div>
 			</CardContent>
 		</Card>
 	);
