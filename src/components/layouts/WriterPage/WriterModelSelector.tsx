@@ -183,6 +183,9 @@ export default function WriterModelSelector({
 							<div className="text-xs text-slate-500 dark:text-slate-400">
 								允许模型在分析时获取网络最新资料
 							</div>
+							<div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+								若多次校验失败，建议关闭此选项
+							</div>
 						</div>
 						<Switch
 							checked={enableSearch}

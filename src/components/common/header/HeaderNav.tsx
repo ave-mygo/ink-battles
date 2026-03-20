@@ -56,7 +56,7 @@ export const HeaderNav = () => {
 	const baseBtn = (variant: NavItem["variant"] = "default") =>
 		buttonVariants({ size: "sm", variant });
 
-	// 根据路由动态挑选最多三个导航项：固定包含首页 + 另外两个（首页：关于+赞助；其余按优先级补足）
+	// 根据路由动态挑选最多三个导航项：固定包含 首页 + 我的任务 + 另外一个
 	const leftItems = (() => {
 		type ItemKey = "home" | "about" | "sponsors" | "status";
 		const all: Record<ItemKey, { href: string; label: string; icon: React.ReactNode; variant?: NavItem["variant"]; className?: string }>
@@ -87,7 +87,7 @@ export const HeaderNav = () => {
 				},
 			};
 
-		const order: ItemKey[] = ["about", "sponsors", "status"]; // 首页优先显示 关于 + 赞助
+		const order: ItemKey[] = ["about", "sponsors", "status"]; // 优先级：关于 > 赞助 > 状态
 		const currentKey: ItemKey | null = pathname === "/"
 			? "home"
 			: pathname?.startsWith("/about")
@@ -98,9 +98,9 @@ export const HeaderNav = () => {
 						? "status"
 						: null;
 
-		const result: ItemKey[] = ["home"]; // 固定包含首页
+		const result: ItemKey[] = ["home"]; // 固定包含首页和我的任务
 
-		// 过滤掉当前所在项与已选，按优先级补足两个
+		// 补足一个（跳过当前所在项）
 		for (const key of order) {
 			if (result.length >= 3)
 				break;
