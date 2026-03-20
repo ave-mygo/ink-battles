@@ -11,10 +11,18 @@
 # -------------------------------------------------------------
 # 系统模型配置
 # -------------------------------------------------------------
-[system_models.validator] # only google models supported
+[system_models.validator] # 带搜索的校验模型
 api_key = "YOUR_VALIDATOR_API_KEY"
 base_url = "https://api.openai.com/v1"
 model = "gpt-4o"
+
+# -------------------------------------------------------------
+# 仅校验模型（无搜索）
+[system_models.validator_only]
+api_key = "YOUR_VALIDATOR_API_KEY"
+base_url = "https://api.openai.com/v1"
+model = "gemini-2.0-flash"
+
 # -------------------------------------------------------------
 # 评分模型配置
 # -------------------------------------------------------------

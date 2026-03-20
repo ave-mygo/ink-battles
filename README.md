@@ -158,7 +158,7 @@ src/
 
 如果您觉得这个项目对您有帮助，欢迎支持：
 
-- [爱发电赞助](https://afdian.com/a/tianxiang?tab=feed)
+- [爱发电赞助](https://ifdian.net/a/tianxiang?tab=feed)
 - GitHub Star
 - 提交 Issue 反馈问题
 
