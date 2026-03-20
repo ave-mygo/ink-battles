@@ -38,7 +38,7 @@ export const SeoDebugCard = ({ pathname, title, description }: SeoDebugCardProps
 					onClick={() => {
 						navigator.clipboard.writeText(JSON.stringify(meta, null, 2));
 						setCopied(true);
-						setTimeout(() => setCopied(false), 1800);
+						setTimeout(setCopied, 1800, false);
 					}}
 				>
 					<Copy className="mr-1 h-3 w-3" />
