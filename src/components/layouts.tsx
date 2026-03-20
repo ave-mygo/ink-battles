@@ -151,7 +151,8 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 				clearTimeout(searchDebounceRef.current);
 			}
 		};
-	}, [articleText, enableSearch]);
+	// 仅依赖 articleText，不依赖 enableSearch，避免用户手动开启时再次触发关闭
+	}, [articleText]);
 	const DEFAULT_INDEX = 2;
 	const fallbackModelId = availableGradingModels[DEFAULT_INDEX]?.id
 		?? availableGradingModels[0]?.id
