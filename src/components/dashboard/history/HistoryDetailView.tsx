@@ -5,7 +5,7 @@ import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests"
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Check, Copy, Globe, Lock } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnalysisResults } from "@/components/common/analysis/AnalysisResults";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 	const [copied, setCopied] = useState(false);
 	const timestamp = new Date(record.timestamp);
 	const timeAgo = formatDistanceToNow(timestamp, { addSuffix: true, locale: zhCN });
+	const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 	const shareUrl = typeof window !== "undefined"
 		? `${window.location.origin}/share/${record._id}`
@@ -49,11 +50,31 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 		try {
 			await navigator.clipboard.writeText(shareUrl);
 			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
+			setTimeout(setCopied, 2000, false);
 		} catch (error) {
 			console.error("Failed to copy:", error);
 		}
 	};
+
+	useEffect(() => {
+		return () => {
+			if (scrollTimeoutRef.current) {
+				clearTimeout(scrollTimeoutRef.current);
+			}
+		};
+	}, []);
+
+	useEffect(() => {
+		if (typeof window !== "undefined" && window.location.hash === "#analysis-results") {
+			// Add a slight delay to ensure rendering is complete
+			scrollTimeoutRef.current = setTimeout(() => {
+				const el = document.getElementById("analysis-results");
+				if (el) {
+					el.scrollIntoView({ behavior: "smooth", block: "start" });
+				}
+			}, 300);
+		}
+	}, []);
 
 	return (
 		<div className="space-y-6">
@@ -149,13 +170,15 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 			)}
 
 			{/* 搜索凭据 - 如果有搜索结果则显示 */}
-			<AnalysisResults
-				result={record.article.output}
-				searchInfo={record.article.input.search}
-				modelName={record.metadata?.modelName}
-				modeName={record.article.input.mode}
-				percentileData={percentileData}
-			/>
+			<div id="analysis-results">
+				<AnalysisResults
+					result={record.article.output}
+					searchInfo={record.article.input.search}
+					modelName={record.metadata?.modelName}
+					modeName={record.article.input.mode}
+					percentileData={percentileData}
+				/>
+			</div>
 		</div>
 	);
 }

@@ -74,6 +74,34 @@ export function HistoryList({ initialData }: HistoryListProps) {
 	const [isLoading, setIsLoading] = useState(false);
 	const listRef = useRef<HTMLDivElement>(null);
 
+	/** 加载指定页码的数据 */
+	const loadPage = useCallback(async (newPage: number) => {
+		if (!data)
+			return;
+		setIsLoading(true);
+
+		// 滚动到列表顶部
+		listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+		try {
+			const result = await getUserAnalysisHistory(newPage, data.limit);
+			if (result.success && result.data) {
+				setData(result.data);
+			} else {
+				toast.error("加载失败", {
+					description: result.message || "无法加载历史记录，请稍后重试",
+				});
+			}
+		} catch (error) {
+			console.error("加载页面失败:", error);
+			toast.error("加载失败", {
+				description: "网络请求出错，请检查网络连接后重试",
+			});
+		} finally {
+			setIsLoading(false);
+		}
+	}, [data]);
+
 	/** 切换记录公开状态 */
 	const handleTogglePublic = useCallback(async (recordId: string, isPublic: boolean) => {
 		const result = await toggleRecordPublic(recordId, isPublic);
@@ -122,35 +150,7 @@ export function HistoryList({ initialData }: HistoryListProps) {
 				totalPages: newTotalPages,
 			};
 		});
-	}, []);
-
-	/** 加载指定页码的数据 */
-	const loadPage = useCallback(async (newPage: number) => {
-		if (!data)
-			return;
-		setIsLoading(true);
-
-		// 滚动到列表顶部
-		listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-		try {
-			const result = await getUserAnalysisHistory(newPage, data.limit);
-			if (result.success && result.data) {
-				setData(result.data);
-			} else {
-				toast.error("加载失败", {
-					description: result.message || "无法加载历史记录，请稍后重试",
-				});
-			}
-		} catch (error) {
-			console.error("加载页面失败:", error);
-			toast.error("加载失败", {
-				description: "网络请求出错，请检查网络连接后重试",
-			});
-		} finally {
-			setIsLoading(false);
-		}
-	}, [data]);
+	}, [loadPage]);
 
 	// 空状态
 	if (!data || data.records.length === 0) {

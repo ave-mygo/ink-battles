@@ -183,6 +183,9 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 	const prevArticleTextRef = useRef<string>(articleText);
+	// 存储 setUploadedFileName 的稳定引用，避免在 useEffect 中直接调用
+	const setUploadedFileNameRef = useRef(setUploadedFileName);
+	setUploadedFileNameRef.current = setUploadedFileName;
 
 	// 使用客户端状态管理判断登录状态
 	const isLoggedIn = useIsAuthenticated();
@@ -277,7 +280,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 	useEffect(() => {
 		// 当 articleText 从有内容变为空时，清除文件名
 		if (prevArticleTextRef.current !== "" && articleText === "" && uploadedFileName !== null) {
-			setUploadedFileName(null);
+			setUploadedFileNameRef.current(null);
 		}
 		// 更新 ref
 		prevArticleTextRef.current = articleText;
@@ -384,7 +387,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 						<div className="mb-2 rounded bg-gray-200 h-4 w-1/2 dark:bg-slate-700"></div>
 						<div className="rounded bg-gray-200 h-3 w-3/4 dark:bg-slate-700"></div>
 					</div>
-					<div className="rounded bg-gray-100 flex-1 min-h-[200px] animate-pulse dark:bg-slate-800/70"></div>
+					<div className="rounded bg-gray-100 flex-1 min-h-50 animate-pulse dark:bg-slate-800/70"></div>
 				</CardContent>
 			</Card>
 		);
@@ -521,7 +524,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 					placeholder="请在此处粘贴要分析的作品全文，或上传文件..."
 					value={articleText}
 					onChange={handleTextChange}
-					className="text-base leading-relaxed border-slate-200 flex-1 max-h-[400px] min-h-[200px] w-full resize-none overflow-auto dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
+					className="text-base leading-relaxed border-slate-200 flex-1 max-h-100 min-h-50 w-full resize-none overflow-auto dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
 				/>
 				<WordCounter
 					articleLength={articleText.length}

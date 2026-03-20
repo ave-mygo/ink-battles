@@ -100,7 +100,8 @@ export const getScorePercentile = async (
 
 /**
  * 计算最终战力值并四舍五入到最多 2 位小数
- * @param parsedResult - 包含 dimensions 数组的解析结果
+ * @param parsedResult - 解析后的 AI 分析结果对象
+ * @param parsedResult.dimensions - 各维度评分数组，包含 name（维度名）、score（分数）、description（描述）
  * @returns 最终得分（number），最多保留两位小数
  */
 export const calculateFinalScore = async (parsedResult: {
