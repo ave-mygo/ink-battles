@@ -12,8 +12,8 @@ interface WriterModelSelectorProps {
 	selectedModelId: string;
 	onModelChange: (modelId: string) => void;
 	disabled?: boolean;
-	enableSearch?: boolean;
-	onEnableSearchChange?: (enabled: boolean) => void;
+	searchModel?: "none" | "gemini" | "grok";
+	onSearchModelChange?: (model: "none" | "gemini" | "grok") => void;
 }
 
 // 特性图标映射
@@ -31,8 +31,8 @@ export default function WriterModelSelector({
 	selectedModelId,
 	onModelChange,
 	disabled = false,
-	enableSearch = true,
-	onEnableSearchChange,
+	searchModel = "gemini",
+	onSearchModelChange,
 }: WriterModelSelectorProps) {
 	const selectedModel = availableModels.find(model => model.id === selectedModelId);
 
@@ -173,25 +173,34 @@ export default function WriterModelSelector({
 
 				{/* 附加选项与说明 */}
 				<div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3 dark:border-slate-800">
-					{/* 搜索校验开关 */}
-					<div className="p-3 border border-slate-200 rounded-lg bg-white flex shadow-xs items-center justify-between dark:border-slate-700/80 dark:bg-slate-800/40">
+					{/* 搜索校验选择 */}
+					<div className="p-3 border border-slate-200 rounded-lg bg-white shadow-xs dark:border-slate-700/80 dark:bg-slate-800/40 space-y-2">
 						<div className="flex flex-col gap-1">
 							<div className="text-sm text-slate-700 font-medium flex gap-1.5 items-center dark:text-slate-200">
 								<Globe className="text-blue-500 h-4 w-4 dark:text-blue-400" />
-								<span>联网搜索校验</span>
+								<span>联网搜索校验模型</span>
 							</div>
 							<div className="text-xs text-slate-500 dark:text-slate-400">
 								允许模型在分析时获取网络最新资料
 							</div>
 							<div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-								若多次校验失败，建议关闭此选项
+								若多次校验失败，建议选择不使用搜索，或切换不同的搜索模型
 							</div>
 						</div>
-						<Switch
-							checked={enableSearch}
-							onCheckedChange={onEnableSearchChange}
+						<Select
+							value={searchModel}
+							onValueChange={(value: "none" | "gemini" | "grok") => onSearchModelChange?.(value)}
 							disabled={disabled}
-						/>
+						>
+							<SelectTrigger className="w-full bg-slate-50/50">
+								<SelectValue placeholder="选择搜索模型" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="gemini">Gemini 搜索</SelectItem>
+								<SelectItem value="grok">Grok 搜索</SelectItem>
+								<SelectItem value="none">关闭搜索</SelectItem>
+							</SelectContent>
+						</Select>
 					</div>
 
 					<div className="text-xs text-slate-400 flex gap-1.5 items-center justify-center dark:text-slate-500/80">

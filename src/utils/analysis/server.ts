@@ -26,12 +26,12 @@ export interface SubmitAnalysisInput {
 	mode: string;
 	modelId: string;
 	fingerprint: string;
-	enableSearch?: boolean;
+	searchModel?: "none" | "gemini" | "grok";
 }
 
 export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 	const requestId = crypto.lib.WordArray.random(8).toString();
-	const { articleText, mode, modelId, fingerprint, enableSearch = true } = input;
+	const { articleText, mode, modelId, fingerprint, searchModel = "gemini" } = input;
 
 	if (!articleText || typeof articleText !== "string") {
 		return { success: false, error: "文章内容不能为空" };
@@ -114,7 +114,7 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 			// 动态导入避免可能的循环依赖或初始化顺序问题
 			const { verifyArticleValue } = await import("@/lib/ai/validator");
 
-			const verifyResult = await verifyArticleValue(articleText, mode, modelId, cleanModelName, fingerprint, enableSearch);
+			const verifyResult = await verifyArticleValue(articleText, mode, modelId, cleanModelName, fingerprint, searchModel);
 
 			if (!verifyResult.success) {
 				throw new Error(`校验失败: ${verifyResult.error || "文章内容不符合分析标准"}`);

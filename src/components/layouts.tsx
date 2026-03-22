@@ -120,7 +120,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		searchWebPages?: Array<{ uri: string; title?: string }>;
 	} | null>(null);
 	const [percentileData, setPercentileData] = useState<ScorePercentileResult | null>(null);
-	const [enableSearch, setEnableSearch] = useState(true);
+	const [searchModel, setSearchModel] = useState<"none" | "gemini" | "grok">("gemini");
 	// 缓存校验结果，重试时跳过校验
 	const verifyResultRef = useRef<{
 		session: string;
@@ -139,8 +139,8 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		// 设置新的防抖 timer（500ms 延迟）
 		searchDebounceRef.current = setTimeout(() => {
 			const TEXT_LIMIT = 30000;
-			if (articleText.length > TEXT_LIMIT && enableSearch) {
-				setEnableSearch(false);
+			if (articleText.length > TEXT_LIMIT && searchModel !== "none") {
+				setSearchModel("none");
 				toast.info("文本长度超过3万字，已自动关闭联网搜索校验");
 			}
 		}, 500);
@@ -151,7 +151,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 				clearTimeout(searchDebounceRef.current);
 			}
 		};
-	// 仅依赖 articleText，不依赖 enableSearch，避免用户手动开启时再次触发关闭
+	// 仅依赖 articleText，不依赖 searchModel，避免用户手动开启时再次触发关闭
 	}, [articleText]);
 	const DEFAULT_INDEX = 2;
 	const fallbackModelId = availableGradingModels[DEFAULT_INDEX]?.id
@@ -261,7 +261,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 				mode: selectedModeName.join(","),
 				modelId: selectedModelId,
 				fingerprint,
-				enableSearch,
+				searchModel,
 			});
 
 			if (!res.success || !res.taskId) {
@@ -309,8 +309,8 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 							selectedModelId={selectedModelId}
 							onModelChange={setSelectedModelId}
 							disabled={isAnalyzing}
-							enableSearch={enableSearch}
-							onEnableSearchChange={setEnableSearch}
+							searchModel={searchModel}
+							onSearchModelChange={setSearchModel}
 						/>
 					</div>
 				</div>

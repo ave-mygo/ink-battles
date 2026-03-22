@@ -86,7 +86,7 @@ ${enableSearch
  * @param modelId 模型ID
  * @param modelName 模型名称
  * @param fingerprint 用户指纹
- * @param enableSearch 是否启用搜索（默认 true）
+ * @param searchModel 选择使用的搜索模型（默认 "gemini"）
  * @returns 验证结果
  */
 export const verifyArticleValue = async (
@@ -95,7 +95,7 @@ export const verifyArticleValue = async (
 	modelId: string,
 	modelName: string,
 	fingerprint: string,
-	enableSearch: boolean = true,
+	searchModel: "none" | "gemini" | "grok" = "gemini",
 ): Promise<{
 	success: boolean;
 	error?: string;
@@ -125,10 +125,12 @@ export const verifyArticleValue = async (
 		return { success: true };
 	}
 
-	// 3. 根据 enableSearch 选择使用哪个模型配置
-	const modelConfig = enableSearch
-		? AppConfig.system_models.validator
-		: AppConfig.system_models.validator_only;
+	// 3. 根据 searchModel 选择使用哪个模型配置
+	const modelConfig = searchModel === "grok"
+		? AppConfig.system_models.validator_grok
+		: AppConfig.system_models.validator_gemini;
+
+	const enableSearch = searchModel !== "none";
 
 	// 4. 初始化 OpenAI 客户端
 	const client = new OpenAI({
@@ -136,7 +138,7 @@ export const verifyArticleValue = async (
 		baseURL: modelConfig.base_url,
 	});
 
-	const validatorModelName: string = modelConfig.model || "gemini-2.0-flash";
+	const validatorModelName: string = modelConfig.model || (searchModel === "grok" ? "grok-4.20-beta" : "gemini-3-flash-preview");
 
 	try {
 		// 构建系统提示词
@@ -156,7 +158,7 @@ export const verifyArticleValue = async (
 							{
 								type: "function",
 								function: {
-									name: "googleSearch",
+									name: searchModel === "grok" ? "web_search" : "googleSearch",
 								},
 							},
 						],

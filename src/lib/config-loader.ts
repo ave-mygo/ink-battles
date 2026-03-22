@@ -41,8 +41,8 @@ interface FriendLinkConfig {
 
 interface RuntimeConfig {
 	system_models: {
-		validator: SystemModelConfig;
-		validator_only: SystemModelConfig;
+		validator_gemini: SystemModelConfig;
+		validator_grok: SystemModelConfig;
 		search: SystemModelConfig;
 	};
 	default_model: number;
