@@ -148,16 +148,17 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 			}
 			messages.push({ role: "user", content: articleText });
 
-			// 直接获取文本而不是流式，以减少连接时间
-			const response = await openAI.chat.completions.create({
+			// 使用流式获取以提供更好的用户体验和更快的首字节时间
+			const stream = await openAI.chat.completions.create({
 				model: gradingModel.model,
 				messages,
 				temperature: gradingModel.model.includes("gpt-5-nano") ? 1 : 0.3,
 				response_format: { type: "json_object" },
 				seed: fingerprint ? Number.parseInt(fingerprint) : undefined,
+				stream: true,
 			});
 
-			const content = response.choices[0]?.message?.content || "";
+			const content = await accumulateStreamContent(stream, fingerprint, requestId);
 
 			if (!content.trim()) {
 				throw new Error("AI模型返回空内容");
@@ -179,15 +180,120 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 			console.log(`[${fingerprint}:${requestId}]后台任务完成！`);
 		} catch (error) {
 			console.error(`[${fingerprint}:${requestId}] 后台任务失败:`, error);
+
+			// 区分流式相关错误
+			let errorMessage = (error as Error).message;
+			if (errorMessage.includes("stream") || errorMessage.includes("流式")) {
+				errorMessage = `流式处理失败: ${errorMessage}`;
+			}
+
 			await db_update(db_name, "analysis_tasks", { _id: taskId }, {
 				updatedAt: new Date().toISOString(),
 				status: "failed",
-				error: (error as Error).message,
+				error: errorMessage,
 			});
 		}
 	});
 
 	return { success: true, taskId: taskId.toString() };
+}
+
+/**
+ * 流式内容累积的安全限制
+ */
+const STREAM_LIMITS = {
+	// 最大内容大小 (1MB)
+	MAX_CONTENT_SIZE: 1024 * 1024,
+	// 最大超时时间 (7分钟)
+	MAX_TIMEOUT_MS: 7 * 60 * 1000,
+	// 最大块数量 (防止无限流)
+	MAX_CHUNKS: 20000,
+} as const;
+
+/**
+ * 处理流式响应并累积内容（内存安全版本）
+ * @param stream - OpenAI 流式响应
+ * @param fingerprint - 文章指纹，用于日志
+ * @param requestId - 请求ID，用于日志
+ * @returns 累积的完整内容
+ * @throws {Error} 当超过安全限制时抛出错误
+ */
+async function accumulateStreamContent(
+	stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>,
+	fingerprint: string,
+	requestId: string,
+): Promise<string> {
+	let accumulatedContent = "";
+	let chunkCount = 0;
+	const startTime = Date.now();
+	let lastLogTime = startTime;
+	const maxTime = startTime + STREAM_LIMITS.MAX_TIMEOUT_MS;
+
+	// 获取迭代器以便后续清理
+	const iterator = stream[Symbol.asyncIterator]();
+
+	try {
+		while (true) {
+			const now = Date.now();
+
+			// 超时保护
+			if (now > maxTime) {
+				const elapsed = ((now - startTime) / 1000).toFixed(1);
+				throw new Error(`流式处理超时 (${elapsed}s，超过限制 ${STREAM_LIMITS.MAX_TIMEOUT_MS / 1000}s)`);
+			}
+
+			// 块数量保护
+			if (chunkCount >= STREAM_LIMITS.MAX_CHUNKS) {
+				throw new Error(`流式块数量超过限制 (${STREAM_LIMITS.MAX_CHUNKS})`);
+			}
+
+			const { done, value: chunk } = await iterator.next();
+
+			// 流结束
+			if (done || !chunk) {
+				break;
+			}
+
+			const delta = chunk.choices[0]?.delta?.content;
+			if (delta) {
+				// 内容大小保护
+				if (accumulatedContent.length + delta.length > STREAM_LIMITS.MAX_CONTENT_SIZE) {
+					throw new Error(
+						`流式内容大小超过限制 (${STREAM_LIMITS.MAX_CONTENT_SIZE / 1024}KB)，当前: ${((accumulatedContent.length + delta.length) / 1024).toFixed(1)}KB`,
+					);
+				}
+
+				accumulatedContent += delta;
+				chunkCount++;
+
+				// 每5秒或每50个块记录一次进度
+				if (now - lastLogTime > 5000 || chunkCount % 50 === 0) {
+					const elapsed = ((now - startTime) / 1000).toFixed(1);
+					console.log(`[${fingerprint}:${requestId}] 流式进度: ${chunkCount} 块, ${accumulatedContent.length} 字符, 耗时 ${elapsed}s`);
+					lastLogTime = now;
+				}
+			}
+		}
+
+		const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+		console.log(`[${fingerprint}:${requestId}] 流式完成: 总计 ${chunkCount} 块, ${accumulatedContent.length} 字符, 耗时 ${totalTime}s`);
+
+		return accumulatedContent;
+	} catch (error) {
+		// 确保错误信息清晰，便于调试
+		const errorMsg = (error as Error).message;
+		console.error(`[${fingerprint}:${requestId}] 流式处理失败 (块数: ${chunkCount}, 内容: ${accumulatedContent.length} 字符): ${errorMsg}`);
+		throw error;
+	} finally {
+		// 显式释放迭代器资源，确保底层 HTTP 连接被关闭
+		// 这是防御性编程：即使 for-await 会自动清理，我们也要显式确保
+		try {
+			await iterator.return?.();
+		} catch (e) {
+			// 忽略清理过程中的错误，因为此时我们已经处理了主要错误
+			console.warn(`[${fingerprint}:${requestId}] 流式清理警告: ${(e as Error).message}`);
+		}
+	}
 }
 
 async function updateDatabaseWithResult({
