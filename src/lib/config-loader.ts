@@ -64,6 +64,7 @@ interface RuntimeConfig {
 	api: {
 		key: string;
 		user: number;
+		base_url: string;
 	};
 	email: {
 		host: string;

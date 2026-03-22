@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 	const page = Number(searchParams.get("page")) || 1;
 	const pageSize = Number(searchParams.get("pageSize")) || 20;
 
-	const { api: { key: API_KEY, user: API_USER } } = getConfig();
+	const { api: { base_url: API_BASE_URL, key: API_KEY, user: API_USER } } = getConfig();
 
 	const end = Math.floor(Date.now() / 1000);
 	const start = end - (14 * 24 * 60 * 60); // 14天前
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 	try {
 		// 获取当前页数据
 		const response = await fetch(
-			`https://newapi.yumetsuki.moe/api/log/self?p=${page}&page_size=${pageSize}&type=0&start_timestamp=${start}&end_timestamp=${end}&group=`,
+			`${API_BASE_URL}/api/log/self?p=${page}&page_size=${pageSize}&type=0&start_timestamp=${start}&end_timestamp=${end}&group=`,
 			{
 				headers: {
 					"Authorization": `Bearer ${API_KEY || ""}`,
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 
 		// 获取统计数据（全部14天的数据）
 		const statsResponse = await fetch(
-			`https://newapi.yumetsuki.moe/api/data/self?start_timestamp=${start}&end_timestamp=${end}&default_time=hour`,
+			`${API_BASE_URL}/api/data/self?start_timestamp=${start}&end_timestamp=${end}&default_time=hour`,
 			{
 				headers: {
 					"Authorization": `Bearer ${API_KEY || ""}`,

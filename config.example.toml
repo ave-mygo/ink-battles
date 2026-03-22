@@ -78,6 +78,7 @@ redirect_uri = "https://your-domain.com/oauth/afdian/callback"
 # 内部 API 配置
 # -------------------------------------------------------------
 [api]
+base_url = "https://newapi.yumetsuki.moe"
 key = "YOUR_APP_API_KEY_SECRET"
 user = 1
 
