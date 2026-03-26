@@ -66,6 +66,8 @@ ${enableSearch
   - 即便无法确认作者来源，仍可在不涉及具体归属的前提下，认可文本所体现的写作能力与完成度。
 
 ### ${enableSearch ? "4" : "3"}. 结果返回格式
+**【强制要求】你的最终回复必须且只能是一个合法的 JSON 对象，禁止输出任何其他内容（包括但不限于分析过程、解释说明、Markdown 标记、多余的前后缀等）。**${enableSearch ? "搜索和总结完成后，仍必须以 JSON 格式返回最终结果。" : ""}
+
 请严格按照以下JSON格式返回结果：
 
 \`\`\`json
@@ -76,7 +78,9 @@ ${enableSearch
   "searchSummary": "搜索结果的关键信息总结，未搜索则留空字符串。"`
 		: ""}
 }
-\`\`\``;
+\`\`\`
+
+再次强调：只输出上面的 JSON 对象，不要输出任何其他文字。`;
 }
 
 /**
@@ -126,11 +130,12 @@ export const verifyArticleValue = async (
 	}
 
 	// 3. 根据 searchModel 选择使用哪个模型配置
+	const enableSearch = searchModel !== "none";
 	const modelConfig = searchModel === "grok"
 		? AppConfig.system_models.validator_grok
-		: AppConfig.system_models.validator_gemini;
-
-	const enableSearch = searchModel !== "none";
+		: searchModel === "none"
+			? AppConfig.system_models.validator_nosearch
+			: AppConfig.system_models.validator_gemini;
 
 	// 4. 初始化 OpenAI 客户端
 	const client = new OpenAI({
@@ -138,7 +143,7 @@ export const verifyArticleValue = async (
 		baseURL: modelConfig.base_url,
 	});
 
-	const validatorModelName: string = modelConfig.model || (searchModel === "grok" ? "grok-4.20-beta" : "gemini-3-flash-preview");
+	const validatorModelName: string = modelConfig.model || (searchModel === "grok" ? "grok-4.20-beta" : searchModel === "none" ? "glm-4.7" : "gemini-3-flash-preview");
 
 	try {
 		// 构建系统提示词
@@ -151,7 +156,9 @@ export const verifyArticleValue = async (
 				{ role: "system", content: systemInstruction },
 				{ role: "user", content: articleText },
 			],
-			// 根据是否启用搜索，动态添加 tools 或 response_format
+			// 仅对支持 response_format 的模型启用强制 JSON 输出
+			response_format: { type: "json_object" },
+			// 启用搜索时额外添加搜索工具
 			...(enableSearch
 				? {
 						tools: [
@@ -163,9 +170,7 @@ export const verifyArticleValue = async (
 							},
 						],
 					}
-				: {
-						response_format: { type: "json_object" },
-					}),
+				: {}),
 		};
 
 		const response = await client.chat.completions.create(requestBody);

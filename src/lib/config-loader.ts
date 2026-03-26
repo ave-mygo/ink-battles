@@ -31,6 +31,8 @@ interface GradingModelConfig {
 	advantages?: string[];
 	usageScenario?: string;
 	warning?: string;
+	/** 模型是否支持 response_format: { type: "json_object" }，默认为 true */
+	supports_json_mode?: boolean;
 }
 
 interface FriendLinkConfig {
@@ -43,6 +45,7 @@ interface RuntimeConfig {
 	system_models: {
 		validator_gemini: SystemModelConfig;
 		validator_grok: SystemModelConfig;
+		validator_nosearch: SystemModelConfig;
 		search: SystemModelConfig;
 	};
 	default_model: number;
