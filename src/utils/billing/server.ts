@@ -12,8 +12,8 @@ import {
 import { db_find, db_insert, db_update } from "@/lib/db";
 import { verifyOrderOwnership } from "@/utils/afdian/orders";
 import {
-	calculateCallsFromOrder,
 	calculateMonthlyGrantCalls,
+	calculatePaidCallPrice,
 	shouldRefreshGrantCalls,
 } from "@/utils/billing/calculations";
 import "server-only";
@@ -44,8 +44,8 @@ export async function initializeUserBilling(uid: number): Promise<boolean> {
 	const initialBilling: UserBilling = {
 		uid,
 		totalAmount: 0,
-		grantCallsBalance: MONTHLY_GRANT_BASE, // 初始化直接给当月免费额度
-		paidCallsBalance: NEW_USER_BONUS, // 新用户赠送20次
+		grantCallsBalance: 0, // 未兑换过订单的用户不赠送每月次数
+		paidCallsBalance: NEW_USER_BONUS, // 新用户赠送次数
 		lastGrantRefresh: now,
 		createdAt: now,
 		updatedAt: now,
@@ -70,8 +70,8 @@ export async function refreshGrantCallsIfNeeded(uid: number): Promise<boolean> {
 		return false; // 不需要刷新
 	}
 
-	// 计算新的每月赠送次数
-	const newGrantCalls = calculateMonthlyGrantCalls(billing.totalAmount);
+	// 未兑换过订单的用户（totalAmount === 0）不赠送每月次数
+	const newGrantCalls = billing.totalAmount > 0 ? calculateMonthlyGrantCalls(billing.totalAmount) : 0;
 	const now = new Date();
 
 	// 更新数据库
@@ -171,10 +171,14 @@ export async function redeemOrder(
 		}
 
 		// 4. 计算本次兑换增加的次数
-		const { grantCallsAdded, paidCallsAdded } = calculateCallsFromOrder(
-			orderAmount,
-			billing.totalAmount,
-		);
+		const isFirstRedemption = billing.totalAmount === 0;
+
+		// 付费次数：订单金额除以当前折扣后的单价
+		const paidCallPrice = calculatePaidCallPrice(billing.totalAmount);
+		const paidCallsAdded = Math.floor(orderAmount / paidCallPrice);
+
+		// 赠送次数：仅首次兑换时一次性补发当月赠送额度，后续兑换不再变更赠送次数
+		const grantCallsAdded = isFirstRedemption ? MONTHLY_GRANT_BASE : 0;
 
 		// 5. 更新用户计费信息
 		const now = new Date();
@@ -206,9 +210,14 @@ export async function redeemOrder(
 		};
 		await db_insert(db_name, db_collection_afd_orders, orderRecord);
 
+		const messageParts = [`兑换成功！累计消费：¥${newTotalAmount.toFixed(2)}，付费次数+${paidCallsAdded}`];
+		if (isFirstRedemption) {
+			messageParts.push(`（首次兑换，补发当月赠送次数+${grantCallsAdded}）`);
+		}
+
 		return {
 			success: true,
-			message: `兑换成功！累计消费：¥${newTotalAmount.toFixed(2)}，本次获得：赠送次数+${grantCallsAdded}，付费次数+${paidCallsAdded}`,
+			message: messageParts.join(""),
 		};
 	} catch (error) {
 		return {
