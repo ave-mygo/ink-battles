@@ -129,7 +129,7 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 			const searchResults = sessionRecords?.searchResults || null;
 			const searchWebPages = sessionRecords?.searchWebPages || null;
 
-			console.log(`[${fingerprint}:${requestId}] 后台处理开始，baseURL: ${gradingModel.base_url}, model: ${gradingModel.model}`);
+			console.log(`[${fingerprint}:${requestId}] 后台处理开始，baseURL: ${gradingModel.base_url}, model: ${gradingModel.model}, supports_json_mode: ${gradingModel.supports_json_mode}`);
 
 			const openAI = new OpenAI({
 				apiKey: gradingModel.api_key,
@@ -153,7 +153,7 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 				model: gradingModel.model,
 				messages,
 				temperature: gradingModel.model.includes("gpt-5-nano") ? 1 : 0.3,
-				response_format: { type: "json_object" },
+				...(gradingModel.supports_json_mode !== false ? { response_format: { type: "json_object" } } : {}),
 				seed: fingerprint ? Number.parseInt(fingerprint) : undefined,
 				stream: true,
 			});
@@ -423,6 +423,8 @@ export async function getAnalysisStatusAction(taskId: string) {
 			status: task.status,
 			error: task.error,
 			resultId: task.resultId,
+			createdAt: task.createdAt,
+			updatedAt: task.updatedAt,
 		};
 	} catch (error) {
 		return { success: false, error: (error as Error).message, status: "error" };
