@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight, BarChart3, CheckCircle2, Loader2, RefreshCw, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clock, Loader2, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { deleteAnalysisTaskAction, getAnalysisStatusAction } from "@/utils/analysis";
 
 interface LocalTask {
@@ -17,14 +18,17 @@ interface LocalTask {
 }
 
 const REFRESH_COOLDOWN = 2000; // 2秒冷却
+const LONG_ANALYSIS_THRESHOLD = 300; // 5分钟（秒），超过此阈值显示超时提示
 
 export default function WriterAnalysisResultPlaceholder() {
 	const [tasks, setTasks] = useState<LocalTask[]>([]);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [canRefresh, setCanRefresh] = useState(true);
 	const [cooldownRemaining, setCooldownRemaining] = useState(0);
+	const [elapsedSeconds, setElapsedSeconds] = useState<Record<string, number>>({});
 	const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
+	const elapsedTimerRef = useRef<NodeJS.Timeout | null>(null);
 	const router = useRouter();
 	// 存储 setTasks 的稳定引用，避免在 useEffect 中直接调用
 	const setTasksRef = useRef(setTasks);
@@ -56,8 +60,74 @@ export default function WriterAnalysisResultPlaceholder() {
 			if (intervalRef.current) {
 				clearInterval(intervalRef.current);
 			}
+			if (elapsedTimerRef.current) {
+				clearInterval(elapsedTimerRef.current);
+			}
 		};
 	}, []);
+
+	/**
+	 * 实时计时器：为每个进行中的任务追踪已用时间
+	 * 任务完成/失败时将最终耗时保存到 localStorage
+	 */
+	useEffect(() => {
+		const activeTasks = tasks.filter(t => t.status === "pending" || t.status === "processing" || !t.status);
+
+		if (activeTasks.length === 0) {
+			if (elapsedTimerRef.current) {
+				clearInterval(elapsedTimerRef.current);
+				elapsedTimerRef.current = null;
+			}
+			return;
+		}
+
+		// 初始化已用时间
+		const now = Date.now();
+		setElapsedSeconds((prev) => {
+			const next = { ...prev };
+			for (const t of activeTasks) {
+				if (!(t.taskId in next)) {
+					next[t.taskId] = Math.floor((now - t.createdAt) / 1000);
+				}
+			}
+			return next;
+		});
+
+		// 每秒更新计时
+		elapsedTimerRef.current = setInterval(() => {
+			const currentTime = Date.now();
+			setElapsedSeconds((prev) => {
+				const next = { ...prev };
+				for (const t of activeTasks) {
+					next[t.taskId] = Math.floor((currentTime - t.createdAt) / 1000);
+				}
+				return next;
+			});
+		}, 1000);
+
+		return () => {
+			if (elapsedTimerRef.current) {
+				clearInterval(elapsedTimerRef.current);
+				elapsedTimerRef.current = null;
+			}
+		};
+	}, [tasks]);
+
+	/**
+	 * 当任务完成/失败时，将最终耗时保存到 localStorage
+	 */
+	useEffect(() => {
+		for (const task of tasks) {
+			if (task.status === "completed" || task.status === "failed") {
+				const elapsed = Math.floor((Date.now() - task.createdAt) / 1000);
+				try {
+					localStorage.setItem(`ink_battles_task_elapsed_${task.taskId}`, String(elapsed));
+				} catch {
+					// localStorage 写入失败时静默处理
+				}
+			}
+		}
+	}, [tasks]);
 
 	/**
 	 * 手动刷新任务状态
@@ -183,35 +253,42 @@ export default function WriterAnalysisResultPlaceholder() {
 						等待分析
 					</CardTitle>
 					{hasActiveTasks && (
-						<Button
-							size="sm"
-							variant="outline"
-							className="text-xs h-8 cursor-pointer"
-							onClick={handleRefreshStatus}
-							disabled={!canRefresh || isRefreshing}
-						>
-							{isRefreshing
-								? (
-									<>
-										<RefreshCw className="mr-1 h-3 w-3 animate-spin" />
-										刷新中...
-									</>
-								)
-								: cooldownRemaining > 0
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								size="sm"
+								variant="default"
+								className="text-xs h-8 cursor-pointer btn-mygo-rainbow text-white shadow-sm"
+								onClick={handleRefreshStatus}
+								disabled={!canRefresh || isRefreshing}
+							>
+								{isRefreshing
 									? (
 										<>
-											<RefreshCw className="mr-1 h-3 w-3" />
-											刷新列表 ({cooldownRemaining}s)
+											<RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
+											查询中...
 										</>
 									)
-									: (
-										<>
-											<RefreshCw className="mr-1 h-3 w-3" />
-											刷新列表
-										</>
-									)}
-						</Button>
-					)}
+									: cooldownRemaining > 0
+										? (
+											<>
+												<RefreshCw className="mr-1 h-3.5 w-3.5" />
+												刷新进度 ({cooldownRemaining}s)
+											</>
+										)
+										: (
+											<>
+												<RefreshCw className="mr-1 h-3.5 w-3.5" />
+												刷新进度
+											</>
+										)}
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="bottom" className="max-w-[240px] text-center">
+							<p>向服务器查询分析任务的最新进度，不会重新开始分析</p>
+						</TooltipContent>
+					</Tooltip>
+				)}
 				</div>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
@@ -221,7 +298,7 @@ export default function WriterAnalysisResultPlaceholder() {
 							<span className="text-sm text-slate-700 font-medium">{task.title || "未命名分析"}</span>
 							{task.status === "processing" || task.status === "pending" || !task.status
 								? (
-										<Badge status="processing" />
+										<Badge status="processing" elapsedSeconds={elapsedSeconds[task.taskId]} />
 									)
 								: task.status === "failed"
 									? (
@@ -231,6 +308,15 @@ export default function WriterAnalysisResultPlaceholder() {
 											<Badge status="completed" />
 										)}
 						</div>
+
+						{/* 超时提示：分析用时超过 5 分钟时显示 */}
+						{(task.status === "processing" || task.status === "pending" || !task.status)
+							&& (elapsedSeconds[task.taskId] ?? 0) >= LONG_ANALYSIS_THRESHOLD && (
+							<p className="text-xs text-amber-600 flex gap-1 items-center">
+								<AlertTriangle className="h-3 w-3 shrink-0" />
+								分析用时较长，如无响应请尝试删除并重新提交分析
+							</p>
+						)}
 
 						{task.status === "failed" && task.error && (
 							<p className="text-xs text-red-500 line-clamp-2">{task.error}</p>
@@ -265,12 +351,30 @@ export default function WriterAnalysisResultPlaceholder() {
 	);
 }
 
-function Badge({ status }: { status: "processing" | "failed" | "completed" }) {
+/**
+ * 格式化秒数为 Xm Ys 格式
+ */
+function formatElapsed(seconds: number): string {
+	const m = Math.floor(seconds / 60);
+	const s = seconds % 60;
+	if (m > 0) {
+		return `${m}m ${s}s`;
+	}
+	return `${s}s`;
+}
+
+function Badge({ status, elapsedSeconds }: { status: "processing" | "failed" | "completed"; elapsedSeconds?: number }) {
 	if (status === "processing") {
 		return (
 			<span className="text-xs text-blue-700 font-medium px-2 py-1 rounded bg-blue-100 inline-flex gap-1 items-center">
 				<Loader2 className="h-3 w-3 animate-spin" />
 				分析中
+				{elapsedSeconds !== undefined && (
+					<span className="text-blue-500 ml-0.5 inline-flex gap-0.5 items-center">
+						<Clock className="h-2.5 w-2.5" />
+						{formatElapsed(elapsedSeconds)}
+					</span>
+				)}
 			</span>
 		);
 	}
