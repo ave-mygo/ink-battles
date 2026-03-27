@@ -1,5 +1,6 @@
 "use server";
 
+import type { ClientSession, Document, WithId } from "mongodb";
 import { MongoClient, ObjectId } from "mongodb";
 import { getConfig } from "@/config";
 
@@ -136,17 +137,20 @@ export async function db_read(dbName: string, collectionName: string, filter: ob
  * @param {string} dbName - 数据库名称
  * @param {string} collectionName - 集合名称
  * @param {object} data - 要插入的数据
+ * @param {boolean} throwOnError - 失败时是否抛出异常（默认 false，保持向后兼容）
  * @returns {Promise<boolean>} 如果插入成功则返回 true
  */
-export async function db_insert(dbName: string, collectionName: string, data: object): Promise<boolean> {
+export async function db_insert(dbName: string, collectionName: string, data: object, throwOnError: boolean = false, session?: ClientSession): Promise<boolean> {
 	const client = await mongoClient();
 	try {
 		const db = client.db(dbName);
 		const collection = db.collection(collectionName);
-		await collection.insertOne(data);
+		const options = session ? { session } : undefined;
+		await collection.insertOne(data, options);
 		return true;
 	} catch (error) {
 		console.error(`插入数据时出错: ${(error as Error).message}`);
+		if (throwOnError) throw error;
 		return false;
 	}
 }
@@ -201,29 +205,52 @@ export async function db_findById(dbName: string, collectionName: string, id: st
  * @param {string} collectionName - 集合名称
  * @param {object} query - 查询条件
  * @param {object} data - 更新的数据
+ * @param {boolean} throwOnError - 失败时是否抛出异常（默认 false，保持向后兼容）
  * @returns {Promise<boolean>} 如果更新成功则返回 true
  */
-export async function db_update(dbName: string, collectionName: string, query: object, data: object): Promise<boolean> {
+export async function db_update(dbName: string, collectionName: string, query: object, data: object, throwOnError: boolean = false, session?: ClientSession): Promise<boolean> {
 	const client = await mongoClient();
 	try {
 		const db = client.db(dbName);
 		const collection = db.collection(collectionName);
+		const options = session ? { session } : undefined;
 
 		// 检查data是否已经包含MongoDB更新操作符
 		const hasUpdateOperators = Object.keys(data).some(key => key.startsWith("$"));
 
 		if (hasUpdateOperators) {
 			// 如果包含更新操作符，直接使用data
-			await collection.updateOne(query, data);
+			await collection.updateOne(query, data, options);
 		} else {
 			// 如果不包含更新操作符，使用$set包装
-			await collection.updateOne(query, { $set: data });
+			await collection.updateOne(query, { $set: data }, options);
 		}
 
 		return true;
 	} catch (error) {
 		console.error(`更新数据时出错: ${(error as Error).message}`);
+		if (throwOnError) throw error;
 		return false;
+	}
+}
+
+/**
+ * 原子性地查找并更新一条记录（用于避免竞态条件）
+ * @param {string} dbName - 数据库名称
+ * @param {string} collectionName - 集合名称
+ * @param {object} query - 查询条件
+ * @param {object} update - 更新操作（支持 $inc, $set 等）
+ * @returns {Promise<WithId<Document> | null>} 更新前的文档，未匹配则返回 null
+ */
+export async function db_findOneAndUpdate(dbName: string, collectionName: string, query: object, update: object): Promise<WithId<Document> | null> {
+	const client = await mongoClient();
+	try {
+		const db = client.db(dbName);
+		const collection = db.collection(collectionName);
+		return await collection.findOneAndUpdate(query, update, { includeResultMetadata: false });
+	} catch (error) {
+		console.error(`原子更新数据时出错: ${(error as Error).message}`);
+		return null;
 	}
 }
 
@@ -300,6 +327,9 @@ export async function db_getUniqueFieldValues(dbName: string, collectionName: st
 // 缓存已初始化的 TTL 索引集合
 const ttlIndexInitialized = new Set<string>();
 
+// 缓存已初始化的唯一索引集合
+const uniqueIndexInitialized = new Set<string>();
+
 /**
  * 确保集合具有 TTL 索引（用于自动过期删除）
  * @param {string} dbName - 数据库名称
@@ -339,5 +369,67 @@ export async function ensureTTLIndex(
 		ttlIndexInitialized.add(cacheKey);
 	} catch (error) {
 		console.error(`创建 TTL 索引时出错: ${(error as Error).message}`);
+	}
+}
+
+/**
+ * 确保集合具有唯一索引（防止重复插入）
+ * @param {string} dbName - 数据库名称
+ * @param {string} collectionName - 集合名称
+ * @param {string} fieldName - 需要唯一约束的字段名
+ */
+export async function ensureUniqueIndex(
+	dbName: string,
+	collectionName: string,
+	fieldName: string,
+): Promise<void> {
+	const cacheKey = `${dbName}.${collectionName}.${fieldName}`;
+	if (uniqueIndexInitialized.has(cacheKey)) {
+		return;
+	}
+
+	const client = await mongoClient();
+	try {
+		const db = client.db(dbName);
+		const collection = db.collection(collectionName);
+
+		// 检查唯一索引是否已存在
+		const indexes = await collection.indexes();
+		const uniqueIndexExists = indexes.some(
+			idx => idx.key?.[fieldName] === 1 && idx.unique === true,
+		);
+
+		if (!uniqueIndexExists) {
+			await collection.createIndex(
+				{ [fieldName]: 1 },
+				{ unique: true },
+			);
+		}
+
+		uniqueIndexInitialized.add(cacheKey);
+	} catch (error) {
+		console.error(`创建唯一索引时出错: ${(error as Error).message}`);
+	}
+}
+
+/**
+ * 在 MongoDB 事务中执行一系列操作，保证原子性
+ * 注意：MongoDB 事务需要副本集 (Replica Set) 支持
+ * @param callback - 接收 ClientSession 的事务回调
+ * @returns 回调函数的返回值
+ */
+export async function db_withTransaction<T>(
+	callback: (session: ClientSession) => Promise<T>,
+): Promise<T> {
+	const client = await mongoClient();
+	const session = client.startSession();
+	try {
+		let result: T;
+		await session.withTransaction(async () => {
+			result = await callback(session);
+		});
+		return result!;
+	} finally {
+		await session.endSession();
 	}
 }

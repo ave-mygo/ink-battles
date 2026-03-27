@@ -9,7 +9,7 @@ import {
 	MONTHLY_GRANT_BASE,
 	NEW_USER_BONUS,
 } from "@/lib/constants";
-import { db_find, db_insert, db_update } from "@/lib/db";
+import { db_find, db_findOneAndUpdate, db_insert, db_update, db_withTransaction, ensureUniqueIndex } from "@/lib/db";
 import { verifyOrderOwnership } from "@/utils/afdian/orders";
 import {
 	calculateMonthlyGrantCalls,
@@ -90,7 +90,8 @@ export async function refreshGrantCallsIfNeeded(uid: number): Promise<boolean> {
 }
 
 /**
- * 扣减调用次数（优先使用赠送次数）
+ * 原子性扣减调用次数（优先使用赠送次数）
+ * 使用 findOneAndUpdate + $inc 原子操作，避免并发竞态导致的多扣/少扣
  * @param uid 用户UID
  * @returns 是否成功扣减
  */
@@ -98,43 +99,54 @@ export async function deductCallBalance(uid: number): Promise<boolean> {
 	// 先刷新赠送次数（如果需要）
 	await refreshGrantCallsIfNeeded(uid);
 
-	const billing = await getUserBilling(uid);
-	if (!billing) {
-		return false;
-	}
-
 	const now = new Date();
 
-	// 优先扣减赠送次数
-	if (billing.grantCallsBalance > 0) {
-		await db_update(
-			db_name,
-			db_collection_user_billing,
-			{ uid },
-			{
-				grantCallsBalance: billing.grantCallsBalance - 1,
-				updatedAt: now,
-			},
-		);
+	// 优先原子性扣减赠送次数：条件 grantCallsBalance > 0 + $inc: -1
+	const grantResult = await db_findOneAndUpdate(
+		db_name,
+		db_collection_user_billing,
+		{ uid, grantCallsBalance: { $gt: 0 } },
+		{ $inc: { grantCallsBalance: -1 }, $set: { updatedAt: now } },
+	);
+
+	if (grantResult) {
 		return true;
 	}
 
-	// 其次扣减付费次数
-	if (billing.paidCallsBalance > 0) {
-		await db_update(
-			db_name,
-			db_collection_user_billing,
-			{ uid },
-			{
-				paidCallsBalance: billing.paidCallsBalance - 1,
-				updatedAt: now,
-			},
-		);
+	// 其次原子性扣减付费次数：条件 paidCallsBalance > 0 + $inc: -1
+	const paidResult = await db_findOneAndUpdate(
+		db_name,
+		db_collection_user_billing,
+		{ uid, paidCallsBalance: { $gt: 0 } },
+		{ $inc: { paidCallsBalance: -1 }, $set: { updatedAt: now } },
+	);
+
+	if (paidResult) {
 		return true;
 	}
 
 	// 没有可用次数
 	return false;
+}
+
+/**
+ * 原子性退还一次调用次数（退还到付费次数）
+ * 用于预扣费模式下任务失败时退还费用
+ * @param uid 用户UID
+ * @returns 是否成功退还
+ */
+export async function refundCallBalance(uid: number): Promise<boolean> {
+	const now = new Date();
+
+	// 退还到付费次数（原子操作）
+	const result = await db_findOneAndUpdate(
+		db_name,
+		db_collection_user_billing,
+		{ uid },
+		{ $inc: { paidCallsBalance: 1 }, $set: { updatedAt: now } },
+	);
+
+	return !!result;
 }
 
 /**
@@ -150,6 +162,9 @@ export async function redeemOrder(
 	orderNo: string,
 ): Promise<{ success: boolean; message: string }> {
 	try {
+		// 0. 确保 orderNo 唯一索引存在（数据库层面防止并发重复兑换）
+		await ensureUniqueIndex(db_name, db_collection_afd_orders, "orderNo");
+
 		// 1. 检查订单是否已被兑换
 		const existingOrder = await db_find(db_name, db_collection_afd_orders, { orderNo });
 		if (existingOrder) {
@@ -180,35 +195,41 @@ export async function redeemOrder(
 		// 赠送次数：仅首次兑换时一次性补发当月赠送额度，后续兑换不再变更赠送次数
 		const grantCallsAdded = isFirstRedemption ? MONTHLY_GRANT_BASE : 0;
 
-		// 5. 更新用户计费信息
+		// 5. 计算新值
 		const now = new Date();
 		const newTotalAmount = billing.totalAmount + orderAmount;
 		const newGrantCallsBalance = billing.grantCallsBalance + grantCallsAdded;
 		const newPaidCallsBalance = billing.paidCallsBalance + paidCallsAdded;
 
-		await db_update(
-			db_name,
-			db_collection_user_billing,
-			{ uid },
-			{
-				totalAmount: newTotalAmount,
-				grantCallsBalance: newGrantCallsBalance,
-				paidCallsBalance: newPaidCallsBalance,
-				updatedAt: now,
-			},
-		);
+		// 6. 在事务中执行：更新余额 + 插入订单记录（保证原子性）
+		await db_withTransaction(async (session) => {
+			// 更新用户计费信息
+			await db_update(
+				db_name,
+				db_collection_user_billing,
+				{ uid },
+				{
+					totalAmount: newTotalAmount,
+					grantCallsBalance: newGrantCallsBalance,
+					paidCallsBalance: newPaidCallsBalance,
+					updatedAt: now,
+				},
+				true,
+				session,
+			);
 
-		// 6. 记录订单兑换信息
-		const orderRecord: AfdOrder = {
-			orderNo,
-			uid,
-			afdId,
-			amount: orderAmount,
-			redeemedAt: now,
-			grantCallsAdded,
-			paidCallsAdded,
-		};
-		await db_insert(db_name, db_collection_afd_orders, orderRecord);
+			// 记录订单兑换信息
+			const orderRecord: AfdOrder = {
+				orderNo,
+				uid,
+				afdId,
+				amount: orderAmount,
+				redeemedAt: now,
+				grantCallsAdded,
+				paidCallsAdded,
+			};
+			await db_insert(db_name, db_collection_afd_orders, orderRecord, true, session);
+		});
 
 		const messageParts = [`兑换成功！累计消费：¥${newTotalAmount.toFixed(2)}，付费次数+${paidCallsAdded}`];
 		if (isFirstRedemption) {
@@ -220,9 +241,14 @@ export async function redeemOrder(
 			message: messageParts.join(""),
 		};
 	} catch (error) {
+		// 识别唯一索引冲突错误（并发兑换场景下的安全网）
+		const errMsg = error instanceof Error ? error.message : "未知错误";
+		if (errMsg.includes("E11000") || errMsg.includes("duplicate key")) {
+			return { success: false, message: "该订单已被兑换，请勿重复使用" };
+		}
 		return {
 			success: false,
-			message: `兑换失败: ${error instanceof Error ? error.message : "未知错误"}`,
+			message: `兑换失败: ${errMsg}`,
 		};
 	}
 }

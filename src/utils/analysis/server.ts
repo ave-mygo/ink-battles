@@ -14,7 +14,7 @@ import { db_name, db_table } from "@/lib/constants";
 import { db_delete, db_find, db_findById, db_insert, db_update } from "@/lib/db";
 import { parseModelOutput } from "@/lib/json-parser";
 import { getCurrentUserInfo } from "@/utils/auth/server";
-import { deductCallBalance, hasAvailableCalls } from "@/utils/billing/server";
+import { deductCallBalance, refundCallBalance } from "@/utils/billing/server";
 import "server-only";
 
 // 预编译正则表达式，避免每次调用时重新编译
@@ -83,9 +83,12 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 	const headerStore = await headers();
 	const ip = headerStore.get("x-forwarded-for") || headerStore.get("x-real-ip") || null;
 
+	// 预扣费：高级模型先原子扣减一次调用次数，防止并发请求绕过余额检查
+	// 如果后续处理失败，在 catch 中退还
+	let preDeducted = false;
 	if (isPremiumModel && uid) {
-		const hasCalls = await hasAvailableCalls(uid);
-		if (!hasCalls) {
+		preDeducted = await deductCallBalance(uid);
+		if (!preDeducted) {
 			return { success: false, error: "调用次数不足，请前往计费管理页面充值或兑换订单" };
 		}
 	}
@@ -169,17 +172,29 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 				"input.search": { searchResults: searchResults || "", searchWebPages: searchWebPages || undefined },
 			});
 
+			// 预扣费模式：已在提交时扣费，此处标记为非扣费模式
 			await updateDatabaseWithResult({
 				taskId,
 				accumulatedContent: content,
 				uid,
-				isPremiumModel,
+				isPremiumModel: false, // 预扣费已完成
+				preDeducted, // 传递预扣费标记
 				session,
 			});
 
 			console.log(`[${fingerprint}:${requestId}]后台任务完成！`);
 		} catch (error) {
 			console.error(`[${fingerprint}:${requestId}] 后台任务失败:`, error);
+
+			// 任务失败时退还预扣费（仅在确实预扣费的情况下）
+			if (preDeducted && uid) {
+				const refunded = await refundCallBalance(uid);
+				if (refunded) {
+					console.log(`[${fingerprint}:${requestId}] 任务失败，已退还预扣费用给用户 ${uid}`);
+				} else {
+					console.error(`[严重] [${fingerprint}:${requestId}] 任务失败且退还预扣费用失败，用户 ${uid} 需人工对账`);
+				}
+			}
 
 			// 区分流式相关错误
 			let errorMessage = (error as Error).message;
@@ -301,12 +316,14 @@ async function updateDatabaseWithResult({
 	accumulatedContent,
 	uid,
 	isPremiumModel,
+	preDeducted = false,
 	session,
 }: {
 	taskId: ObjectId;
 	accumulatedContent: string;
 	uid: number | null;
 	isPremiumModel: boolean;
+	preDeducted?: boolean;
 	session: string;
 }) {
 	// 获取任务信息
@@ -338,9 +355,12 @@ async function updateDatabaseWithResult({
 	const overallScore = await calculateFinalScore(parsedResult);
 	const finalResult = JSON.stringify(parsedResult);
 
-	// 1. 插入到最终的分析记录表
+	// === 关键操作顺序：插入记录 → 验证扣费 → 标记完成 → 清理 ===
+	// 任何一步失败都会抛出异常，由外层 catch 将任务标记为 failed
+
+	// 1. 插入到最终的分析记录表（失败则中止，不继续）
 	const analysisId = new ObjectId();
-	await db_insert(db_name, db_table, {
+	const insertOk = await db_insert(db_name, db_table, {
 		_id: analysisId,
 		uid,
 		status: "completed",
@@ -363,10 +383,27 @@ async function updateDatabaseWithResult({
 			modelName: task.metadata.modelName,
 		},
 		timestamp: new Date().toISOString(),
-	});
+	}, true); // throwOnError = true
 
-	// 2. 更新任务表状态为 completed并关联 analysisId
-	await db_update(
+	if (!insertOk) {
+		throw new Error("分析结果写入数据库失败");
+	}
+
+	// 2. 验证扣费状态（预扣费模式下已扣费，此处仅验证）
+	if (preDeducted) {
+		// 预扣费模式：费用已在任务提交时扣除，此处无需操作
+		console.log(`[${taskId}] 预扣费模式，费用已在提交时扣除`);
+	} else if (isPremiumModel && uid) {
+		// 非预扣费模式（旧逻辑兼容）：此处扣费
+		const balanceDeducted = await deductCallBalance(uid);
+		if (!balanceDeducted) {
+			// 扣费失败必须抛出异常，防止出结果不扣费
+			throw new Error(`用户 ${uid} 调用次数不足，分析结果 ${analysisId} 已入库但无法扣费`);
+		}
+	}
+
+	// 3. 更新任务表状态为 completed 并关联 analysisId
+	const updateOk = await db_update(
 		db_name,
 		"analysis_tasks",
 		{ _id: taskId },
@@ -375,13 +412,15 @@ async function updateDatabaseWithResult({
 			updatedAt: new Date().toISOString(),
 			resultId: analysisId.toString(),
 		},
+		true, // throwOnError = true
 	);
 
-	await db_delete(db_name, "sessions", { session });
-
-	if (isPremiumModel && uid) {
-		await deductCallBalance(uid);
+	if (!updateOk) {
+		console.error(`[警告] 任务 ${taskId} 状态更新失败，但分析结果 ${analysisId} 已入库`);
 	}
+
+	// 4. 清理 session（非关键操作，失败不影响主流程）
+	await db_delete(db_name, "sessions", { session });
 }
 
 function isValidAnalysisResult(result: any): boolean {
