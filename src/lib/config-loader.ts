@@ -44,7 +44,7 @@ interface FriendLinkConfig {
 interface RuntimeConfig {
 	system_models: {
 		validator_gemini: SystemModelConfig;
-		validator_grok: SystemModelConfig;
+		validator_gemini_lite: SystemModelConfig;
 		validator_nosearch: SystemModelConfig;
 		search: SystemModelConfig;
 	};

@@ -120,7 +120,46 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		searchWebPages?: Array<{ uri: string; title?: string }>;
 	} | null>(null);
 	const [percentileData, setPercentileData] = useState<ScorePercentileResult | null>(null);
-	const [searchModel, setSearchModel] = useState<"none" | "gemini" | "grok">("gemini");
+	const SEARCH_STORAGE_KEY = "writer.searchModel";
+	const SEARCH_MODEL_DEFAULT = "none" as const;
+	const validSearchModels = new Set(["none", "gemini", "gemini-lite"]);
+
+	const searchModelSubscribe = (callback: () => void) => {
+		if (typeof window === "undefined")
+			return () => {};
+		const onStorage = (e: StorageEvent) => {
+			if (e.key === SEARCH_STORAGE_KEY)
+				callback();
+		};
+		const onCustom = () => callback();
+		window.addEventListener("storage", onStorage);
+		window.addEventListener("writer-search-model-change", onCustom as EventListener);
+		return () => {
+			window.removeEventListener("storage", onStorage);
+			window.removeEventListener("writer-search-model-change", onCustom as EventListener);
+		};
+	};
+	const searchModelSnapshot = () => {
+		try {
+			if (typeof window !== "undefined") {
+				const saved = window.localStorage.getItem(SEARCH_STORAGE_KEY);
+				if (saved && validSearchModels.has(saved))
+					return saved as "none" | "gemini" | "gemini-lite";
+			}
+		} catch {}
+		return SEARCH_MODEL_DEFAULT;
+	};
+	const searchModelServerSnapshot = () => SEARCH_MODEL_DEFAULT;
+	const searchModel = useSyncExternalStore(searchModelSubscribe, searchModelSnapshot, searchModelServerSnapshot);
+
+	const setSearchModel = (model: "none" | "gemini" | "gemini-lite") => {
+		try {
+			if (typeof window !== "undefined") {
+				window.localStorage.setItem(SEARCH_STORAGE_KEY, model);
+				window.dispatchEvent(new Event("writer-search-model-change"));
+			}
+		} catch {}
+	};
 	// 缓存校验结果，重试时跳过校验
 	const verifyResultRef = useRef<{
 		session: string;

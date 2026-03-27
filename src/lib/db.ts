@@ -150,7 +150,8 @@ export async function db_insert(dbName: string, collectionName: string, data: ob
 		return true;
 	} catch (error) {
 		console.error(`插入数据时出错: ${(error as Error).message}`);
-		if (throwOnError) throw error;
+		if (throwOnError)
+			throw error;
 		return false;
 	}
 }
@@ -229,7 +230,8 @@ export async function db_update(dbName: string, collectionName: string, query: o
 		return true;
 	} catch (error) {
 		console.error(`更新数据时出错: ${(error as Error).message}`);
-		if (throwOnError) throw error;
+		if (throwOnError)
+			throw error;
 		return false;
 	}
 }

@@ -33,6 +33,9 @@ export default function WriterAnalysisResultPlaceholder() {
 	// 存储 setTasks 的稳定引用，避免在 useEffect 中直接调用
 	const setTasksRef = useRef(setTasks);
 	setTasksRef.current = setTasks;
+	// 存储 setElapsedSeconds 的稳定引用，避免在 useEffect 中直接调用
+	const setElapsedSecondsRef = useRef(setElapsedSeconds);
+	setElapsedSecondsRef.current = setElapsedSeconds;
 
 	// Initial load and listen to custom event
 	useEffect(() => {
@@ -83,7 +86,7 @@ export default function WriterAnalysisResultPlaceholder() {
 
 		// 初始化已用时间
 		const now = Date.now();
-		setElapsedSeconds((prev) => {
+		setElapsedSecondsRef.current((prev) => {
 			const next = { ...prev };
 			for (const t of activeTasks) {
 				if (!(t.taskId in next)) {
@@ -96,7 +99,7 @@ export default function WriterAnalysisResultPlaceholder() {
 		// 每秒更新计时
 		elapsedTimerRef.current = setInterval(() => {
 			const currentTime = Date.now();
-			setElapsedSeconds((prev) => {
+			setElapsedSecondsRef.current((prev) => {
 				const next = { ...prev };
 				for (const t of activeTasks) {
 					next[t.taskId] = Math.floor((currentTime - t.createdAt) / 1000);
@@ -253,42 +256,44 @@ export default function WriterAnalysisResultPlaceholder() {
 						等待分析
 					</CardTitle>
 					{hasActiveTasks && (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								size="sm"
-								variant="default"
-								className="text-xs h-8 cursor-pointer btn-mygo-rainbow text-white shadow-sm"
-								onClick={handleRefreshStatus}
-								disabled={!canRefresh || isRefreshing}
-							>
-								{isRefreshing
-									? (
-										<>
-											<RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
-											查询中...
-										</>
-									)
-									: cooldownRemaining > 0
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									size="sm"
+									variant="default"
+									className="btn-mygo-rainbow text-xs text-white h-8 cursor-pointer shadow-sm"
+									onClick={handleRefreshStatus}
+									disabled={!canRefresh || isRefreshing}
+								>
+									{isRefreshing
 										? (
-											<>
-												<RefreshCw className="mr-1 h-3.5 w-3.5" />
-												刷新进度 ({cooldownRemaining}s)
-											</>
-										)
-										: (
-											<>
-												<RefreshCw className="mr-1 h-3.5 w-3.5" />
-												刷新进度
-											</>
-										)}
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent side="bottom" className="max-w-[240px] text-center">
-							<p>向服务器查询分析任务的最新进度，不会重新开始分析</p>
-						</TooltipContent>
-					</Tooltip>
-				)}
+												<>
+													<RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
+													查询中...
+												</>
+											)
+										: cooldownRemaining > 0
+											? (
+													<>
+														<RefreshCw className="mr-1 h-3.5 w-3.5" />
+														刷新进度 (
+														{cooldownRemaining}
+														s)
+													</>
+												)
+											: (
+													<>
+														<RefreshCw className="mr-1 h-3.5 w-3.5" />
+														刷新进度
+													</>
+												)}
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent side="bottom" className="text-center max-w-60">
+								<p>向服务器查询分析任务的最新进度，不会重新开始分析</p>
+							</TooltipContent>
+						</Tooltip>
+					)}
 				</div>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-3">
@@ -313,7 +318,7 @@ export default function WriterAnalysisResultPlaceholder() {
 						{(task.status === "processing" || task.status === "pending" || !task.status)
 							&& (elapsedSeconds[task.taskId] ?? 0) >= LONG_ANALYSIS_THRESHOLD && (
 							<p className="text-xs text-amber-600 flex gap-1 items-center">
-								<AlertTriangle className="h-3 w-3 shrink-0" />
+								<AlertTriangle className="shrink-0 h-3 w-3" />
 								分析用时较长，如无响应请尝试删除并重新提交分析
 							</p>
 						)}
@@ -335,8 +340,8 @@ export default function WriterAnalysisResultPlaceholder() {
 							<div className="mt-1 flex gap-2 justify-end">
 								<Button
 									size="sm"
-									variant="default"
-									className="text-xs bg-blue-600 h-7 cursor-pointer hover:bg-blue-700"
+									variant="ghost"
+									className="btn-mygo-rainbow text-xs h-7 cursor-pointer"
 									onClick={() => handleViewResult(task)}
 								>
 									<ArrowRight className="mr-1 h-3 w-3" />

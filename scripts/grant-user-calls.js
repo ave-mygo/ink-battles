@@ -186,6 +186,8 @@ function getTargetDescription(targetConfig) {
  * @param {number} paidCalls 付费次数
  * @param {string} note 备注
  */
+const TIMESTAMP_REPLACE_REGEX = /[:.]/g;
+
 async function grantUserCalls(targetConfig, grantCalls, paidCalls, note) {
 	let client;
 
@@ -280,7 +282,7 @@ async function grantUserCalls(targetConfig, grantCalls, paidCalls, note) {
 
 		// 保存操作报告到文件
 		const outputDir = path.join(__dirname, "../output");
-		const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, -5);
+		const timestamp = new Date().toISOString().replace(TIMESTAMP_REPLACE_REGEX, "-").slice(0, -5);
 		const filename = `grant-calls-report-${timestamp}.txt`;
 		const filePath = path.join(outputDir, filename);
 

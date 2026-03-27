@@ -11,17 +11,24 @@
 # -------------------------------------------------------------
 # 系统模型配置
 # -------------------------------------------------------------
-[system_models.validator_gemini] # 带搜索的校验模型 (Gemini)
+[system_models.validator_gemini] # 带搜索的校验模型 (Gemini, Google GenAI SDK 原生调用)
 api_key = "YOUR_VALIDATOR_API_KEY"
 base_url = "https://api.openai.com/v1"
 model = "gemini-3-flash-preview"
 
 # -------------------------------------------------------------
-# 带搜索的校验模型 (Grok)
-[system_models.validator_grok]
+# 带搜索的校验模型 (Gemini Lite, Google GenAI SDK 原生调用)
+[system_models.validator_gemini_lite]
 api_key = "YOUR_VALIDATOR_API_KEY"
 base_url = "https://api.openai.com/v1"
-model = "grok-4.20-beta"
+model = "gemini-2.5-flash"
+
+# -------------------------------------------------------------
+# 关闭搜索的校验模型 (GLM, OpenAI 兼容 SDK)
+[system_models.validator_nosearch]
+api_key = "YOUR_VALIDATOR_API_KEY"
+base_url = "https://api.openai.com/v1"
+model = "glm-4.7"
 
 # -------------------------------------------------------------
 # 评分模型配置

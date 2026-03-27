@@ -66,7 +66,7 @@ function generateCode(length = 8) {
  * 检查邀请码是否已存在
  * @param {import("mongodb").Collection} collection 集合
  * @param {string} code 邀请码
- * @returns {Promise<boolean>}
+ * @returns {Promise<boolean>} 是否存在
  */
 async function codeExists(collection, code) {
 	const result = await collection.findOne({ code });
@@ -77,7 +77,7 @@ async function codeExists(collection, code) {
  * 生成唯一邀请码
  * @param {import("mongodb").Collection} collection 集合
  * @param {number} length 长度
- * @returns {Promise<string>}
+ * @returns {Promise<string>} 唯一邀请码
  */
 async function generateUniqueCode(collection, length = 8) {
 	let code;
@@ -102,6 +102,8 @@ async function generateUniqueCode(collection, length = 8) {
  * @param {number} expiresInDays 过期天数，0表示永不过期
  * @param {string} note 备注
  */
+const TIMESTAMP_REPLACE_REGEX = /[:.]/g;
+
 async function generateInviteCodes(count, maxUses, expiresInDays, note) {
 	let client;
 
@@ -173,7 +175,7 @@ async function generateInviteCodes(count, maxUses, expiresInDays, note) {
 
 		// 保存到文件
 		const outputDir = path.join(__dirname, "../output");
-		const timestamp = now.toISOString().replace(/[:.]/g, "-").slice(0, -5);
+		const timestamp = now.toISOString().replace(TIMESTAMP_REPLACE_REGEX, "-").slice(0, -5);
 		const filename = `invite-codes-${timestamp}.txt`;
 		const filePath = path.join(outputDir, filename);
 

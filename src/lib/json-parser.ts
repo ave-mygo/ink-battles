@@ -15,12 +15,14 @@ const RE_BOM = /^\uFEFF/;
 const RE_TRAILING_COMMA = /,(\s*[\]}])/g;
 
 /** markdown 代码块包裹 */
+// eslint-disable-next-line regexp/no-super-linear-backtracking
 const RE_CODE_BLOCK = /```(?:json|JSON)?\s*([\s\S]*?)\s*```/;
 
 /** 合法的 mermaid 图表类型开头 */
-const RE_MERMAID_HEAD = /^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|journey|gitGraph|mindmap|timeline|quadrantChart|sankey|xychart|block)\b/i;
+const RE_MERMAID_HEAD = /^(?:graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|gantt|pie|journey|gitGraph|mindmap|timeline|quadrantChart|sankey|xychart|block)\b/i;
 
 /** 西里尔垃圾文本检测 */
+// eslint-disable-next-line regexp/no-obscure-range
 const RE_CYRILLIC = /[а-яА-ЯёЁ]{2,}/;
 
 /** subgraph 行 */

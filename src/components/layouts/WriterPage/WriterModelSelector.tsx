@@ -5,15 +5,14 @@ import { AlertTriangle, Brain, Clock, Crown, Globe, Settings, Sparkles, Target, 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 
 interface WriterModelSelectorProps {
 	availableModels: GradingModelConfig[];
 	selectedModelId: string;
 	onModelChange: (modelId: string) => void;
 	disabled?: boolean;
-	searchModel?: "none" | "gemini" | "grok";
-	onSearchModelChange?: (model: "none" | "gemini" | "grok") => void;
+	searchModel?: "none" | "gemini" | "gemini-lite";
+	onSearchModelChange?: (model: "none" | "gemini" | "gemini-lite") => void;
 }
 
 // 特性图标映射
@@ -31,7 +30,7 @@ export default function WriterModelSelector({
 	selectedModelId,
 	onModelChange,
 	disabled = false,
-	searchModel = "gemini",
+	searchModel = "none",
 	onSearchModelChange,
 }: WriterModelSelectorProps) {
 	const selectedModel = availableModels.find(model => model.id === selectedModelId);
@@ -174,7 +173,7 @@ export default function WriterModelSelector({
 				{/* 附加选项与说明 */}
 				<div className="mt-4 pt-4 border-t border-slate-100 flex flex-col gap-3 dark:border-slate-800">
 					{/* 搜索校验选择 */}
-					<div className="p-3 border border-slate-200 rounded-lg bg-white shadow-xs dark:border-slate-700/80 dark:bg-slate-800/40 space-y-2">
+					<div className="p-3 border border-slate-200 rounded-lg bg-white shadow-xs space-y-2 dark:border-slate-700/80 dark:bg-slate-800/40">
 						<div className="flex flex-col gap-1">
 							<div className="text-sm text-slate-700 font-medium flex gap-1.5 items-center dark:text-slate-200">
 								<Globe className="text-blue-500 h-4 w-4 dark:text-blue-400" />
@@ -183,21 +182,21 @@ export default function WriterModelSelector({
 							<div className="text-xs text-slate-500 dark:text-slate-400">
 								允许模型在分析时获取网络最新资料
 							</div>
-							<div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+							<div className="text-xs text-amber-600 mt-1 dark:text-amber-400">
 								若多次校验失败，建议选择不使用搜索，或切换不同的搜索模型
 							</div>
 						</div>
 						<Select
 							value={searchModel}
-							onValueChange={(value: "none" | "gemini" | "grok") => onSearchModelChange?.(value)}
+							onValueChange={(value: "none" | "gemini" | "gemini-lite") => onSearchModelChange?.(value)}
 							disabled={disabled}
 						>
-							<SelectTrigger className="w-full bg-slate-50/50">
+							<SelectTrigger className="bg-slate-50/50 w-full">
 								<SelectValue placeholder="选择搜索模型" />
 							</SelectTrigger>
 							<SelectContent>
 								<SelectItem value="gemini">Gemini 搜索</SelectItem>
-								<SelectItem value="grok">Grok 搜索</SelectItem>
+								<SelectItem value="gemini-lite">Gemini Lite 搜索</SelectItem>
 								<SelectItem value="none">关闭搜索</SelectItem>
 							</SelectContent>
 						</Select>

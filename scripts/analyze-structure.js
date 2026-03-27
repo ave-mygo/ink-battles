@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { MongoClient } from "mongodb";
 import toml from "toml"; // 需要 npm install toml
@@ -52,6 +53,8 @@ const uri = MONGO_USER && MONGO_PASS
 
 // --- 工具函数 ---
 
+const OBJECT_ID_REGEX = /^[0-9a-f]{24}$/i;
+
 /**
  * 判断变量类型
  */
@@ -61,7 +64,7 @@ function getType(value) {
 	if (value === undefined)
 		return "undefined";
 	// 检查是否为 MongoDB ObjectId
-	if (value._bsontype === "ObjectID" || (typeof value === "object" && value.toString().length === 24 && /^[0-9a-f]{24}$/i.test(value)))
+	if (value._bsontype === "ObjectID" || (typeof value === "object" && value.toString().length === 24 && OBJECT_ID_REGEX.test(value)))
 		return "ObjectId";
 	if (value instanceof Date)
 		return "Date";

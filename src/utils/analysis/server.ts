@@ -26,12 +26,12 @@ export interface SubmitAnalysisInput {
 	mode: string;
 	modelId: string;
 	fingerprint: string;
-	searchModel?: "none" | "gemini" | "grok";
+	searchModel?: "none" | "gemini" | "gemini-lite";
 }
 
 export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 	const requestId = crypto.lib.WordArray.random(8).toString();
-	const { articleText, mode, modelId, fingerprint, searchModel = "gemini" } = input;
+	const { articleText, mode, modelId, fingerprint, searchModel = "none" } = input;
 
 	if (!articleText || typeof articleText !== "string") {
 		return { success: false, error: "文章内容不能为空" };

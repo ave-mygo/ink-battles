@@ -1,5 +1,6 @@
 "use server";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
+import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto-js";
 import OpenAI from "openai";
 import { getConfig } from "@/config";
@@ -99,7 +100,7 @@ export const verifyArticleValue = async (
 	modelId: string,
 	modelName: string,
 	fingerprint: string,
-	searchModel: "none" | "gemini" | "grok" = "gemini",
+	searchModel: "none" | "gemini" | "gemini-lite" = "none",
 ): Promise<{
 	success: boolean;
 	error?: string;
@@ -131,25 +132,118 @@ export const verifyArticleValue = async (
 
 	// 3. 根据 searchModel 选择使用哪个模型配置
 	const enableSearch = searchModel !== "none";
-	const modelConfig = searchModel === "grok"
-		? AppConfig.system_models.validator_grok
+	const modelConfig = searchModel === "gemini-lite"
+		? AppConfig.system_models.validator_gemini_lite
 		: searchModel === "none"
 			? AppConfig.system_models.validator_nosearch
 			: AppConfig.system_models.validator_gemini;
 
-	// 4. 初始化 OpenAI 客户端
-	const client = new OpenAI({
-		apiKey: modelConfig.api_key,
-		baseURL: modelConfig.base_url,
-	});
-
-	const validatorModelName: string = modelConfig.model || (searchModel === "grok" ? "grok-4.20-beta" : searchModel === "none" ? "glm-4.7" : "gemini-3-flash-preview");
+	// 4. 确定模型名称
+	const validatorModelName: string = modelConfig.model || (searchModel === "gemini-lite" ? "gemini-2.5-flash" : searchModel === "none" ? "glm-4.7" : "gemini-3-flash-preview");
 
 	try {
 		// 构建系统提示词
 		const systemInstruction = buildSystemInstruction(enableSearch);
 
-		// 构建 API 请求参数
+		// Gemini / Gemini Lite 分支：使用 Google GenAI SDK 原生调用，支持 googleSearch 工具和 groundingMetadata
+		if (searchModel === "gemini" || searchModel === "gemini-lite") {
+			const geminiClient = new GoogleGenAI({
+				apiKey: modelConfig.api_key,
+				httpOptions: { baseUrl: modelConfig.base_url },
+			});
+
+			const response = await geminiClient.models.generateContent({
+				model: validatorModelName,
+				contents: [
+					{
+						role: "system",
+						parts: [{ text: `${systemInstruction}` }],
+					},
+					{
+						role: "user",
+						parts: [{ text: articleText }],
+					},
+				],
+				config: {
+					responseMimeType: "application/json",
+					tools: [{ googleSearch: {} }],
+				},
+			});
+
+			if (!response) {
+				console.error("Gemini验证服务返回空响应");
+				return { success: false, error: "AI验证服务无响应" };
+			}
+
+			const rawText = response.text || "";
+
+			console.log("Gemini验证原始返回内容:", rawText);
+
+			if (!rawText) {
+				console.error("Gemini验证返回内容为空");
+				return { success: false, error: "AI验证服务无响应" };
+			}
+
+			// 使用健壮的 JSON 解析器处理 AI 输出
+			const parseResult = parseModelOutput<{
+				success: boolean;
+				message?: string;
+				searchSummary?: string;
+			}>(rawText);
+
+			if (!parseResult.ok || !parseResult.data) {
+				console.error("JSON解析失败:", rawText, parseResult.warnings);
+				return { success: false, error: `AI返回数据格式错误: ${parseResult.warnings.join(", ")}` };
+			}
+
+			const parsedResult = parseResult.data;
+
+			if (typeof parsedResult.success !== "boolean") {
+				return { success: false, error: "AI返回格式异常: 缺少 success 字段" };
+			}
+
+			// 从 groundingMetadata 提取搜索网页信息
+			const searchWebPages: Array<{ uri: string; title?: string }> = [];
+			const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+			if (groundingMetadata?.groundingChunks) {
+				for (const chunk of groundingMetadata.groundingChunks) {
+					const web = chunk.web;
+					if (web?.uri) {
+						searchWebPages.push({ uri: web.uri, title: web.title || undefined });
+					}
+				}
+			}
+
+			// 提取 AI 总结的搜索信息
+			const searchResults = parsedResult.searchSummary || undefined;
+
+			// 生成 Session
+			const session = generateSessionId(16);
+			await ensureTTLIndex(db_name, "sessions", "createdAt", 30 * 60);
+
+			await db_insert(db_name, "sessions", {
+				fingerprint,
+				session,
+				sha1,
+				...(searchResults && { searchResults }),
+				...(searchWebPages.length > 0 && { searchWebPages }),
+				used: false,
+				createdAt: new Date(),
+			});
+
+			return {
+				success: parsedResult.success,
+				error: parsedResult.success === false ? (parsedResult.message || "内容未通过验证") : undefined,
+				session,
+			};
+		}
+
+		// 关闭搜索分支：使用 OpenAI SDK 路径（GLM 模型）
+		const openaiClient = new OpenAI({
+			apiKey: modelConfig.api_key,
+			baseURL: modelConfig.base_url,
+		});
+
 		const requestBody: any = {
 			model: validatorModelName,
 			messages: [
@@ -158,22 +252,10 @@ export const verifyArticleValue = async (
 			],
 			// 仅对支持 response_format 的模型启用强制 JSON 输出
 			response_format: { type: "json_object" },
-			// 启用搜索时额外添加搜索工具
-			...(enableSearch
-				? {
-						tools: [
-							{
-								type: "function",
-								function: {
-									name: searchModel === "grok" ? "web_search" : "googleSearch",
-								},
-							},
-						],
-					}
-				: {}),
+			// 关闭搜索时无需工具
 		};
 
-		const response = await client.chat.completions.create(requestBody);
+		const response = await openaiClient.chat.completions.create(requestBody);
 
 		// 防御性检查：验证响应对象的完整性
 		if (!response) {
