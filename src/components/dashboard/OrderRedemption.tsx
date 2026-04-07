@@ -111,7 +111,7 @@ export default function OrderRedemption() {
 
 			<CardFooter className="bg-muted/10 p-6 border-t flex items-center justify-between">
 				<Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary px-2" asChild>
-					<Link href="https://ifdian.net/a/ink_battles" target="_blank" className="flex gap-1 items-center">
+					<Link href="https://ifdian.net/a/tianxiang" target="_blank" className="flex gap-1 items-center">
 						前往爱发电支持
 						{" "}
 						<ExternalLink className="h-3 w-3" />
@@ -120,7 +120,7 @@ export default function OrderRedemption() {
 				<Button
 					onClick={handleRedeem}
 					disabled={loading || !orderNo.trim()}
-					className="text-white min-w-[120px] shadow-md transition-all from-pink-500 to-rose-500 bg-linear-to-r hover:shadow-lg hover:from-pink-600 hover:to-rose-600"
+					className="text-white min-w-30 shadow-md transition-all from-pink-500 to-rose-500 bg-linear-to-r hover:shadow-lg hover:from-pink-600 hover:to-rose-600"
 				>
 					{loading
 						? (
