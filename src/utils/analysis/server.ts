@@ -447,6 +447,26 @@ function isValidAnalysisResult(result: any): boolean {
 		return false;
 	if (!Array.isArray(result.improvements) || result.improvements.length === 0)
 		return false;
+	if (result.authorMatches !== undefined) {
+		if (!Array.isArray(result.authorMatches))
+			return false;
+		for (const authorMatch of result.authorMatches) {
+			if (!authorMatch || typeof authorMatch !== "object")
+				return false;
+			if (typeof authorMatch.name !== "string" || authorMatch.name.trim() === "")
+				return false;
+			if (typeof authorMatch.styleLabel !== "string" || authorMatch.styleLabel.trim() === "")
+				return false;
+			if (typeof authorMatch.description !== "string" || authorMatch.description.trim() === "")
+				return false;
+			if (typeof authorMatch.confidence !== "number" || authorMatch.confidence < 0 || authorMatch.confidence > 100)
+				return false;
+			if (!Array.isArray(authorMatch.reasons) || authorMatch.reasons.length === 0)
+				return false;
+			if (authorMatch.reasons.some((reason: unknown) => typeof reason !== "string" || reason.trim() === ""))
+				return false;
+		}
+	}
 	return true;
 }
 

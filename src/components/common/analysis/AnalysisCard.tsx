@@ -1,6 +1,8 @@
 "use client";
 
+import type { AnalysisResult } from "@/types/ai";
 import { BadgeCheck, BookOpen, Lightbulb, Star, Target } from "lucide-react";
+import { AuthorMatchCard } from "@/components/common/analysis/AuthorMatchCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
@@ -10,6 +12,7 @@ interface AnalysisCardProps {
 	improvements: string[];
 	overallAssessment?: string;
 	tags: string[];
+	authorMatches?: AnalysisResult["authorMatches"];
 }
 
 /**
@@ -22,8 +25,9 @@ export function AnalysisCard({
 	improvements,
 	overallAssessment,
 	tags,
+	authorMatches,
 }: AnalysisCardProps) {
-	const hasContent = summary || strengths.length > 0 || improvements.length > 0 || overallAssessment || tags.length > 0;
+	const hasContent = summary || strengths.length > 0 || improvements.length > 0 || overallAssessment || tags.length > 0 || authorMatches?.length;
 
 	if (!hasContent) {
 		return null;
@@ -125,6 +129,13 @@ export function AnalysisCard({
 							</h4>
 							<p className="text-sm text-slate-600 dark:text-slate-300">{overallAssessment}</p>
 						</div>
+					</>
+				)}
+
+				{authorMatches && authorMatches.length > 0 && (
+					<>
+						<Separator />
+						<AuthorMatchCard matches={authorMatches} />
 					</>
 				)}
 			</CardContent>

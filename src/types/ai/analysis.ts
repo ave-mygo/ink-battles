@@ -27,6 +27,22 @@ export interface AnalysisDimension {
 }
 
 /**
+ * AI 返回的作者风格参照。
+ */
+export interface AuthorStyleMatch {
+	/** 作者名称 */
+	name: string;
+	/** 风格标签 */
+	styleLabel: string;
+	/** 简短说明 */
+	description: string;
+	/** 匹配置信度，范围 0-100 */
+	confidence: number;
+	/** AI 给出的选择依据 */
+	reasons: string[];
+}
+
+/**
  * 基础AI分析结果接口
  * 用于前端组件展示的核心数据结构
  */
@@ -51,6 +67,8 @@ export interface AnalysisResult {
 	strengths: string[];
 	/** 改进建议列表 */
 	improvements: string[];
+	/** 作者风格参照列表 */
+	authorMatches?: AuthorStyleMatch[];
 	/** Mermaid 图表列表 (可视化作品结构和逻辑) */
 	mermaid_diagrams?: MermaidDiagram[];
 }

@@ -42,6 +42,7 @@ export function AnalysisResults({
 		dimensions: Dimension[];
 		strengths: string[];
 		improvements: string[];
+		authorMatches?: AnalysisResult["authorMatches"];
 		mermaid_diagrams?: Array<{ type: string; title: string; code: string }>;
 	};
 	result?: AnalysisOutput;
@@ -208,6 +209,7 @@ export function AnalysisResults({
 					improvements={improvements}
 					overallAssessment={data.overallAssessment}
 					tags={tags}
+					authorMatches={data.authorMatches}
 				/>
 
 				{/* Mermaid 图表 */}
