@@ -2,7 +2,7 @@
  * 数据库后台分析任务记录结构
  */
 
-export type AnalysisTaskStatus = "pending" | "processing" | "completed" | "failed";
+export type AnalysisTaskStatus = "pending" | "processing" | "completed" | "failed" | "cancelled";
 
 export interface DatabaseAnalysisTask {
 	/** MongoDB 文档 ID */

@@ -18,6 +18,21 @@ import { submitAnalysisAction } from "@/utils/analysis";
 // 预编译正则表达式，避免每次调用时重新编译
 const NEWLINE_REGEX = /\n/g;
 
+/**
+ * 获取搜索校验模型的展示名称。
+ */
+const getSearchModelDisplayName = (searchModel: "none" | "gemini" | "gemini-lite") => {
+	if (searchModel === "gemini") {
+		return "Gemini 搜索";
+	}
+
+	if (searchModel === "gemini-lite") {
+		return "Gemini Lite 搜索";
+	}
+
+	return "关闭搜索";
+};
+
 interface WriterAnalysisSystemProps {
 	availableGradingModels: GradingModelConfig[];
 }
@@ -293,6 +308,7 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 			const fingerprint = await getFingerprintId();
 			const currentModel = availableGradingModels.find(model => model.id === selectedModelId);
 			const currentModelName = currentModel?.model || "";
+			const currentModelDisplayName = currentModel?.name || currentModelName || "默认模型";
 			setCurrentAnalysisModelName(currentModelName);
 
 			const res = await submitAnalysisAction({
@@ -318,6 +334,10 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 				taskId: res.taskId,
 				title: titleMatch + (articleText.length > 20 ? "..." : ""),
 				createdAt: Date.now(),
+				modeName: selectedModeName.join(",") || "默认模式",
+				modelName: currentModelDisplayName,
+				searchModelName: getSearchModelDisplayName(searchModel),
+				status: "pending",
 			});
 			localStorage.setItem("ink_battles_tasks", JSON.stringify(activeTasks));
 			// Trigger a custom event so placeholder can re-render

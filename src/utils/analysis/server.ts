@@ -20,6 +20,8 @@ import "server-only";
 // 预编译正则表达式，避免每次调用时重新编译
 const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
 const MODEL_PREFIX_REGEX = /^(按次|公益)-/;
+const CANCELLED_ANALYSIS_TASK_MESSAGE = "分析任务已取消";
+const activeAnalysisAbortControllers = new Map<string, AbortController>();
 
 export interface SubmitAnalysisInput {
 	articleText: string;
@@ -112,6 +114,8 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 
 	after(async () => {
 		try {
+			await ensureAnalysisTaskIsActive(taskId);
+
 			console.log(`[${fingerprint}:${requestId}] 开始后台校验...`);
 
 			// 动态导入避免可能的循环依赖或初始化顺序问题
@@ -124,6 +128,8 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 			}
 
 			const session = verifyResult.session || "";
+
+			await ensureAnalysisTaskIsActive(taskId);
 
 			// 校验成功，更新状态为处理中
 			await db_update(db_name, "analysis_tasks", { _id: taskId }, { "status": "processing", "metadata.session": session });
@@ -151,39 +157,55 @@ export async function submitAnalysisAction(input: SubmitAnalysisInput) {
 			}
 			messages.push({ role: "user", content: articleText });
 
-			// 使用流式获取以提供更好的用户体验和更快的首字节时间
-			const stream = await openAI.chat.completions.create({
-				model: gradingModel.model,
-				messages,
-				temperature: gradingModel.model.includes("gpt-5-nano") ? 1 : 0.3,
-				...(gradingModel.supports_json_mode !== false ? { response_format: { type: "json_object" } } : {}),
-				seed: fingerprint ? Number.parseInt(fingerprint) : undefined,
-				stream: true,
-			});
+			const abortController = registerAnalysisAbortController(taskId);
 
-			const content = await accumulateStreamContent(stream, fingerprint, requestId);
+			try {
+				// 使用流式获取以提供更好的用户体验和更快的首字节时间
+				const stream = await openAI.chat.completions.create({
+					model: gradingModel.model,
+					messages,
+					temperature: gradingModel.model.includes("gpt-5-nano") ? 1 : 0.3,
+					...(gradingModel.supports_json_mode !== false ? { response_format: { type: "json_object" } } : {}),
+					seed: fingerprint ? Number.parseInt(fingerprint) : undefined,
+					stream: true,
+				}, { signal: abortController.signal });
 
-			if (!content.trim()) {
-				throw new Error("AI模型返回空内容");
+				await ensureAnalysisTaskIsActive(taskId);
+
+				const content = await accumulateStreamContent(stream, fingerprint, requestId, taskId);
+
+				if (!content.trim()) {
+					throw new Error("AI模型返回空内容");
+				}
+
+				// 更新 DB 添加 searchResults 缓存
+				await db_update(db_name, "analysis_tasks", { _id: taskId }, {
+					"input.search": { searchResults: searchResults || "", searchWebPages: searchWebPages || undefined },
+				});
+
+				// 预扣费模式：已在提交时扣费，此处标记为非扣费模式
+				await updateDatabaseWithResult({
+					taskId,
+					accumulatedContent: content,
+					uid,
+					isPremiumModel: false, // 预扣费已完成
+					preDeducted, // 传递预扣费标记
+					session,
+				});
+			} finally {
+				unregisterAnalysisAbortController(taskId, abortController);
 			}
-
-			// 更新 DB 添加 searchResults 缓存
-			await db_update(db_name, "analysis_tasks", { _id: taskId }, {
-				"input.search": { searchResults: searchResults || "", searchWebPages: searchWebPages || undefined },
-			});
-
-			// 预扣费模式：已在提交时扣费，此处标记为非扣费模式
-			await updateDatabaseWithResult({
-				taskId,
-				accumulatedContent: content,
-				uid,
-				isPremiumModel: false, // 预扣费已完成
-				preDeducted, // 传递预扣费标记
-				session,
-			});
 
 			console.log(`[${fingerprint}:${requestId}]后台任务完成！`);
 		} catch (error) {
+			if (await shouldTreatAsCancelledTask(taskId, error)) {
+				console.log(`[${fingerprint}:${requestId}] 后台任务已取消`);
+				if (preDeducted && uid) {
+					await refundCallBalance(uid);
+				}
+				return;
+			}
+
 			console.error(`[${fingerprint}:${requestId}] 后台任务失败:`, error);
 
 			// 任务失败时退还预扣费（仅在确实预扣费的情况下）
@@ -237,6 +259,7 @@ async function accumulateStreamContent(
 	stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>,
 	fingerprint: string,
 	requestId: string,
+	taskId: ObjectId,
 ): Promise<string> {
 	let accumulatedContent = "";
 	let chunkCount = 0;
@@ -260,6 +283,10 @@ async function accumulateStreamContent(
 			// 块数量保护
 			if (chunkCount >= STREAM_LIMITS.MAX_CHUNKS) {
 				throw new Error(`流式块数量超过限制 (${STREAM_LIMITS.MAX_CHUNKS})`);
+			}
+
+			if (chunkCount % 50 === 0) {
+				await ensureAnalysisTaskIsActive(taskId);
 			}
 
 			const { done, value: chunk } = await iterator.next();
@@ -311,6 +338,87 @@ async function accumulateStreamContent(
 	}
 }
 
+/**
+ * 确认分析任务仍处于可继续执行状态。
+ *
+ * 取消状态由用户交互写入数据库，后台任务在昂贵步骤前主动检查，避免继续消耗模型调用资源。
+ */
+async function ensureAnalysisTaskIsActive(taskId: ObjectId): Promise<void> {
+	const task = await db_find(db_name, "analysis_tasks", { _id: taskId });
+
+	if (!task || task.status === "cancelled") {
+		throw new Error(CANCELLED_ANALYSIS_TASK_MESSAGE);
+	}
+}
+
+/**
+ * 注册当前任务的请求取消控制器。
+ *
+ * 取消 action 与后台 after 回调运行在同一服务进程时，可立即中止仍在读取中的 OpenAI 流式请求。
+ */
+function registerAnalysisAbortController(taskId: ObjectId): AbortController {
+	const abortController = new AbortController();
+	activeAnalysisAbortControllers.set(taskId.toString(), abortController);
+	return abortController;
+}
+
+/**
+ * 仅清理当前请求拥有的 controller，避免误删后续重入注册的 controller。
+ */
+function unregisterAnalysisAbortController(taskId: ObjectId, abortController: AbortController): void {
+	const key = taskId.toString();
+	if (activeAnalysisAbortControllers.get(key) === abortController) {
+		activeAnalysisAbortControllers.delete(key);
+	}
+}
+
+/**
+ * 尝试中止正在进行的流式模型请求。
+ */
+function abortAnalysisRequest(taskId: string): void {
+	const abortController = activeAnalysisAbortControllers.get(taskId);
+	if (!abortController) {
+		return;
+	}
+
+	abortController.abort(CANCELLED_ANALYSIS_TASK_MESSAGE);
+	activeAnalysisAbortControllers.delete(taskId);
+}
+
+/**
+ * 判断后台错误是否应作为用户取消处理，而不是失败处理。
+ */
+async function shouldTreatAsCancelledTask(taskId: ObjectId, error: unknown): Promise<boolean> {
+	if ((error as Error).message === CANCELLED_ANALYSIS_TASK_MESSAGE) {
+		return true;
+	}
+
+	if (!isAbortLikeError(error)) {
+		return false;
+	}
+
+	return isAnalysisTaskCancelled(taskId);
+}
+
+/**
+ * 部分 SDK 在 signal abort 后抛出 AbortError 或 APIUserAbortError。
+ */
+function isAbortLikeError(error: unknown): boolean {
+	const name = (error as { name?: string }).name || "";
+	const message = (error as Error).message || "";
+
+	return name === "AbortError"
+		|| name === "APIUserAbortError"
+		|| message.includes("aborted")
+		|| message.includes("abort")
+		|| message.includes(CANCELLED_ANALYSIS_TASK_MESSAGE);
+}
+
+async function isAnalysisTaskCancelled(taskId: ObjectId): Promise<boolean> {
+	const task = await db_find(db_name, "analysis_tasks", { _id: taskId });
+	return task?.status === "cancelled";
+}
+
 async function updateDatabaseWithResult({
 	taskId,
 	accumulatedContent,
@@ -331,6 +439,8 @@ async function updateDatabaseWithResult({
 	if (!task) {
 		throw new Error("任务记录不存在");
 	}
+
+	await ensureAnalysisTaskIsActive(taskId);
 
 	// 使用健壮的 JSON 解析器处理 AI 输出
 	const parseResult = parseModelOutput<AnalysisResult>(accumulatedContent);
@@ -357,6 +467,7 @@ async function updateDatabaseWithResult({
 
 	// === 关键操作顺序：插入记录 → 验证扣费 → 标记完成 → 清理 ===
 	// 任何一步失败都会抛出异常，由外层 catch 将任务标记为 failed
+	await ensureAnalysisTaskIsActive(taskId);
 
 	// 1. 插入到最终的分析记录表（失败则中止，不继续）
 	const analysisId = new ObjectId();
@@ -497,6 +608,39 @@ export async function deleteAnalysisTaskAction(taskId: string) {
 		}
 		const deleted = await db_delete(db_name, "analysis_tasks", { _id: new ObjectId(taskId) });
 		return { success: deleted };
+	} catch (error) {
+		return { success: false, error: (error as Error).message };
+	}
+}
+
+export async function cancelAnalysisTaskAction(taskId: string) {
+	try {
+		if (!ObjectId.isValid(taskId)) {
+			return { success: false, error: "Invalid task ID" };
+		}
+
+		const taskObjectId = new ObjectId(taskId);
+		const task = await db_find(db_name, "analysis_tasks", { _id: taskObjectId });
+
+		if (!task) {
+			return { success: false, error: "Task not found" };
+		}
+
+		if (task.status === "completed" || task.status === "failed" || task.status === "cancelled") {
+			return { success: true, status: task.status };
+		}
+
+		const cancelled = await db_update(db_name, "analysis_tasks", { _id: taskObjectId }, {
+			status: "cancelled",
+			error: CANCELLED_ANALYSIS_TASK_MESSAGE,
+			updatedAt: new Date().toISOString(),
+		});
+
+		if (cancelled) {
+			abortAnalysisRequest(taskId);
+		}
+
+		return { success: cancelled, status: cancelled ? "cancelled" : task.status };
 	} catch (error) {
 		return { success: false, error: (error as Error).message };
 	}

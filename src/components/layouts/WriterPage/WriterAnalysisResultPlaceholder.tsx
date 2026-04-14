@@ -3,25 +3,32 @@
 import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clock, Loader2, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { deleteAnalysisTaskAction, getAnalysisStatusAction } from "@/utils/analysis";
+import { cancelAnalysisTaskAction, deleteAnalysisTaskAction, getAnalysisStatusAction } from "@/utils/analysis";
 
 interface LocalTask {
 	taskId: string;
 	title: string;
 	createdAt: number;
-	status?: "pending" | "processing" | "completed" | "failed";
+	modeName?: string;
+	modelName?: string;
+	searchModelName?: string;
+	status?: LocalTaskStatus;
 	error?: string;
 	resultId?: string;
 }
 
+type LocalTaskStatus = "pending" | "processing" | "completed" | "failed" | "cancelled";
+
 const REFRESH_COOLDOWN = 2000; // 2秒冷却
-const LONG_ANALYSIS_THRESHOLD = 300; // 5分钟（秒），超过此阈值显示超时提示
+const LONG_ANALYSIS_THRESHOLD = 600; // 10分钟（秒），超过此阈值提示用户取消重试
 
 export default function WriterAnalysisResultPlaceholder() {
 	const [tasks, setTasks] = useState<LocalTask[]>([]);
+	const [cancellingTaskId, setCancellingTaskId] = useState<string | null>(null);
 	const [isRefreshing, setIsRefreshing] = useState(false);
 	const [canRefresh, setCanRefresh] = useState(true);
 	const [cooldownRemaining, setCooldownRemaining] = useState(0);
@@ -36,6 +43,15 @@ export default function WriterAnalysisResultPlaceholder() {
 	// 存储 setElapsedSeconds 的稳定引用，避免在 useEffect 中直接调用
 	const setElapsedSecondsRef = useRef(setElapsedSeconds);
 	setElapsedSecondsRef.current = setElapsedSeconds;
+
+	/**
+	 * 同步任务列表到组件状态和 localStorage。
+	 */
+	const persistTasks = (nextTasks: LocalTask[]) => {
+		setTasks(nextTasks);
+		localStorage.setItem("ink_battles_tasks", JSON.stringify(nextTasks));
+		window.dispatchEvent(new Event("ink_battles_tasks_updated"));
+	};
 
 	// Initial load and listen to custom event
 	useEffect(() => {
@@ -74,7 +90,7 @@ export default function WriterAnalysisResultPlaceholder() {
 	 * 任务完成/失败时将最终耗时保存到 localStorage
 	 */
 	useEffect(() => {
-		const activeTasks = tasks.filter(t => t.status === "pending" || t.status === "processing" || !t.status);
+		const activeTasks = tasks.filter(isActiveTask);
 
 		if (activeTasks.length === 0) {
 			if (elapsedTimerRef.current) {
@@ -167,14 +183,14 @@ export default function WriterAnalysisResultPlaceholder() {
 
 			for (let i = 0; i < newTasks.length; i++) {
 				const t = newTasks[i];
-				if (t.status === "completed" || t.status === "failed")
+				if (!isActiveTask(t))
 					continue;
 
 				try {
 					const res = await getAnalysisStatusAction(t.taskId);
 					if (res.success) {
 						if (res.status === "completed" && res.resultId) {
-							// Successfully completed!
+							// 只有有结果 ID 的 completed 才能进入查看结果流程
 							t.status = "completed";
 							t.resultId = res.resultId;
 							updated = true;
@@ -182,10 +198,14 @@ export default function WriterAnalysisResultPlaceholder() {
 							t.status = "failed";
 							t.error = res.error || "分析失败";
 							updated = true;
+						} else if (res.status === "cancelled") {
+							t.status = "cancelled";
+							t.error = res.error || "分析任务已取消";
+							updated = true;
 						} else {
-							// still processing
+							// 仍在处理时仅同步状态，不改变任务列表顺序
 							if (t.status !== res.status) {
-								t.status = res.status as any;
+								t.status = normalizeTaskStatus(res.status);
 								updated = true;
 							}
 						}
@@ -196,19 +216,37 @@ export default function WriterAnalysisResultPlaceholder() {
 			}
 
 			if (updated) {
-				setTasks(newTasks);
-				localStorage.setItem("ink_battles_tasks", JSON.stringify(newTasks));
+				persistTasks(newTasks);
 			}
 		} finally {
 			setIsRefreshing(false);
 		}
 	};
 
+	const cancelTask = async (taskId: string) => {
+		setCancellingTaskId(taskId);
+
+		try {
+			const result = await cancelAnalysisTaskAction(taskId);
+
+			if (!result.success) {
+				throw new Error(result.error || "取消任务失败");
+			}
+
+			const newTasks = tasks.filter(task => task.taskId !== taskId);
+			persistTasks(newTasks);
+			toast.success("已取消该分析任务");
+		} catch (error) {
+			toast.error((error as Error).message || "取消任务失败，请稍后重试");
+		} finally {
+			setCancellingTaskId(null);
+		}
+	};
+
 	const removeTask = (taskId: string) => {
 		const newTasks = tasks.filter(t => t.taskId !== taskId);
-		setTasks(newTasks);
-		localStorage.setItem("ink_battles_tasks", JSON.stringify(newTasks));
-		// Optionally attempt to delete from server
+		persistTasks(newTasks);
+		// 失败任务和已取消任务可以安全删除服务端记录，避免历史任务表堆积。
 		deleteAnalysisTaskAction(taskId).catch(console.error);
 	};
 
@@ -222,16 +260,14 @@ export default function WriterAnalysisResultPlaceholder() {
 
 		// Clean up local storage task record
 		const newTasks = tasks.filter(t => t.taskId !== task.taskId);
-		setTasks(newTasks);
-		localStorage.setItem("ink_battles_tasks", JSON.stringify(newTasks));
-		window.dispatchEvent(new Event("ink_battles_tasks_updated"));
+		persistTasks(newTasks);
 
 		// Navigate using taskId (one-time access token)
 		router.push(`/analysis/${task.taskId}#analysis-results`);
 	};
 
 	// 判断是否有进行中的任务
-	const hasActiveTasks = tasks.some(t => t.status !== "completed" && t.status !== "failed");
+	const hasActiveTasks = tasks.some(isActiveTask);
 
 	if (tasks.length === 0) {
 		return (
@@ -300,34 +336,70 @@ export default function WriterAnalysisResultPlaceholder() {
 				{tasks.map(task => (
 					<div key={task.taskId} className="p-3 border rounded-lg bg-gray-50 flex flex-col gap-2">
 						<div className="flex items-center justify-between">
-							<span className="text-sm text-slate-700 font-medium">{task.title || "未命名分析"}</span>
-							{task.status === "processing" || task.status === "pending" || !task.status
+							<span className="text-sm text-slate-700 font-medium">
+								内容摘选：
+								{task.title || "未命名分析"}
+							</span>
+							{isActiveTask(task)
 								? (
 										<Badge status="processing" elapsedSeconds={elapsedSeconds[task.taskId]} />
 									)
-								: task.status === "failed"
+								: task.status === "failed" || task.status === "cancelled"
 									? (
-											<Badge status="failed" />
+											<Badge status={task.status} />
 										)
 									: (
 											<Badge status="completed" />
 										)}
 						</div>
+						<div className="text-xs text-slate-500 gap-2 grid sm:grid-cols-3">
+							<span>
+								评分模式：
+								{task.modeName || "默认模式"}
+							</span>
+							<span>
+								模型：
+								{task.modelName || "未知模型"}
+							</span>
+							<span>
+								搜索方案：
+								{task.searchModelName || "关闭搜索"}
+							</span>
+						</div>
 
-						{/* 超时提示：分析用时超过 5 分钟时显示 */}
-						{(task.status === "processing" || task.status === "pending" || !task.status)
+						{/* 超时提示：分析用时超过 10 分钟时提示取消重试 */}
+						{isActiveTask(task)
 							&& (elapsedSeconds[task.taskId] ?? 0) >= LONG_ANALYSIS_THRESHOLD && (
 							<p className="text-xs text-amber-600 flex gap-1 items-center">
 								<AlertTriangle className="shrink-0 h-3 w-3" />
-								分析用时较长，如无响应请尝试删除并重新提交分析
+								分析已超过 10 分钟，建议取消该任务后重新提交分析
 							</p>
+						)}
+
+						{isActiveTask(task) && (
+							<div className="mt-1 flex gap-2 justify-end">
+								<Button
+									size="sm"
+									variant="outline"
+									className="text-xs h-7 cursor-pointer"
+									onClick={() => cancelTask(task.taskId)}
+									disabled={cancellingTaskId === task.taskId}
+								>
+									<XCircle className="mr-1 h-3 w-3" />
+									{cancellingTaskId === task.taskId ? "取消中..." : "取消任务"}
+								</Button>
+							</div>
 						)}
 
 						{task.status === "failed" && task.error && (
 							<p className="text-xs text-red-500 line-clamp-2">{task.error}</p>
 						)}
 
-						{task.status === "failed" && (
+						{task.status === "cancelled" && task.error && (
+							<p className="text-xs text-slate-500 line-clamp-2">{task.error}</p>
+						)}
+
+						{(task.status === "failed" || task.status === "cancelled") && (
 							<div className="mt-1 flex gap-2 justify-end">
 								<Button size="sm" variant="outline" className="text-xs h-7" onClick={() => removeTask(task.taskId)}>
 									<Trash2 className="mr-1 h-3 w-3" />
@@ -368,7 +440,25 @@ function formatElapsed(seconds: number): string {
 	return `${s}s`;
 }
 
-function Badge({ status, elapsedSeconds }: { status: "processing" | "failed" | "completed"; elapsedSeconds?: number }) {
+/**
+ * 判断任务是否仍处于可取消、可刷新状态。
+ */
+function isActiveTask(task: LocalTask): boolean {
+	return task.status === "pending" || task.status === "processing" || !task.status;
+}
+
+/**
+ * 将服务端状态归一化为本地可识别状态，避免未知状态破坏渲染分支。
+ */
+function normalizeTaskStatus(status: unknown): LocalTaskStatus {
+	if (status === "pending" || status === "processing" || status === "completed" || status === "failed" || status === "cancelled") {
+		return status;
+	}
+
+	return "processing";
+}
+
+function Badge({ status, elapsedSeconds }: { status: "processing" | "failed" | "completed" | "cancelled"; elapsedSeconds?: number }) {
 	if (status === "processing") {
 		return (
 			<span className="text-xs text-blue-700 font-medium px-2 py-1 rounded bg-blue-100 inline-flex gap-1 items-center">
@@ -388,6 +478,14 @@ function Badge({ status, elapsedSeconds }: { status: "processing" | "failed" | "
 			<span className="text-xs text-red-700 font-medium px-2 py-1 rounded bg-red-100 inline-flex gap-1 items-center">
 				<XCircle className="h-3 w-3" />
 				失败
+			</span>
+		);
+	}
+	if (status === "cancelled") {
+		return (
+			<span className="text-xs text-slate-700 font-medium px-2 py-1 rounded bg-slate-100 inline-flex gap-1 items-center">
+				<XCircle className="h-3 w-3" />
+				已取消
 			</span>
 		);
 	}
