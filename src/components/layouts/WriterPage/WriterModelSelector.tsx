@@ -1,7 +1,7 @@
 "use client";
 
 import type { GradingModelConfig } from "@/types/common/config";
-import { AlertTriangle, Brain, Clock, Crown, Globe, Settings, Sparkles, Target, Zap } from "lucide-react";
+import { AlertTriangle, Brain, Clock, Crown, Globe, Lightbulb, Settings, Sparkles, Target, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -80,6 +80,24 @@ export default function WriterModelSelector({
 								))}
 							</SelectContent>
 						</Select>
+					</div>
+
+					<div className="dark:to-background p-4 border border-indigo-100/50 rounded-xl shadow-xs relative overflow-hidden from-indigo-50/50 to-white/50 bg-linear-to-b dark:border-indigo-950/50 dark:from-indigo-950/20">
+						<div className="flex gap-3">
+							<div className="text-indigo-600 rounded-full bg-indigo-100/50 flex shrink-0 h-7 w-7 ring-1 ring-indigo-200/50 shadow-xs items-center justify-center dark:text-indigo-400 dark:bg-indigo-900/30 dark:ring-indigo-800/30">
+								<Lightbulb className="h-4 w-4" />
+							</div>
+							<div className="text-xs text-slate-600 leading-relaxed space-y-1.5 dark:text-slate-400">
+								<p>
+									<span className="text-slate-800 font-medium dark:text-slate-200">免责声明：</span>
+									免费模型测评分数不代表网站评估水准及结论，仅供参考。
+								</p>
+								<p>
+									<span className="text-slate-800 font-medium dark:text-slate-200">服务波动：</span>
+									受大模型厂商限制，偶发连接超时或回答失败属常规现象，遇异常重试即可。
+								</p>
+							</div>
+						</div>
 					</div>
 
 					{/* 下方：选中模型的详细信息 - 简化版本 */}

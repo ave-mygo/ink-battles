@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { Activity, ExternalLink, Github, Heart, Info, Link as LinkIcon, MessageCircle, PenTool } from "lucide-react";
+import { Activity, Code2, ExternalLink, Heart, Info, Link as LinkIcon, MessageCircle, PenTool } from "lucide-react";
 import Link from "next/link";
 
 // 颜色样式映射表，解决 Tailwind JIT 编译问题并集中管理样式
@@ -15,14 +15,15 @@ const colorStyles: Record<"pink" | "green" | "purple" | "blue" | "orange" | "sla
 };
 
 type Color = keyof typeof colorStyles;
+type HeaderLinkIcon = ComponentType<{ className?: string }>;
 
 export default function WriterAnalysisHeader() {
-	const links: { href: string; icon: ComponentType<any>; text: string; color: Color; external?: boolean }[] = [
+	const links: { href: string; icon: HeaderLinkIcon; text: string; color: Color; external?: boolean }[] = [
 		{ href: "/sponsors", icon: Heart, text: "赞助支持我们", color: "pink" },
 		{ href: "/status", icon: Activity, text: "前往状态页", color: "green" },
 		{ href: "https://qm.qq.com/q/D6AK1DEQtq", icon: MessageCircle, text: "加入QQ群", color: "purple", external: true },
 		{ href: "/friends", icon: LinkIcon, text: "友情链接", color: "orange" },
-		{ href: "https://github.com/ave-mygo/ink-battles", icon: Github, text: "代码仓库", color: "slate", external: true },
+		{ href: "https://github.com/ave-mygo/ink-battles", icon: Code2, text: "代码仓库", color: "slate", external: true },
 		{ href: "/about", icon: Info, text: "关于本项目/使用说明", color: "blue" },
 	];
 

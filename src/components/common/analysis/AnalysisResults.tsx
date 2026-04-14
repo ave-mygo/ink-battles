@@ -103,7 +103,7 @@ export function AnalysisResults({
 						评测核心结果
 					</h2>
 					<div className="py-6 flex flex-col items-center justify-center">
-						<div className="text-7xl text-transparent leading-none font-black from-blue-600 to-indigo-600 bg-gradient-to-br bg-clip-text md:text-8xl dark:from-blue-400 dark:to-indigo-400">
+						<div className="text-7xl text-transparent leading-none font-black from-blue-600 to-indigo-600 bg-linear-to-br bg-clip-text md:text-8xl dark:from-blue-400 dark:to-indigo-400">
 							{overallScore}
 						</div>
 						<p className="text-sm text-slate-500 tracking-widest font-medium mt-4 uppercase dark:text-slate-400">
