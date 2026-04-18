@@ -11,6 +11,7 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+config.toml
 # VCS
 .git
 .gitignore

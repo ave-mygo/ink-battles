@@ -32,14 +32,7 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# 构建应用（需要 config.ts 存在）
-# 如果构建时没有 config.ts，可以先复制 example
-RUN if [ ! -f src/config.ts ]; then cp src/config.example.ts src/config.ts; fi
-
-# 确保有配置文件用于构建（运行时会被挂载覆盖）
-RUN if [ ! -f config.toml ]; then cp config.example.toml config.toml; fi
-
-# 构建 Next.js 应用
+# 前端构建不读取敏感配置，运行时通过后端 API 获取公开配置。
 RUN pnpm build
 
 # ============================================
@@ -64,14 +57,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# 删除 standalone 中可能包含的构建时配置，强制使用运行时挂载的配置
-RUN rm -f /app/config.toml /app/config.example.toml
-
 # 复制入口脚本
 COPY --from=builder /app/scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
-
-# 复制示例配置作为备份（运行时会被 volume 覆盖）
-COPY --from=builder /app/config.example.toml /app/config.example.toml
 
 # 设置权限
 RUN chmod +x /app/docker-entrypoint.sh && \

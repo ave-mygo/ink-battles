@@ -1,9 +1,9 @@
 services:
   backend:
+    image: ${BACKEND_IMAGE:-ink-battles-backend:latest}
     build:
       context: .
       dockerfile: backend/Dockerfile
-    image: ink-battles-backend:latest
     container_name: ink-battles-backend
     restart: unless-stopped
     ports:
@@ -28,10 +28,10 @@ services:
         max-file: "3"
 
   frontend:
+    image: ${FRONTEND_IMAGE:-ink-battles-frontend:latest}
     build:
       context: .
       dockerfile: Dockerfile
-    image: ink-battles-frontend:latest
     container_name: ink-battles-frontend
     restart: unless-stopped
     expose:
