@@ -7,6 +7,7 @@
 ### 技术栈
 
 **前端 (Frontend)**
+
 - Next.js 16.2.3 (App Router) + React 19.2.5
 - TypeScript (严格模式)
 - UnoCSS + TailwindCSS v4
@@ -14,12 +15,14 @@
 - Zustand (状态管理)
 
 **后端 (Backend)**
+
 - Node.js + TypeScript
 - Express.js
 - MongoDB (数据库)
 - OpenAI API / Google Gemini (AI 服务)
 
 **开发工具**
+
 - pnpm (包管理器)
 - ESLint + Prettier
 - Concurrently (并发运行前后端)
@@ -77,6 +80,7 @@ ink_battles/
 ### 关键目录说明
 
 **前端 (`src/`)**
+
 - `app/` - Next.js App Router，页面仅作编排者
 - `components/` - 按功能域分类的 React 组件
 - `utils/` - 按功能域分类的工具函数（含 client/server 分离）
@@ -84,6 +88,7 @@ ink_battles/
 - `types/` - 按域分类的 TypeScript 类型
 
 **后端 (`backend/src/`)**
+
 - `modules/` - RESTful API 模块（路由 + 控制器）
 - `integrations/` - AI 模型集成、验证器等
 - `db/` - MongoDB 数据库操作封装
@@ -117,6 +122,7 @@ src/components/
 ```
 
 **组件设计原则：**
+
 - **原子化构建：** 避免创建巨大的单一组件，拆分为职责单一的小组件
 - **组合模式：** 优先使用 `children` 或 Slot 模式组合组件
 - **单一职责：** 当组件逻辑复杂时，立即拆分为子组件或 Hooks
@@ -139,22 +145,26 @@ src/utils/
 ```
 
 **文件命名约定：**
+
 - `client.ts` - 客户端专用，标记 `"use client"`
 - `server.ts` - 服务器专用，标记 `"use server"` + `import "server-only"`
 - `common.ts` / `index.ts` - 客户端/服务器共享
 
 **导入规范：**
+
 - ✅ 优先：`import { functionName } from "@/utils/auth"`
 - ❌ 避免：`import { functionName } from "@/utils/auth/client"`
 
 ### 2.4 核心库函数 (`src/lib/`)
 
 **仅用于核心基础设施：**
+
 - `lib/constants.ts` - 全局常量
 - `lib/seo.ts` - SEO 工具
 - 其他核心框架函数
 
 **与 `utils/` 的分工：**
+
 - `lib/` - 框架基础设施
 - `utils/` - 业务功能域工具
 

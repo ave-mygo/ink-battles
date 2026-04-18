@@ -11,4 +11,8 @@ echo "[entrypoint] INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL:-not set}"
 
 # 启动应用
 echo "[entrypoint] 启动 Next.js 应用..."
-exec node server.js
+if [ -f "/app/frontend/server.js" ]; then
+	exec node /app/frontend/server.js
+fi
+
+exec node /app/server.js

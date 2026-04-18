@@ -7,4 +7,4 @@ export {
 	calculatePaidCallsFromOrder,
 	getBillingTierInfo,
 	shouldRefreshGrantCalls,
-} from "../../../shared/constants/billing";
+} from "@ink-battles/shared/constants/billing";

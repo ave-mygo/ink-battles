@@ -6,7 +6,7 @@ import {
 	calculateMonthlyGrantCalls as calculateMonthlyGrantCallsByBillingPlan,
 	calculatePaidCallPrice as calculatePaidCallPriceByBillingPlan,
 	getBillingTierInfo,
-} from "../../shared/constants/billing";
+} from "@ink-battles/shared/constants/billing";
 
 export const db_name = "ink_battles";
 export const db_table = "analysis_requests";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { App as BackendApp } from "@backend/app";
+import type { App as BackendApp } from "@ink-battles/backend/app";
 import { treaty } from "@elysiajs/eden";
 import { getClientApiHost } from "./eden-common";
 import { createTimeoutFetcher } from "./fetch-timeout";

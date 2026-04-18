@@ -7,9 +7,9 @@ services:
     container_name: ink-battles-backend
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - '3001:3000'
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
     volumes:
       - ./config.toml:/app/config.toml:ro
     environment:
@@ -25,17 +25,17 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'
 
   frontend:
     image: ${FRONTEND_IMAGE:-ink-battles-frontend:latest}
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: frontend/Dockerfile
     container_name: ink-battles-frontend
     restart: unless-stopped
     expose:
-      - "3000"
+      - '3000'
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
@@ -46,4 +46,4 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: "3"
+        max-file: '3'

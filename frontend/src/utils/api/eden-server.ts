@@ -1,4 +1,4 @@
-import type { App as BackendApp } from "@backend/app";
+import type { App as BackendApp } from "@ink-battles/backend/app";
 import { treaty } from "@elysiajs/eden";
 import { cookies } from "next/headers";
 import { getServerApiHost } from "./eden-common";

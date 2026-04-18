@@ -3,5 +3,6 @@ shellEmulator: true
 trustPolicy: no-downgrade
 
 packages:
-  - .
+  - frontend
   - backend
+  - shared

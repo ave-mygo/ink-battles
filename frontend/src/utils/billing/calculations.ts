@@ -4,7 +4,7 @@ import {
 	calculatePaidCallPrice as calculatePaidCallPriceByBillingPlan,
 	getBillingTierInfo,
 	shouldRefreshGrantCalls,
-} from "../../../shared/constants/billing";
+} from "@ink-battles/shared/constants/billing";
 
 /**
  * 计算每月赠送调用次数
