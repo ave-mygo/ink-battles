@@ -1,49 +1,173 @@
-## Next.js 16 (App Router), React 19, TypeScript & ShadCN UI 开发规范 (2025)
+# Ink Battles 项目开发规范 (2025)
 
-**角色定位与专业知识：**
-作为一名精通 Next.js 16 (App Router)、React 19、TypeScript 和 ShadCN UI 的高级开发者，我将专注于生成清晰、可读、高性能的代码，并严格遵循2025年的最新最佳实践。
+## 项目概述
+
+**Ink Battles** 是一个基于 AI 技术的专业文本分析工具，采用 **Monorepo** 架构，包含前端（Next.js 16）和后端（Node.js）两个独立服务。
+
+### 技术栈
+
+**前端 (Frontend)**
+- Next.js 16.2.3 (App Router) + React 19.2.5
+- TypeScript (严格模式)
+- UnoCSS + TailwindCSS v4
+- Radix UI + shadcn/ui
+- Zustand (状态管理)
+
+**后端 (Backend)**
+- Node.js + TypeScript
+- Express.js
+- MongoDB (数据库)
+- OpenAI API / Google Gemini (AI 服务)
+
+**开发工具**
+- pnpm (包管理器)
+- ESLint + Prettier
+- Concurrently (并发运行前后端)
 
 ---
 
-### 1. 项目结构与App Router
+## 1. Monorepo 项目结构
 
-- **src/ 根目录结构：** 所有源代码统一放置在 `src/` 目录下，确保代码组织的清晰性和一致性。
-- **App Router 优先：** 始终使用 Next.js 16 的 App Router (`src/app/` 目录) 作为核心路由和渲染机制。
-- **共置原则 (Colocation)：** 将路由处理程序、加载/错误状态、页面级组件、布局及私有组件共置于 `src/app/` 目录下，与对应路由紧密关联。
-- **页面角色明确（解耦核心）：** `page.tsx` **仅作为“编排者” (Orchestrator)**。其职责限制为：1. 获取数据；2. 定义元数据；3. 导入并组装各个组件。**严禁在 `page.tsx` 中编写复杂的 UI 标记或业务逻辑**，必须将其拆分为独立的组件。
-- **路由组：** 使用路由组 `()` 组织路由，实现逻辑分组而不影响URL结构。
-- **复杂布局：** 通过并行路由 (Parallel Routes) 或拦截路由 (Intercepting Routes) 实现复杂布局和模态框等高级UI模式。
-- **组件分类组织：** 共享的、可复用的 UI 组件存放于 `src/components/` 目录，按功能域进行详细分类：
-  - `src/components/ui/` - ShadCN UI 基础组件
-  - `src/components/common/` - 通用组件（如头部、主题切换等）
-  - `src/components/layouts/` - 页面级布局组件（按页面功能分类）
-  - `src/components/business/` - **业务组件**（封装特定业务逻辑的组件，保持 page 简洁）
-- **共享逻辑/工具：** 通用工具函数、类型定义、常量等共享逻辑按功能域组织：
-  - **功能域工具函数 (`@/utils/`)：** 按功能域分类的工具函数统一放置在 `src/utils/` 目录：
-    - `@/utils/auth/` - 认证相关工具函数（含客户端 `client.ts`、服务器端 `server.ts` 和共享 `common.ts`）
-    - `@/utils/common/` - 通用工具函数（如邮件验证等）
-    - `@/utils/afdian/` - 第三方服务集成工具
-  - **客户端/服务器分离：** 在同一功能域内，通过明确的文件命名和指令区分：
-    - 客户端专用：`client.ts` 文件标记 `"use client"`
-    - 服务器专用：`server.ts` 文件标记 `"use server"` 和 `server-only`
-    - 共享函数：`common.ts` 或 `index.ts` 文件
-  - **核心库函数 (`@/lib/`)：** 核心框架和基础设施相关函数：
-    - `@/lib/db.ts` - 数据库操作统一封装（所有数据库操作必须通过此文件调度）
-    - `@/lib/constants.ts` - 全局常量定义
-    - `@/lib/config.ts` - 配置管理
-    - 其他纯服务器端核心函数使用 `server-only` 包强制检查
-- **类型定义：** 所有 TypeScript 类型定义按域分类放置在 `src/types/` 目录：
-  - `src/types/auth/` - 认证相关类型
-  - `src/types/common/` - 通用类型
-  - `src/types/database/` - 数据库模型类型
-  - `src/types/callback/` - 回调函数类型
-- **状态管理：** 使用 Zustand 进行状态管理，状态文件放置在 `src/store/` 目录。
-- **自定义 Hooks：** 自定义 React Hooks 放置在 `src/hooks/` 目录。
-- **静态资源：** 图像、字体等静态资源放置在 `public/` 目录。
-- **全局布局：** 应用的全局布局定义在 `src/app/layout.tsx`。
-- **命名约定：**
-  - 组件文件：`PascalCase.tsx` (例如 `Button.tsx`, `UserProfile.tsx`)。
-  - 目录：`kebab-case` (例如 `user-profile`, `data-display`)。
+```
+ink_battles/
+├── src/                    # 前端源码 (Next.js)
+│   ├── app/                # App Router 路由
+│   │   ├── api/            # API Routes (前端 API 层)
+│   │   ├── dashboard/      # 用户仪表盘
+│   │   ├── analysis/       # 分析页面
+│   │   ├── oauth/          # OAuth 认证
+│   │   └── ...
+│   ├── components/         # React 组件
+│   │   ├── ui/             # ShadCN UI 基础组件
+│   │   ├── common/         # 通用组件
+│   │   ├── layouts/        # 页面级布局组件
+│   │   ├── dashboard/      # 仪表盘组件
+│   │   └── analysis/       # 分析相关组件
+│   ├── utils/              # 前端工具函数
+│   │   ├── auth/           # 认证工具 (client.ts/server.ts)
+│   │   ├── api/            # API 调用封装
+│   │   ├── billing/        # 计费逻辑
+│   │   └── dashboard/      # 仪表盘工具
+│   ├── lib/                # 核心库函数
+│   ├── types/              # TypeScript 类型定义
+│   ├── store/              # Zustand 状态管理
+│   └── hooks/              # 自定义 React Hooks
+│
+├── backend/                # 后端源码 (Node.js)
+│   ├── src/
+│   │   ├── app.ts          # Express 应用入口
+│   │   ├── index.ts        # 服务器启动文件
+│   │   ├── config.ts       # 配置加载器
+│   │   ├── modules/        # 业务模块 (路由 + 控制器)
+│   │   ├── integrations/   # 第三方集成 (AI/验证器)
+│   │   ├── db/             # 数据库操作 (MongoDB)
+│   │   ├── middleware/     # Express 中间件
+│   │   ├── utils/          # 后端工具函数
+│   │   └── constants/      # 常量定义
+│   └── package.json        # 后端依赖
+│
+├── shared/                 # 前后端共享代码 (可选)
+├── public/                 # 静态资源
+├── config.toml             # 全局配置文件
+├── pnpm-workspace.yaml     # pnpm workspace 配置
+├── CLAUDE.md               # 开发规范文档
+└── package.json            # 根 package.json
+```
+
+### 关键目录说明
+
+**前端 (`src/`)**
+- `app/` - Next.js App Router，页面仅作编排者
+- `components/` - 按功能域分类的 React 组件
+- `utils/` - 按功能域分类的工具函数（含 client/server 分离）
+- `lib/` - 核心基础设施（数据库、配置、常量）
+- `types/` - 按域分类的 TypeScript 类型
+
+**后端 (`backend/src/`)**
+- `modules/` - RESTful API 模块（路由 + 控制器）
+- `integrations/` - AI 模型集成、验证器等
+- `db/` - MongoDB 数据库操作封装
+- `middleware/` - 认证、CORS、错误处理等中间件
+- `utils/` - 后端专用工具函数
+
+---
+
+## 2. 前端开发规范 (Next.js 16)
+
+### 2.1 App Router 架构
+
+- **页面角色明确：** `page.tsx` **仅作为"编排者" (Orchestrator)**
+  - 职责：1. 获取数据；2. 定义元数据；3. 导入并组装组件
+  - **严禁**在 `page.tsx` 中编写复杂 UI 标记或业务逻辑
+- **共置原则：** 路由处理程序、加载/错误状态与路由紧密关联
+- **路由组：** 使用 `()` 组织路由，实现逻辑分组而不影响 URL
+- **复杂布局：** 通过并行路由/拦截路由实现模态框等高级 UI
+
+### 2.2 组件分类组织
+
+```
+src/components/
+├── ui/             # ShadCN UI 基础组件 (Button, Card, Dialog...)
+├── common/         # 通用组件 (Header, Footer, ThemeToggle...)
+├── layouts/        # 页面级布局组件 (WriterPage, DashboardLayout...)
+├── dashboard/      # 仪表盘业务组件
+├── analysis/       # 分析相关业务组件
+├── marketing/      # 营销页面组件
+└── seo/            # SEO 相关组件
+```
+
+**组件设计原则：**
+- **原子化构建：** 避免创建巨大的单一组件，拆分为职责单一的小组件
+- **组合模式：** 优先使用 `children` 或 Slot 模式组合组件
+- **单一职责：** 当组件逻辑复杂时，立即拆分为子组件或 Hooks
+
+### 2.3 工具函数组织 (`src/utils/`)
+
+**按功能域分类，客户端/服务器分离：**
+
+```
+src/utils/
+├── auth/           # 认证功能域
+│   ├── client.ts   # 客户端专用 ("use client")
+│   ├── server.ts   # 服务器专用 ("use server" + "server-only")
+│   └── index.ts    # 统一导出
+├── api/            # API 调用封装
+├── billing/        # 计费逻辑
+├── dashboard/      # 仪表盘工具
+├── analysis/       # 分析工具
+└── common/         # 通用工具
+```
+
+**文件命名约定：**
+- `client.ts` - 客户端专用，标记 `"use client"`
+- `server.ts` - 服务器专用，标记 `"use server"` + `import "server-only"`
+- `common.ts` / `index.ts` - 客户端/服务器共享
+
+**导入规范：**
+- ✅ 优先：`import { functionName } from "@/utils/auth"`
+- ❌ 避免：`import { functionName } from "@/utils/auth/client"`
+
+### 2.4 核心库函数 (`src/lib/`)
+
+**仅用于核心基础设施：**
+- `lib/constants.ts` - 全局常量
+- `lib/seo.ts` - SEO 工具
+- 其他核心框架函数
+
+**与 `utils/` 的分工：**
+- `lib/` - 框架基础设施
+- `utils/` - 业务功能域工具
+
+### 2.5 类型定义 (`src/types/`)
+
+```
+src/types/
+├── auth/           # 认证相关类型
+├── common/         # 通用类型
+├── database/       # 数据库模型类型
+├── users/          # 用户类型
+└── ai/             # AI 相关类型
+```
 
 ### 2. 代码风格与TypeScript
 
