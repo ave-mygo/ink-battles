@@ -8,6 +8,9 @@
     "dev:all": "concurrently -k -n frontend,backend -c cyan,magenta \"pnpm run frontend:dev\" \"pnpm run backend:dev\"",
     "build": "pnpm run build:all",
     "build:all": "pnpm run backend:build && pnpm run frontend:build",
+    "build:docker": "docker compose -f docker-compose.yml -f docker-compose.build.yml build",
+    "build:docker:frontend": "docker compose -f docker-compose.yml -f docker-compose.build.yml build frontend",
+    "build:docker:backend": "docker compose -f docker-compose.yml -f docker-compose.build.yml build backend",
     "start": "pnpm run frontend:start",
     "lint": "pnpm run frontend:lint",
     "typecheck": "pnpm run backend:typecheck && pnpm run frontend:typecheck",
@@ -19,7 +22,14 @@
     "backend:dev": "CONFIG_PATH=../config.toml PORT=3001 FRONTEND_ORIGIN=http://localhost:3000 APP_BASE_URL=http://localhost:3001 ALLOWED_ORIGINS=http://localhost:3001,http://localhost:3000 pnpm --filter @ink-battles/backend dev",
     "backend:build": "pnpm --filter @ink-battles/backend build",
     "backend:start": "pnpm --filter @ink-battles/backend start",
-    "backend:typecheck": "pnpm --filter @ink-battles/backend typecheck"
+    "backend:typecheck": "pnpm --filter @ink-battles/backend typecheck",
+    "compose:config": "docker compose config",
+    "compose:pull": "docker compose pull",
+    "compose:up": "docker compose up -d",
+    "compose:down": "docker compose down",
+    "compose:restart": "docker compose restart",
+    "compose:logs": "docker compose logs -f",
+    "compose:ps": "docker compose ps"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.2.0",

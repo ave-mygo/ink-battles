@@ -1,37 +1,6 @@
 services:
-  backend:
-    image: ${BACKEND_IMAGE:-ink-battles-backend:latest}
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    container_name: ink-battles-backend
-    restart: unless-stopped
-    ports:
-      - '3001:3000'
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
-    volumes:
-      - ./config.toml:/app/config.toml:ro
-    environment:
-      - NODE_ENV=production
-      - TZ=Asia/Shanghai
-      - FRONTEND_ORIGIN=http://frontend:3000
-      - APP_BASE_URL=https://ink-battles.couqie.moe
-      - MONGODB_HOST=host.docker.internal
-      - ALLOWED_ORIGINS=https://ink-battles.couqie.moe,http://localhost:3001
-    depends_on:
-      - frontend
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: '3'
-
   frontend:
-    image: ${FRONTEND_IMAGE:-ink-battles-frontend:latest}
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
+    image: ghcr.io/ave-mygo/ink-battles-frontend:latest
     container_name: ink-battles-frontend
     restart: unless-stopped
     expose:
@@ -42,6 +11,42 @@ services:
       - APP_BASE_URL=https://ink-battles.couqie.moe
       - NEXT_PUBLIC_API_BASE_URL=/api/v2
       - INTERNAL_API_BASE_URL=http://backend:3000/api/v2
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/favicon.png').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+  backend:
+    image: ghcr.io/ave-mygo/ink-battles-backend:latest
+    container_name: ink-battles-backend
+    restart: unless-stopped
+    ports:
+      - '${BACKEND_PORT:-3001}:3000'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ./config.toml:/app/config.toml:ro
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+      - FRONTEND_ORIGIN=http://frontend:3000
+      - ALLOWED_ORIGINS=https://ink-battles.couqie.moe,http://localhost:${BACKEND_PORT:-3001}
+    depends_on:
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/api/v2/health').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     logging:
       driver: json-file
       options:

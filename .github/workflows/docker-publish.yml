@@ -13,7 +13,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -27,10 +26,10 @@ jobs:
         include:
           - service: frontend
             dockerfile: frontend/Dockerfile
-            image-suffix: frontend
+            image: ghcr.io/ave-mygo/ink-battles-frontend
           - service: backend
             dockerfile: backend/Dockerfile
-            image-suffix: backend
+            image: ghcr.io/ave-mygo/ink-battles-backend
 
     steps:
       - name: Checkout repository
@@ -54,7 +53,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.image-suffix }}
+          images: ${{ matrix.image }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -62,7 +61,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=sha,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
