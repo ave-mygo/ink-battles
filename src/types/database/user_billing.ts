@@ -13,7 +13,7 @@ export interface UserBilling {
 }
 
 /**
- * 序列化后的用户计费信息（从 Server Action 接收）
+ * 序列化后的用户计费信息（从 backend API 接收）
  */
 export interface SerializedUserBilling {
 	uid: number;

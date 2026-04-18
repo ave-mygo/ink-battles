@@ -38,6 +38,17 @@ export interface DatabaseAnalysisTask {
 	createdAt: string;
 	/** 更新时间戳 */
 	updatedAt: string;
+	/** 计费状态 */
+	billing?: {
+		deducted: boolean;
+		deductedFrom: "grant" | "paid" | null;
+		deductedAt?: string;
+		completedAt?: string;
+		refunded?: boolean;
+		refundedAt?: string;
+		refundReason?: "failed" | "cancelled";
+		refundBalanceApplied?: boolean;
+	};
 	/** 错误信息（如果失败） */
 	error?: string;
 	/** 分析结果的记录ID (关联到 analysis_requests 表) */
