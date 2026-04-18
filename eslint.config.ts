@@ -1,6 +1,6 @@
 import antfu from "@antfu/eslint-config";
 
-const atf = antfu({
+export default antfu({
 	ignores: [
 		"src/components/ui/**",
 		".next/**",
@@ -23,6 +23,8 @@ const atf = antfu({
 	rules: {
 		"semi": ["warn", "always"],
 		"antfu/top-level-function": "off",
+		"node/prefer-global/process": "error",
+		"ts/no-use-before-define": "off",
 		"react-hooks/exhaustive-deps": "off",
 		"eslinttailwindcss/no-custom-classname": "off",
 		"no-console": "off",
@@ -30,5 +32,3 @@ const atf = antfu({
 		"react/no-array-index-key": "off",
 	},
 });
-
-export default atf;

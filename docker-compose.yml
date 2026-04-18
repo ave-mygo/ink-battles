@@ -1,75 +1,49 @@
 services:
-  # ============================================
-  # Next.js 应用 (从 GHCR 拉取)
-  # ============================================
-  app:
-    # 使用 GHCR 镜像
-    image: ghcr.io/ave-mygo/ink-battles:latest
-    container_name: ink-battles
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: ink-battles-backend:latest
+    container_name: ink-battles-backend
     restart: unless-stopped
-    # 每次启动时检查是否有新镜像，确保更新
-    pull_policy: always
     ports:
       - "3001:3000"
     extra_hosts:
-      # Linux 上需要手动添加 host.docker.internal 映射
       - "host.docker.internal:host-gateway"
     volumes:
-      # 挂载配置文件
       - ./config.toml:/app/config.toml:ro
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
-      # 设置应用基础 URL，用于 OAuth 回调等场景
+      - FRONTEND_ORIGIN=http://frontend:3000
       - APP_BASE_URL=https://ink-battles.couqie.moe
-      # 使用 Docker 默认网桥网关访问宿主机 MongoDB
       - MONGODB_HOST=host.docker.internal
-    # networks:
-    #   - ink-battles-network
-    # 限制日志大小，防止占满磁盘
+      - ALLOWED_ORIGINS=https://ink-battles.couqie.moe,http://localhost:3001
+    depends_on:
+      - frontend
     logging:
       driver: json-file
       options:
         max-size: 10m
         max-file: "3"
 
-  # # ============================================
-  # # MongoDB 数据库
-  # # ============================================
-  # mongodb:
-  #   image: mongo:7
-  #   container_name: ink-battles-mongo
-  #   restart: unless-stopped
-  #   volumes:
-  #     - mongodb_data:/data/db
-  #     - mongodb_config:/data/configdb
-  #   environment:
-  #     - TZ=Asia/Shanghai
-  #   networks:
-  #     - ink-battles-network
-  #   # 添加健康检查
-  #   healthcheck:
-  #     test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
-  #     start_period: 5s
-  #   logging:
-  #     driver: "json-file"
-  #     options:
-  #       max-size: "10m"
-  #       max-file: "3"
-
-# # ============================================
-# # 数据持久化
-# # ============================================
-# volumes:
-#   mongodb_data:
-#   mongodb_config:
-
-# # ============================================
-# # 网络配置
-# # ============================================
-# networks:
-#   ink-battles-network:
-#     driver: bridge
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ink-battles-frontend:latest
+    container_name: ink-battles-frontend
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+      - APP_BASE_URL=https://ink-battles.couqie.moe
+      - NEXT_PUBLIC_API_BASE_URL=/api/v2
+      - INTERNAL_API_BASE_URL=http://backend:3000/api/v2
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
