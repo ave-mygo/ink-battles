@@ -15,9 +15,9 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # 复制 workspace 依赖声明，前端 Eden 类型会解析后端类型定义。
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY backend/package.json ./backend/package.json
+COPY backend/package.json ./backend/
 
-# 安装依赖
+# 安装依赖（包含 backend workspace）
 RUN pnpm install --frozen-lockfile
 
 # ============================================
@@ -29,8 +29,9 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# 从 deps 阶段复制 node_modules
+# 从 deps 阶段复制 node_modules（包含 backend workspace）
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/backend/node_modules ./backend/node_modules
 COPY . .
 
 # 前端构建不读取敏感配置，运行时通过后端 API 获取公开配置。
