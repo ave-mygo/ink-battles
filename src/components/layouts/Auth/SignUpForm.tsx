@@ -13,7 +13,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isPasswordValid } from "@/lib/password-strength";
-import { loginSetState } from "@/utils/auth/client";
+import { createClientEden } from "@/utils/api/eden-client";
+import { unwrapEdenPayload } from "@/utils/api/eden-response";
+import { loginSetState, loginWithPassword, registerWithPassword, sendVerificationEmail } from "@/utils/auth/client";
 
 /**
  * 注册表单组件（含邮箱验证码和可选邀请码）
@@ -42,9 +44,9 @@ const SignUpForm = () => {
 	useEffect(() => {
 		const checkInviteConfig = async () => {
 			try {
-				const res = await fetch("/api/auth/invite-config");
-				const data = await res.json();
-				setInviteCodeRequired(data.required);
+				const { data, error } = await createClientEden().api.v2.config.public.get();
+				const response = await unwrapEdenPayload<{ registration?: { invite_code_required?: boolean } }>(data, error, {});
+				setInviteCodeRequired(response.registration?.invite_code_required ?? false);
 			} catch (error) {
 				console.error("获取邀请码配置失败:", error);
 			}
@@ -94,12 +96,7 @@ const SignUpForm = () => {
 		}
 		try {
 			setSending(true);
-			const res = await fetch("/api/auth/send-code", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email, type: "register" }),
-			});
-			const data = await res.json();
+			const data = await sendVerificationEmail(email, "register");
 			if (data.success) {
 				toast.success("验证码已发送，请查收邮箱");
 				setCountdown(60);
@@ -132,22 +129,12 @@ const SignUpForm = () => {
 			return;
 		}
 		try {
-			const res = await fetch("/api/register", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email, password, code, inviteCode: inviteCode || undefined }),
-			});
-			const data = await res.json();
+			const data = await registerWithPassword({ email, password, code, inviteCode: inviteCode || undefined });
 			if (data.success) {
 				toast.success("注册成功，尝试自动登录");
 				// 注册成功后，尝试自动登录
 				try {
-					const loginRes = await fetch("/api/login", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ email, password }),
-					});
-					const loginData = await loginRes.json();
+					const loginData = await loginWithPassword(email, password);
 					if (loginData.success) {
 						// 同步登录状态到状态管理
 						await loginSetState();

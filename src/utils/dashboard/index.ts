@@ -1,3 +1,1 @@
-export * from "./account-bindings";
-export * from "./history";
-export * from "./server";
+export { getPublicRecordsForSitemap } from "./history";

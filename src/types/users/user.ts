@@ -21,7 +21,7 @@ export interface AuthUserInfo {
 }
 
 /**
- * 可安全传递到客户端（RSC/Server Actions 返回值）的用户信息类型
+ * 可安全传递到客户端（SSR/CSR API 返回值）的用户信息类型
  * - 去除了 Mongo ObjectId 等非可序列化字段
  * - 将日期转换为 ISO 字符串
  */

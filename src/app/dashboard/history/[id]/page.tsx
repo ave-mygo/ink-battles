@@ -4,8 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HistoryDetailView } from "@/components/dashboard/history/HistoryDetailView";
 import { Button } from "@/components/ui/button";
-import { getScorePercentile } from "@/lib/ai";
-import { getAnalysisRecordById } from "@/utils/dashboard";
+import { normalizeEdenResult } from "@/utils/api/eden-response";
+import { createServerEden } from "@/utils/api/eden-server";
 
 interface HistoryDetailPageProps {
 	params: Promise<{
@@ -22,22 +22,16 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HistoryDetailPage({ params }: HistoryDetailPageProps) {
 	const { id } = await params;
-	const result = await getAnalysisRecordById(id);
+	const api = await createServerEden();
+	const response = await api.api.v2.analysis.history({ id }).get();
+	const result = await normalizeEdenResult<any>(response.data, response.error, "记录不存在");
 
-	if (!result.success || !result.data) {
+	if (!result.success || !result.data?.record) {
 		notFound();
 	}
 
-	// 在服务端获取百分位数据
-	const record = result.data;
-	let percentileData = null;
-	if (record.metadata?.modelName && record.article?.output?.overallScore) {
-		percentileData = await getScorePercentile(
-			record.article.output.overallScore,
-			record.metadata.modelName,
-			record.article.input.mode,
-		);
-	}
+	const record = result.data.record;
+	const percentileData = null;
 
 	return (
 		<div className="mx-auto max-w-6xl space-y-6">
@@ -53,7 +47,7 @@ export default async function HistoryDetailPage({ params }: HistoryDetailPagePro
 
 			{/* 详情视图 */}
 			<HistoryDetailView
-				record={result.data}
+				record={record}
 				showShareControls={true}
 				percentileData={percentileData}
 			/>

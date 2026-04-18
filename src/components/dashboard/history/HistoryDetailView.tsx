@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { toggleRecordPublic } from "@/utils/dashboard";
+import { toggleRecordPublic } from "@/utils/dashboard/history";
 import { ShareToggle } from "./ShareToggle";
 
 interface HistoryDetailViewProps {

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { getConfig } from "@/config";
-
+import process from "node:process";
 // 预编译正则表达式，避免每次调用时重新编译
 const TRAILING_SLASH_REGEX = /\/$/;
 
@@ -20,7 +19,7 @@ export interface BasicPageInfo {
  * 获取站点基础 URL（规范化，去掉尾部斜杠）
  */
 export function getSiteUrl(): string {
-	const base = getConfig().app.base_url || "http://localhost:3000";
+	const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_BASE_URL || "http://localhost:3001";
 	// 使用 URL 对象规范化，确保格式正确
 	const url = new URL(base);
 	return url.origin + url.pathname.replace(TRAILING_SLASH_REGEX, "");

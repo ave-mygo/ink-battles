@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Link2 } from "lucide-react";
 import { AccountBindings } from "@/components/dashboard/AccountBindings";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
-import { getAccountBindingDetails } from "@/utils/dashboard/account-bindings";
+import { unwrapEdenPayload } from "@/utils/api/eden-response";
+import { createServerEden } from "@/utils/api/eden-server";
 
 export const metadata: Metadata = {
 	title: "账号绑定与管理",
@@ -10,7 +11,19 @@ export const metadata: Metadata = {
 };
 
 export default async function AccountsPage() {
-	const bindings = await getAccountBindingDetails();
+	const api = await createServerEden();
+	const response = await api.api.v2.accounts.details.get();
+	const bindings = await unwrapEdenPayload<{
+		email: { bound: boolean; value?: string | null };
+		qq: { bound: boolean; value?: string | null };
+		afdian: { bound: boolean; value?: string | null };
+		loginMethod?: "email" | "qq" | "afd" | null;
+	}>(response.data, response.error, {
+		email: { bound: false },
+		qq: { bound: false },
+		afdian: { bound: false },
+		loginMethod: null,
+	});
 
 	return (
 		<div className="mx-auto max-w-4xl space-y-6">

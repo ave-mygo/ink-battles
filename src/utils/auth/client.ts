@@ -2,45 +2,74 @@
 
 import type { AuthUserInfoSafe, UserStore } from "@/types/users";
 import { clearAuthStore, syncAuthStoreAfterLogin } from "@/store";
-import { getCurrentUserInfo, getUserAvatarUrl, logoutUser } from "./server";
+import { createClientEden } from "@/utils/api/eden-client";
+import { normalizeEdenResult } from "@/utils/api/eden-response";
 
-const mapAuthToUserStore = async (user: AuthUserInfoSafe): Promise<UserStore> => {
-	const avatar = await getUserAvatarUrl(user.uid);
-	return {
-		uid: String(user.uid),
-		nickname: user.email?.split("@")[0] || "用户",
-		avatar,
-		isLoggedIn: true,
-	};
+interface ApiResponse<T> {
+	success: boolean;
+	message?: string;
+	data?: T;
+}
+
+type VerificationType = "register" | "login" | "reset-password";
+
+const mapAuthToUserStore = (user: AuthUserInfoSafe): UserStore => ({
+	uid: String(user.uid),
+	nickname: user.nickname || user.email?.split("@")[0] || "用户",
+	avatar: (user as AuthUserInfoSafe & { avatar?: string }).avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
+	isLoggedIn: true,
+});
+
+const getAuthApi = () => createClientEden().api.v2;
+
+const unwrapAuthResponse = <T>(data: unknown, error: unknown): ApiResponse<T> =>
+	(data ?? error ?? { success: false, message: "请求失败" }) as ApiResponse<T>;
+
+/**
+ * 使用 Eden 调用登录接口。
+ */
+export const loginWithPassword = async (email: string, password: string) => {
+	const { data, error } = await getAuthApi().rpc["auth.login"].post({ email, password });
+	return normalizeEdenResult<{ success: boolean; message: string }>(data, error, "登录失败");
 };
 
 /**
- * 登录后同步状态到客户端 Store
- * 在登录成功后调用，确保用户状态同步到客户端
+ * 使用 Eden 调用注册接口。
  */
+export const registerWithPassword = async (payload: { email: string; password: string; code: string; inviteCode?: string }) => {
+	const { data, error } = await getAuthApi().rpc["auth.register"].post(payload);
+	return normalizeEdenResult<{ success: boolean; message?: string }>(data, error, "注册失败");
+};
+
+/**
+ * 使用 Eden 发送认证验证码。
+ */
+export const sendVerificationEmail = async (email: string, type: VerificationType = "register") => {
+	const { data, error } = await getAuthApi().rpc["auth.sendVerificationCode"].post({ email, type });
+	return normalizeEdenResult<{ success: boolean; message: string }>(data, error, "发送失败");
+};
+
 export const loginSetState = async () => {
 	try {
-		const info = await getCurrentUserInfo();
-		if (info) {
-			syncAuthStoreAfterLogin(await mapAuthToUserStore(info));
-		} else {
-			clearAuthStore();
+		const { data, error } = await getAuthApi().auth.me.get();
+		const response = unwrapAuthResponse<AuthUserInfoSafe | null>(data, error);
+		if (response.success && response.data) {
+			syncAuthStoreAfterLogin(mapAuthToUserStore(response.data));
+			return response.data;
 		}
-		return info;
+		clearAuthStore();
+		return null;
 	} catch (error) {
 		console.error("获取用户信息失败:", error);
 		clearAuthStore();
+		return null;
 	}
 };
 
-/**
- * 登出清理状态
- * 清理客户端 Store 和服务端 Session
- */
 export const logoutSetState = async () => {
 	try {
 		clearAuthStore();
-		await logoutUser();
+		await getAuthApi().rpc["auth.logout"].post();
 	} catch (error) {
 		console.error("登出状态清理失败:", error);
 	}

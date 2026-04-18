@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import process from "node:process";
 import { redirect } from "next/navigation";
-import { getConfig } from "@/config";
 
 // 强制动态渲染，确保配置在运行时读取
 export const dynamic = "force-dynamic";
@@ -33,16 +33,11 @@ export default async function AfdianOAuthPage({ searchParams }: AfdianOAuthPageP
 		inviteCode,
 	});
 
-	const config = getConfig();
-	const { client_id, redirect_uri } = config.afdian;
-
-	// 构建爱发电授权 URL
-	const authUrl = new URL("https://ifdian.net/oauth2/authorize");
-	authUrl.searchParams.set("response_type", "code");
-	authUrl.searchParams.set("scope", "basic");
-	authUrl.searchParams.set("client_id", client_id);
-	authUrl.searchParams.set("redirect_uri", redirect_uri);
+	const authUrl = new URL("/api/v2/rpc/oauth.afdianStart", process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_BASE_URL || "http://localhost:3001");
+	authUrl.searchParams.set("method", method);
 	authUrl.searchParams.set("state", state);
+	if (inviteCode)
+		authUrl.searchParams.set("inviteCode", inviteCode);
 
 	redirect(authUrl.toString());
 }

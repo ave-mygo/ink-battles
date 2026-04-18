@@ -5,7 +5,7 @@ import { AccountStatusCard } from "@/components/dashboard/profile/AccountStatusC
 import { BasicInfoCard } from "@/components/dashboard/profile/BasicInfoCard";
 import { ProfileHeader } from "@/components/dashboard/profile/ProfileHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import { getDashboardUserInfo } from "@/utils/dashboard";
+import { getDashboardUserInfo } from "@/utils/dashboard/server";
 
 export const metadata: Metadata = {
 	title: "用户信息",

@@ -4,7 +4,6 @@ import { NoticeBar } from "@/components/common/notice-bar";
 import WriterAnalysisSystem from "@/components/layouts";
 import JsonLd from "@/components/seo/JsonLd";
 import { SEOContent } from "@/components/seo/SEOContent";
-import { getAvailableGradingModels, getConfig } from "@/config";
 import {
 	buildArticleJsonLd,
 	buildHowToJsonLd,
@@ -12,9 +11,22 @@ import {
 	createPageMetadata,
 	getSiteUrl,
 } from "@/lib/seo";
+import { unwrapEdenPayload } from "@/utils/api/eden-response";
+import { createServerEden } from "@/utils/api/eden-server";
 
 // 动态渲染，确保每次都读取最新的 config.toml
 export const dynamic = "force-dynamic";
+
+const DEFAULT_PUBLIC_CONFIG = {
+	app: {
+		notice: {
+			enabled: false,
+			content: "",
+			link: "",
+		},
+	},
+	gradingModels: [],
+};
 
 export async function generateMetadata(): Promise<Metadata> {
 	return createPageMetadata({
@@ -41,21 +53,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-	const noticeConf = getConfig().app.notice;
+	const api = await createServerEden();
+	const { data, error } = await api.api.v2.config.public.get();
+	const publicConfig = (await unwrapEdenPayload<any>(data, error, DEFAULT_PUBLIC_CONFIG)) ?? DEFAULT_PUBLIC_CONFIG;
+	const noticeConf = publicConfig.app?.notice ?? DEFAULT_PUBLIC_CONFIG.app.notice;
 	const siteUrl = getSiteUrl();
 	// 在服务器端获取评分模型配置，传递给客户端组件
-	const availableGradingModels = getAvailableGradingModels().map(model => ({
-		id: model.id ?? model.model,
-		name: model.name,
-		model: model.model,
-		description: model.description,
-		enabled: model.enabled,
-		premium: model.premium,
-		features: model.features,
-		advantages: model.advantages,
-		usageScenario: model.usageScenario,
-		warning: model.warning,
-	}));
+	const availableGradingModels = (publicConfig.gradingModels ?? []).map((model: any) => ({ ...model, enabled: true }));
 
 	return (
 		<>

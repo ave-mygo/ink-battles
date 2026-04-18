@@ -4,8 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HistoryDetailView } from "@/components/dashboard/history/HistoryDetailView";
 import { Button } from "@/components/ui/button";
-import { getScorePercentile } from "@/lib/ai";
-import { getViewableAnalysisRecord } from "@/utils/dashboard/history";
+import { normalizeEdenResult } from "@/utils/api/eden-response";
+import { createServerEden } from "@/utils/api/eden-server";
 
 interface AnalysisDetailPageProps {
 	params: Promise<{
@@ -22,22 +22,31 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function AnalysisDetailPage({ params }: AnalysisDetailPageProps) {
 	const { id } = await params;
-	const result = await getViewableAnalysisRecord(id);
+	const api = await createServerEden();
+	const taskResponse = await api.api.v2.analysis.tasks({ taskId: id }).get();
+	const task = await normalizeEdenResult<any>(taskResponse.data, taskResponse.error, "任务不存在");
+	const result = task.success && task.resultId
+		? await normalizeEdenResult<any>(
+				...(await (async () => {
+					const response = await api.api.v2.analysis.history({ id: task.resultId }).get();
+					return [response.data, response.error] as const;
+				})()),
+				"记录不存在",
+			)
+		: await normalizeEdenResult<any>(
+				...(await (async () => {
+					const response = await api.api.v2.analysis.history({ id }).get();
+					return [response.data, response.error] as const;
+				})()),
+				"记录不存在",
+			);
 
-	if (!result.success || !result.data) {
+	if (!result.success || !result.data?.record) {
 		notFound();
 	}
 
-	// 在服务端获取百分位数据
-	const record = result.data;
-	let percentileData = null;
-	if (record.metadata?.modelName && record.article?.output?.overallScore) {
-		percentileData = await getScorePercentile(
-			record.article.output.overallScore,
-			record.metadata.modelName,
-			record.article.input.mode,
-		);
-	}
+	const record = result.data.record;
+	const percentileData = null;
 
 	return (
 		<div className="p-4 min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">

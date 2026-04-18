@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getBillingInfo } from "@/utils/billing/actions";
+import { BILLING_BALANCE_UPDATED_EVENT, getBillingInfo } from "@/utils/billing/client";
 
 /**
  * 计费管理组件
@@ -55,6 +55,21 @@ export default function BillingManagement() {
 			isMounted = false;
 		};
 	}, []);
+
+	useEffect(() => {
+		if (typeof window === "undefined")
+			return;
+
+		const handleBillingUpdated = () => {
+			void loadBillingInfo();
+		};
+
+		window.addEventListener(BILLING_BALANCE_UPDATED_EVENT, handleBillingUpdated);
+
+		return () => {
+			window.removeEventListener(BILLING_BALANCE_UPDATED_EVENT, handleBillingUpdated);
+		};
+	}, [loadBillingInfo]);
 
 	if (loading) {
 		return (

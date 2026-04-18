@@ -4,8 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { HistoryDetailView } from "@/components/dashboard/history/HistoryDetailView";
 import { Button } from "@/components/ui/button";
-import { getScorePercentile } from "@/lib/ai";
-import { getPublicAnalysisRecord } from "@/utils/dashboard";
+import { normalizeEdenResult } from "@/utils/api/eden-response";
+import { createServerEden } from "@/utils/api/eden-server";
 
 interface SharePageProps {
 	params: Promise<{
@@ -15,9 +15,11 @@ interface SharePageProps {
 
 export async function generateMetadata({ params }: SharePageProps): Promise<Metadata> {
 	const { id } = await params;
-	const result = await getPublicAnalysisRecord(id);
+	const api = await createServerEden();
+	const response = await api.api.v2.analysis.share({ id }).get();
+	const result = await normalizeEdenResult<any>(response.data, response.error, "记录未公开");
 
-	if (!result.success || !result.data) {
+	if (!result.success || !result.data?.record) {
 		return {
 			title: "记录未公开",
 			description: "该分析记录未公开分享",
@@ -26,30 +28,22 @@ export async function generateMetadata({ params }: SharePageProps): Promise<Meta
 
 	return {
 		title: `分析记录分享 - ${id}`,
-		description: `由 ${result.sharer ? result.sharer.displayName : "匿名用户"} 分享的作家战力分析记录`,
+		description: "作家战力分析记录分享",
 	};
 }
 
 export default async function SharePage({ params }: SharePageProps) {
 	const { id } = await params;
-	const result = await getPublicAnalysisRecord(id);
+	const api = await createServerEden();
+	const response = await api.api.v2.analysis.share({ id }).get();
+	const result = await normalizeEdenResult<any>(response.data, response.error, "记录未公开");
 
-	if (!result.success || !result.data) {
+	if (!result.success || !result.data?.record) {
 		notFound();
 	}
 
-	const { sharer } = result;
-
-	// 在服务端获取百分位数据
-	const record = result.data;
-	let percentileData = null;
-	if (record.metadata?.modelName && record.article?.output?.overallScore) {
-		percentileData = await getScorePercentile(
-			record.article.output.overallScore,
-			record.metadata.modelName,
-			record.article.input.mode,
-		);
-	}
+	const sharer = result.data.sharer;
+	const percentileData = null;
 
 	return (
 		<div className="p-4 min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">

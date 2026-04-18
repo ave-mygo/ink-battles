@@ -174,9 +174,15 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 	}, [handleWheel, handleTouchStart, handleTouchMove, handleTouchEnd]);
 
 	useEffect(() => {
+		let cancelled = false;
+
 		const renderDiagram = async () => {
 			if (!containerRef.current)
 				return;
+
+			containerRef.current.innerHTML = "";
+			setIsRendered(false);
+			setError(null);
 
 			try {
 				// 将分号分隔的代码转换为换行分隔
@@ -194,18 +200,29 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 
 				// 渲染图表
 				const { svg } = await mermaid.render(diagramId, formattedCode);
+				if (cancelled || !containerRef.current)
+					return;
 				containerRef.current.innerHTML = svg;
 				setIsRendered(true);
 				setError(null);
 			} catch (err) {
+				if (cancelled)
+					return;
 				const errorMessage = err instanceof Error ? err.message : "图表渲染失败";
 				setError(errorMessage);
 				setIsRendered(false);
 			}
 		};
 
-		renderDiagram();
-	}, [code, uniqueId]);
+		void renderDiagram();
+
+		return () => {
+			cancelled = true;
+			if (containerRef.current) {
+				containerRef.current.innerHTML = "";
+			}
+		};
+	}, [code, title, uniqueId]);
 
 	if (error) {
 		return (
@@ -314,7 +331,7 @@ export default function MermaidDiagrams({ diagrams }: MermaidDiagramsProps) {
 			</CardHeader>
 			<CardContent className="space-y-6">
 				{diagrams.map((diagram, index) => (
-					<MermaidErrorBoundary key={`${diagram.type}-${index}`} title={diagram.title}>
+					<MermaidErrorBoundary key={`${diagram.type}-${diagram.title}-${index}-${diagram.code}`} title={diagram.title}>
 						<MermaidChart
 							code={diagram.code}
 							title={diagram.title}

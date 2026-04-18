@@ -1,5 +1,12 @@
 import type { ComponentType } from "react";
 import { CreditCard, History, Link as LinkIcon, User } from "lucide-react";
+import {
+	BILLING_CONSTANTS,
+	BILLING_MEMBER_TIERS,
+	calculateMonthlyGrantCalls as calculateMonthlyGrantCallsByBillingPlan,
+	calculatePaidCallPrice as calculatePaidCallPriceByBillingPlan,
+	getBillingTierInfo,
+} from "../../shared/constants/billing";
 
 export const db_name = "ink_battles";
 export const db_table = "analysis_requests";
@@ -12,20 +19,14 @@ export const PER_REQUEST_LOGGED = 60000; // 登录单次上限
 export const DAILY_CAP_GUEST = 100000; // 未登录每日累计上限（按 IP 或 指纹 任一）
 
 // 高级模型调用成本配置
-export const ADVANCED_MODEL_BASE_COST = 0.3; // 单次高级模型调用基础成本（人民币）
-export const GRANT_CALL_VIRTUAL_COST = 1.2; // 赠送调用虚拟单价（人民币）
-export const MONTHLY_GRANT_BASE = 5; // 每月赠送保底次数
-export const MONTHLY_GRANT_MAX = 35; // 每月赠送上限次数
-export const NEW_USER_BONUS = 25; // 新用户注册赠送次数
+export const ADVANCED_MODEL_BASE_COST = BILLING_CONSTANTS.ADVANCED_MODEL_BASE_COST; // 单次高级模型调用基础成本（人民币）
+export const GRANT_CALL_VIRTUAL_COST = BILLING_CONSTANTS.GRANT_CALL_VIRTUAL_COST; // 赠送调用虚拟单价（人民币）
+export const MONTHLY_GRANT_BASE = BILLING_CONSTANTS.MONTHLY_GRANT_BASE; // 每月赠送保底次数
+export const MONTHLY_GRANT_MAX = BILLING_CONSTANTS.MONTHLY_GRANT_MAX; // 每月赠送上限次数
+export const NEW_USER_BONUS = BILLING_CONSTANTS.NEW_USER_BONUS; // 新用户注册赠送次数
 
 // 会员等级和折扣配置
-export const MEMBERSHIP_TIERS = {
-	REGULAR: { minAmount: 0, maxAmount: 50, discount: 0, name: "普通会员" },
-	BRONZE: { minAmount: 50, maxAmount: 150, discount: 0.05, name: "铜牌会员" },
-	SILVER: { minAmount: 150, maxAmount: 300, discount: 0.1, name: "银牌会员" },
-	GOLD: { minAmount: 300, maxAmount: 460, discount: 0.15, name: "金牌会员" },
-	DIAMOND: { minAmount: 460, maxAmount: Infinity, discount: 0.2, name: "钻石会员" },
-};
+export const MEMBERSHIP_TIERS = BILLING_MEMBER_TIERS;
 
 // 用户类型枚举
 export enum UserType {
@@ -146,12 +147,11 @@ export const ABOUT_FAQ_ITEMS: FaqItemConfig[] = [
  * @returns 会员等级信息
  */
 export function getMemberTier(totalAmount: number) {
-	for (const [tier, config] of Object.entries(MEMBERSHIP_TIERS)) {
-		if (totalAmount >= config.minAmount && totalAmount < config.maxAmount) {
-			return { tier: tier as MemberTier, ...config };
-		}
-	}
-	return { tier: MemberTier.REGULAR, ...MEMBERSHIP_TIERS.REGULAR };
+	const tierInfo = getBillingTierInfo(totalAmount);
+	return {
+		tier: tierInfo.tier as MemberTier,
+		...MEMBERSHIP_TIERS[tierInfo.tier],
+	};
 }
 
 /**
@@ -160,8 +160,7 @@ export function getMemberTier(totalAmount: number) {
  * @returns 每月赠送调用次数
  */
 export function calculateMonthlyGrantCalls(totalAmount: number): number {
-	const calculated = MONTHLY_GRANT_BASE + Math.floor(totalAmount / GRANT_CALL_VIRTUAL_COST);
-	return Math.min(calculated, MONTHLY_GRANT_MAX);
+	return calculateMonthlyGrantCallsByBillingPlan(totalAmount);
 }
 
 /**
@@ -170,8 +169,7 @@ export function calculateMonthlyGrantCalls(totalAmount: number): number {
  * @returns 单次调用价格
  */
 export function calculatePaidCallPrice(totalAmount: number): number {
-	const tierInfo = getMemberTier(totalAmount);
-	return ADVANCED_MODEL_BASE_COST * (1 - tierInfo.discount);
+	return calculatePaidCallPriceByBillingPlan(totalAmount);
 }
 
 /**

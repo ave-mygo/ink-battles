@@ -1,13 +1,55 @@
 "use client";
 
-import type { Stats, StatusApiResponse, UsageLog } from "@/types/common/status";
+import type { StatusApiResponse, StatusDashboardProps, UsageLog } from "@/types/common/status";
 import { Activity, Clock, Cpu, MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
+import { createClientEden } from "@/utils/api/eden-client";
+import { normalizeEdenResult } from "@/utils/api/eden-response";
 import StatusHeader from "./StatusHeader";
 import StatusList from "./StatusList";
+
+const STATUS_PAGE_SIZE = 20;
+
+/**
+ * 为日志生成稳定键值。
+ *
+ * 1. 优先使用 Request ID，把同一次逻辑请求视为同一条记录。
+ * 2. 没有 Request ID 时，再退回到原始日志字段组合。
+ */
+const createStatusLogIdentity = (log: UsageLog) =>
+	log.request_id
+		? `request:${log.request_id}`
+		: [
+				log.created_at,
+				log.token_id,
+				log.parent_id,
+				log.model_name,
+				log.quota,
+			].join(":");
+
+/**
+ * 合并分页日志并去重。
+ *
+ * 后端已经按 Request ID 合并过重试日志，但分页窗口动态变化时，
+ * 自动刷新或翻页仍可能把同一条逻辑请求重复返回，这里做一次前端兜底去重。
+ */
+const mergeStatusLogs = (currentLogs: UsageLog[], incomingLogs: UsageLog[]) => {
+	const mergedLogs = [...currentLogs];
+	const existingKeys = new Set(currentLogs.map(createStatusLogIdentity));
+
+	incomingLogs.forEach((log) => {
+		const logKey = createStatusLogIdentity(log);
+		if (!existingKeys.has(logKey)) {
+			existingKeys.add(logKey);
+			mergedLogs.push(log);
+		}
+	});
+
+	return mergedLogs;
+};
 
 function StatCardSkeleton() {
 	return (
@@ -35,20 +77,15 @@ function StatCardsSkeleton() {
 	);
 }
 
-export default function StatusDashboard() {
-	const [logs, setLogs] = useState<UsageLog[]>([]);
+export default function StatusDashboard({ initialData }: StatusDashboardProps) {
+	const [logs, setLogs] = useState<UsageLog[]>(initialData.items);
 	const [loading, setLoading] = useState(false);
-	const [initialLoading, setInitialLoading] = useState(true);
-	const [autoRefresh, setAutoRefresh] = useState(true);
+	const [initialLoading, setInitialLoading] = useState(false);
+	const [autoRefresh, setAutoRefresh] = useState(false);
 	const [secondsLeft, setSecondsLeft] = useState(60);
-	const [stats, setStats] = useState<Stats>({
-		totalRequests: 0,
-		averageTime: 0,
-		totalTokens: 0,
-		successRate: 100,
-	});
-	const [currentPage, setCurrentPage] = useState(1);
-	const [hasMore, setHasMore] = useState(true);
+	const [stats, setStats] = useState(initialData.stats);
+	const [currentPage, setCurrentPage] = useState(initialData.page || 1);
+	const [hasMore, setHasMore] = useState(initialData.has_more);
 	const loadingRef = useRef<HTMLDivElement>(null);
 
 	const fetchLogs = async (page: number, isFirstLoad = false) => {
@@ -59,17 +96,20 @@ export default function StatusDashboard() {
 				setLoading(true);
 			}
 
-			const response = await fetch(`/api/status?page=${page}&pageSize=20`);
-			const responseData: StatusApiResponse = await response.json();
+			const response = await createClientEden().api.v2.status.get({
+				query: { page, pageSize: STATUS_PAGE_SIZE },
+			});
+			const responseData = await normalizeEdenResult<StatusApiResponse>(response.data, response.error, "加载状态失败");
 
 			if (responseData.success) {
 				if (isFirstLoad) {
 					setLogs(responseData.items);
 					setStats(responseData.stats);
+					setCurrentPage(responseData.page);
 				} else {
-					setLogs(prev => [...prev, ...responseData.items]);
+					setLogs(prev => mergeStatusLogs(prev, responseData.items));
 				}
-				setHasMore(responseData.items.length === 20);
+				setHasMore(responseData.has_more);
 			}
 		} catch (error) {
 			console.error("Failed to fetch logs:", error);
@@ -116,7 +156,9 @@ export default function StatusDashboard() {
 	});
 
 	useEffect(() => {
-		fetchLogs(currentPage, currentPage === 1);
+		if (currentPage === 1)
+			return;
+		fetchLogs(currentPage);
 	}, [currentPage]);
 
 	return (

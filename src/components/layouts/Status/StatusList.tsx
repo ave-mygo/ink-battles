@@ -5,6 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+const getStatusRowKey = (log: StatusListProps["logs"][number], index: number) =>
+	log.request_id
+		? `request:${log.request_id}`
+		: `${log.created_at}:${log.token_id}:${log.parent_id}:${log.model_name}:${log.quota}:${index}`;
+
 function TableSkeleton() {
 	return (
 		<Card className="border-0 shadow-lg overflow-hidden dark:bg-slate-800/50">
@@ -87,21 +92,21 @@ export default function StatusList({ logs, loading = false }: StatusListProps) {
 								<TableHead className="text-slate-700 font-semibold whitespace-nowrap dark:text-slate-300">消耗配额</TableHead>
 								<TableHead className="text-slate-700 font-semibold whitespace-nowrap dark:text-slate-300">状态</TableHead>
 							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{logs.map((log, index) => {
-								const isSuccess = log.quota > 0;
-								const isRecent = index < 5;
+							</TableHeader>
+							<TableBody>
+								{logs.map((log, index) => {
+									const isSuccess = log.quota > 0;
+									const isRecent = index < 5;
 
-								return (
-									<TableRow
-										key={log.created_at}
-										className={`transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
-											isRecent ? "bg-linear-to-r from-emerald-50/50 dark:from-emerald-900/20 to-transparent" : ""
-										}`}
-									>
-										<TableCell className="text-sm font-mono whitespace-nowrap">
-											{format(new Date(log.created_at * 1000), "MM-dd HH:mm:ss")}
+									return (
+										<TableRow
+											key={getStatusRowKey(log, index)}
+											className={`transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 ${
+												isRecent ? "bg-linear-to-r from-emerald-50/50 dark:from-emerald-900/20 to-transparent" : ""
+											}`}
+										>
+											<TableCell className="text-sm font-mono whitespace-nowrap">
+												{format(new Date(log.created_at * 1000), "MM-dd HH:mm:ss")}
 										</TableCell>
 										<TableCell className="whitespace-nowrap">
 											<span className="text-xs text-blue-800 font-medium px-2 py-1 rounded-md bg-blue-100 dark:text-blue-200 dark:bg-blue-900/30">
@@ -114,53 +119,55 @@ export default function StatusList({ logs, loading = false }: StatusListProps) {
 											</span>
 										</TableCell>
 										<TableCell className="text-center whitespace-nowrap">
-											<span className="text-sm font-mono">
-												{log.completion_tokens.toLocaleString()}
-											</span>
-										</TableCell>
-										<TableCell className="text-center whitespace-nowrap">
-											<span className={`text-sm font-mono px-2 py-1 rounded-md ${
-												log.use_time < 1000
-													? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-													: log.use_time < 3000
-														? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-														: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-											}`}
-											>
-												{log.use_time}
-												ms
-											</span>
-										</TableCell>
-										<TableCell className="text-center whitespace-nowrap">
-											<span className="text-sm font-mono">
-												{log.quota}
+												<span className="text-sm font-mono">
+													{log.completion_tokens.toLocaleString()}
+												</span>
+											</TableCell>
+											<TableCell className="text-center whitespace-nowrap">
+												<span className={`text-sm font-mono px-2 py-1 rounded-md ${
+													log.use_time < 1000
+														? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+														: log.use_time < 3000
+															? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+															: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+												}`}
+												>
+													{log.use_time}
+													ms
+												</span>
+											</TableCell>
+											<TableCell className="text-center whitespace-nowrap">
+												<span className="text-sm font-mono">
+													{log.quota}
 											</span>
 										</TableCell>
 										<TableCell>
 											<span
-												className={`text-xs font-semibold px-3 py-1 rounded-full inline-flex gap-1 transition-all duration-200 items-center ${
-													isSuccess
-														? "bg-linear-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200 dark:from-green-900/20 dark:to-emerald-900/20 dark:text-green-300 dark:border-green-800"
-														: "bg-linear-to-r from-red-100 to-rose-100 text-red-800 border border-red-200 dark:from-red-900/20 dark:to-rose-900/20 dark:text-red-300 dark:border-red-800"
-												}`}
-											>
-												{isSuccess
-													? (
-															<>
-																<CheckCircle className="h-3 w-3" />
-																成功
-															</>
-														)
-													: (
-															<>
-																<AlertCircle className="h-3 w-3" />
-																失败
-															</>
-														)}
-											</span>
-										</TableCell>
-									</TableRow>
-								);
+													className={`text-xs font-semibold px-3 py-1 rounded-full inline-flex gap-1 transition-all duration-200 items-center ${
+														isSuccess
+															? "bg-linear-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200 dark:from-green-900/20 dark:to-emerald-900/20 dark:text-green-300 dark:border-green-800"
+															: "bg-linear-to-r from-red-100 to-rose-100 text-red-800 border border-red-200 dark:from-red-900/20 dark:to-rose-900/20 dark:text-red-300 dark:border-red-800"
+													}`}
+												>
+													{isSuccess
+														? (
+																<>
+																	<CheckCircle className="h-3 w-3" />
+																	成功
+																	{(log.attempt_count ?? 1) > 1 && ` · 重试 ${log.attempt_count! - 1} 次`}
+																</>
+															)
+														: (
+																<>
+																	<AlertCircle className="h-3 w-3" />
+																	失败
+																	{(log.attempt_count ?? 1) > 1 && ` · 共 ${log.attempt_count} 次`}
+																</>
+															)}
+												</span>
+											</TableCell>
+										</TableRow>
+									);
 							})}
 						</TableBody>
 					</Table>

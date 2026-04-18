@@ -1,12 +1,10 @@
 import type { MemberTier } from "@/lib/constants";
 import {
-	ADVANCED_MODEL_BASE_COST,
-	GRANT_CALL_VIRTUAL_COST,
-	MEMBERSHIP_TIERS,
-	MONTHLY_GRANT_BASE,
-	MONTHLY_GRANT_MAX,
-
-} from "@/lib/constants";
+	calculateMonthlyGrantCalls as calculateMonthlyGrantCallsByBillingPlan,
+	calculatePaidCallPrice as calculatePaidCallPriceByBillingPlan,
+	getBillingTierInfo,
+	shouldRefreshGrantCalls,
+} from "../../../shared/constants/billing";
 
 /**
  * 计算每月赠送调用次数
@@ -14,8 +12,7 @@ import {
  * @returns 每月赠送调用次数
  */
 export function calculateMonthlyGrantCalls(totalAmount: number): number {
-	const calculated = MONTHLY_GRANT_BASE + Math.floor(totalAmount / GRANT_CALL_VIRTUAL_COST);
-	return Math.min(calculated, MONTHLY_GRANT_MAX);
+	return calculateMonthlyGrantCallsByBillingPlan(totalAmount);
 }
 
 /**
@@ -24,14 +21,7 @@ export function calculateMonthlyGrantCalls(totalAmount: number): number {
  * @returns 单次调用价格（人民币）
  */
 export function calculatePaidCallPrice(totalAmount: number): number {
-	let discount = 0;
-	for (const config of Object.values(MEMBERSHIP_TIERS)) {
-		if (totalAmount >= config.minAmount && totalAmount < config.maxAmount) {
-			discount = config.discount;
-			break;
-		}
-	}
-	return ADVANCED_MODEL_BASE_COST * (1 - discount);
+	return calculatePaidCallPriceByBillingPlan(totalAmount);
 }
 
 /**
@@ -44,19 +34,11 @@ export function getMemberTierInfo(totalAmount: number): {
 	name: string;
 	discount: number;
 } {
-	for (const [tier, config] of Object.entries(MEMBERSHIP_TIERS)) {
-		if (totalAmount >= config.minAmount && totalAmount < config.maxAmount) {
-			return {
-				tier: tier as MemberTier,
-				name: config.name,
-				discount: config.discount,
-			};
-		}
-	}
+	const tierInfo = getBillingTierInfo(totalAmount);
 	return {
-		tier: "REGULAR" as MemberTier,
-		name: MEMBERSHIP_TIERS.REGULAR.name,
-		discount: MEMBERSHIP_TIERS.REGULAR.discount,
+		tier: tierInfo.tier as MemberTier,
+		name: tierInfo.name,
+		discount: tierInfo.discount,
 	};
 }
 
@@ -97,13 +79,4 @@ export function calculateCallsFromOrder(
  * @param lastRefresh 上次刷新时间
  * @returns 是否需要刷新
  */
-export function shouldRefreshGrantCalls(lastRefresh: Date): boolean {
-	const now = new Date();
-	const lastRefreshDate = new Date(lastRefresh);
-
-	// 检查是否跨月
-	return (
-		now.getFullYear() !== lastRefreshDate.getFullYear()
-		|| now.getMonth() !== lastRefreshDate.getMonth()
-	);
-}
+export { shouldRefreshGrantCalls };

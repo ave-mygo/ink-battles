@@ -6,7 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { deleteAnalysisRecord, getUserAnalysisHistory, toggleRecordPublic } from "@/utils/dashboard";
+import { deleteAnalysisRecord, getUserAnalysisHistory, toggleRecordPublic } from "@/utils/dashboard/history";
 import { HistoryCard } from "./HistoryCard";
 
 interface HistoryListProps {

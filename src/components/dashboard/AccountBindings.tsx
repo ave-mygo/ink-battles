@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SendVerificationEmail } from "@/utils/common/mail";
+import { sendVerificationEmail } from "@/utils/auth/client";
 import { bindEmailAccount, unbindAfdianAccount, unbindEmailAccount, unbindQQAccount } from "@/utils/dashboard/account-bindings";
 
 interface AccountBindingsProps {
@@ -118,7 +118,7 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 
 		setLoading({ ...loading, sendCode: true });
 		try {
-			const result = await SendVerificationEmail(emailForm.email, "register");
+			const result = await sendVerificationEmail(emailForm.email, "register");
 			if (result.success) {
 				toast.success("验证码已发送，请查收邮箱");
 				setCodeSent(true);
@@ -160,8 +160,8 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 			toast.error("请输入密码");
 			return;
 		}
-		if (emailForm.password.length < 8) {
-			toast.error("密码至少 8 位字符");
+		if (emailForm.password.length < 10) {
+			toast.error("密码至少 10 位字符");
 			return;
 		}
 
@@ -376,13 +376,13 @@ export const AccountBindings: FC<AccountBindingsProps> = ({ bindings }) => {
 							<Input
 								id="password"
 								type="password"
-								placeholder="请设置登录密码（至少 8 位，包含 2 种类型）"
+								placeholder="请设置登录密码（至少 10 位，包含 3 种类型）"
 								value={emailForm.password}
 								onChange={e => setEmailForm({ ...emailForm, password: e.target.value })}
 								onKeyDown={e => e.key === "Enter" && !loading.email && handleEmailBind()}
 							/>
 							<p className="text-xs text-slate-500">
-								必须包含：大写、小写、数字、特殊字符中的任意 2 种
+								必须包含：大写、小写、数字、特殊字符中的任意 3 种
 							</p>
 						</div>
 					</div>

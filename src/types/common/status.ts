@@ -3,8 +3,13 @@ export interface StatusListProps {
 	loading?: boolean;
 }
 
+export interface StatusDashboardProps {
+	initialData: StatusApiResponse;
+}
+
 export interface UsageLog {
 	created_at: number;
+	request_id?: string;
 	type: number;
 	model_name: string;
 	quota: number;
@@ -14,6 +19,7 @@ export interface UsageLog {
 	is_stream: boolean;
 	token_id: number;
 	parent_id: number;
+	attempt_count?: number;
 }
 export interface Stats {
 	totalRequests: number;
@@ -24,10 +30,10 @@ export interface Stats {
 // 修正后的 ApiResponse 接口
 export interface StatusApiResponse {
 	success: boolean;
-	// 移除了 message 字段，因为在提供的JSON中没有
 	items: UsageLog[];
 	page: number;
 	page_size: number;
 	total: number;
+	has_more: boolean;
 	stats: Stats;
 }

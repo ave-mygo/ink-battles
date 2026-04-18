@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { redeemOrderAction } from "@/utils/billing/actions";
+import { notifyBillingBalanceUpdated, redeemOrder } from "@/utils/billing/client";
 
 /**
  * 订单兑换组件
@@ -27,17 +27,14 @@ export default function OrderRedemption() {
 		setLoading(true);
 
 		try {
-			const response = await redeemOrderAction(orderNo.trim());
+			const response = await redeemOrder(orderNo.trim());
 
 			if (response.success) {
 				toast.success("兑换成功！", {
 					description: response.message,
 				});
 				setOrderNo(""); // 清空输入框
-				// 刷新页面以更新计费信息
-				setTimeout(() => {
-					window.location.reload();
-				}, 1500);
+				notifyBillingBalanceUpdated();
 			} else {
 				toast.error("兑换失败", {
 					description: response.message,

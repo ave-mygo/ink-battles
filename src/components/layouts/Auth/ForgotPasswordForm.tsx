@@ -102,8 +102,8 @@ const ForgotPasswordForm = () => {
 			return;
 		}
 
-		if (password.length < 8) {
-			toast.error("密码至少 8 位字符");
+		if (password.length < 10) {
+			toast.error("密码至少 10 位字符");
 			return;
 		}
 
@@ -226,12 +226,12 @@ const ForgotPasswordForm = () => {
 										className="pl-9"
 										value={password}
 										onChange={e => setPassword(e.target.value)}
-										placeholder="至少 8 位，包含 2 种类型"
+										placeholder="至少 10 位，包含 3 种类型"
 										type="password"
 									/>
 								</div>
 								<p className="text-xs text-slate-500">
-									必须包含：大写、小写、数字、特殊字符中的任意 2 种
+									必须包含：大写、小写、数字、特殊字符中的任意 3 种
 								</p>
 							</div>
 							<div className="space-y-2">

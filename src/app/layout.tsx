@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
+import process from "node:process";
 import { JetBrains_Mono, Noto_Sans_SC } from "next/font/google";
 
 import { AppHeader } from "@/components/common/header/AppHeader";
 import { ThemeProvider } from "@/components/common/theme/provider";
 import { Toaster } from "@/components/ui/sonner";
-import { getConfig } from "@/config";
 
 import "./globals.css";
 
@@ -18,10 +18,10 @@ const jetBrainsMono = JetBrains_Mono({
 	subsets: ["latin"],
 });
 
-const config = getConfig();
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_BASE_URL || "http://localhost:3001";
 
 export const metadata: Metadata = {
-	metadataBase: new URL(config.app.base_url),
+	metadataBase: new URL(siteUrl),
 	title: {
 		template: "%s | 作家战力分析系统",
 		default: "作家战力分析系统 - 基于AI的专业文本分析工具",
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
 	openGraph: {
 		type: "website",
 		locale: "zh_CN",
-		url: config.app.base_url,
+		url: siteUrl,
 		siteName: "作家战力分析系统",
 		title: "作家战力分析系统 - 基于AI的专业文本分析工具",
 		description: "基于先进AI技术的文本分析工具，为创作者提供多维度写作评估、内容质量打分、风格分析等功能",

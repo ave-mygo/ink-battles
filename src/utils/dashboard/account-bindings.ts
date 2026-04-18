@@ -1,244 +1,57 @@
-"use server";
+"use client";
 
-import type { AuthUserInfo } from "@/types/users/user";
-import bcrypt from "bcryptjs";
-import { db_collection_afd_orders, db_name } from "@/lib/constants";
-import { db_find, db_update } from "@/lib/db";
-import { isPasswordValid } from "@/lib/password-strength";
-import { getCurrentUserInfo } from "@/utils/auth/server";
-import { VerifyEmailCode } from "@/utils/common/mail";
-import "server-only";
+import { createClientEden } from "@/utils/api/eden-client";
+import { normalizeEdenResult, unwrapEdenPayload } from "@/utils/api/eden-response";
 
-/**
- * 解绑 QQ 账号
- * @returns 解绑结果
- */
-export const unbindQQAccount = async (): Promise<{ success: boolean; message: string }> => {
-	try {
-		const currentUser = await getCurrentUserInfo();
-		if (!currentUser) {
-			return { success: false, message: "用户未登录" };
-		}
+export const bindEmailAccount = async (email: string, code: string, password: string) =>
+	normalizeEdenResult<{ success: boolean; message: string }>(
+		...(await (async () => {
+			const response = await createClientEden().api.v2.rpc["accounts.bindEmail"].post({ email, code, password });
+			return [response.data, response.error] as const;
+		})()),
+		"绑定邮箱失败",
+	);
 
-		if (!currentUser.qqOpenid) {
-			return { success: false, message: "您尚未绑定 QQ 账号" };
-		}
+export const unbindEmailAccount = async () =>
+	normalizeEdenResult<{ success: boolean; message: string }>(
+		...(await (async () => {
+			const response = await createClientEden().api.v2.rpc["accounts.unbindEmail"].post();
+			return [response.data, response.error] as const;
+		})()),
+		"解绑邮箱失败",
+	);
 
-		// 检查是否至少保留一种登录方式
-		if (!currentUser.email && currentUser.loginMethod === "qq") {
-			return { success: false, message: "至少需要保留一种登录方式" };
-		}
+export const unbindQQAccount = async () =>
+	normalizeEdenResult<{ success: boolean; message: string }>(
+		...(await (async () => {
+			const response = await createClientEden().api.v2.rpc["accounts.unbindQQ"].post();
+			return [response.data, response.error] as const;
+		})()),
+		"解绑 QQ 失败",
+	);
 
-		// 更新用户信息
-		const success = await db_update(
-			db_name,
-			"users",
-			{ uid: currentUser.uid },
-			{
-				qqOpenid: null,
-				updatedAt: new Date(),
-			},
-		);
+export const unbindAfdianAccount = async () =>
+	normalizeEdenResult<{ success: boolean; message: string }>(
+		...(await (async () => {
+			const response = await createClientEden().api.v2.rpc["accounts.unbindAfdian"].post();
+			return [response.data, response.error] as const;
+		})()),
+		"解绑爱发电失败",
+	);
 
-		if (!success) {
-			return { success: false, message: "解绑失败，请稍后重试" };
-		}
-
-		return { success: true, message: "QQ 账号解绑成功" };
-	} catch (error) {
-		console.error("解绑 QQ 账号失败:", error);
-		return { success: false, message: "解绑失败，系统错误" };
-	}
-};
-
-/**
- * 绑定邮箱
- * @param email 邮箱地址
- * @param code 验证码
- * @param password 密码
- * @returns 绑定结果
- */
-export const bindEmailAccount = async (email: string, code: string, password: string): Promise<{ success: boolean; message: string }> => {
-	try {
-		const currentUser = await getCurrentUserInfo();
-		if (!currentUser) {
-			return { success: false, message: "用户未登录" };
-		}
-
-		// 验证密码
-		if (!password) {
-			return { success: false, message: "请输入密码" };
-		}
-		if (!isPasswordValid(password)) {
-			return { success: false, message: "密码强度不足：至少 8 位，且包含大写、小写、数字、特殊字符中的任意 2 种" };
-		}
-
-		// 验证邮箱验证码
-		const verifyResult = await VerifyEmailCode(email, code, "register");
-		if (!verifyResult.success) {
-			return { success: false, message: verifyResult.message };
-		}
-
-		// 检查该邮箱是否已被其他账号使用
-		const existingUser = await db_find(db_name, "users", { email }) as AuthUserInfo | null;
-		if (existingUser && existingUser.uid !== currentUser.uid) {
-			return { success: false, message: "该邮箱已被其他用户使用" };
-		}
-
-		// 检查当前用户是否已绑定邮箱
-		if (currentUser.email) {
-			return { success: false, message: "您已绑定邮箱，请先解绑" };
-		}
-
-		// 更新用户信息
-		const updateData: any = {
-			email,
-			passwordHash: await bcrypt.hash(password, 10),
-			updatedAt: new Date(),
-		};
-
-		const success = await db_update(
-			db_name,
-			"users",
-			{ uid: currentUser.uid },
-			updateData,
-		);
-
-		if (!success) {
-			return { success: false, message: "绑定失败，请稍后重试" };
-		}
-
-		return { success: true, message: "邮箱绑定成功" };
-	} catch (error) {
-		console.error("绑定邮箱失败:", error);
-		return { success: false, message: "绑定失败，系统错误" };
-	}
-};
-
-/**
- * 解绑邮箱
- * @returns 解绑结果
- */
-export const unbindEmailAccount = async (): Promise<{ success: boolean; message: string }> => {
-	try {
-		const currentUser = await getCurrentUserInfo();
-		if (!currentUser) {
-			return { success: false, message: "用户未登录" };
-		}
-
-		if (!currentUser.email) {
-			return { success: false, message: "您尚未绑定邮箱" };
-		}
-
-		// 检查是否至少保留一种登录方式
-		if (!currentUser.qqOpenid && currentUser.loginMethod === "email") {
-			return { success: false, message: "至少需要保留一种登录方式" };
-		}
-
-		// 更新用户信息
-		const success = await db_update(
-			db_name,
-			"users",
-			{ uid: currentUser.uid },
-			{
-				email: null,
-				passwordHash: null,
-				updatedAt: new Date(),
-			},
-		);
-
-		if (!success) {
-			return { success: false, message: "解绑失败，请稍后重试" };
-		}
-
-		return { success: true, message: "邮箱解绑成功" };
-	} catch (error) {
-		console.error("解绑邮箱失败:", error);
-		return { success: false, message: "解绑失败，系统错误" };
-	}
-};
-
-/**
- * 解绑爱发电账号
- * @returns 解绑结果
- */
-export const unbindAfdianAccount = async (): Promise<{ success: boolean; message: string }> => {
-	try {
-		const currentUser = await getCurrentUserInfo();
-		if (!currentUser) {
-			return { success: false, message: "用户未登录" };
-		}
-
-		if (!currentUser.afdId) {
-			return { success: false, message: "您尚未绑定爱发电账号" };
-		}
-
-		// 检查是否至少保留一种登录方式
-		if (!currentUser.email && !currentUser.qqOpenid && currentUser.loginMethod === "afd") {
-			return { success: false, message: "至少需要保留一种登录方式" };
-		}
-
-		// 检查用户是否有兑换订单
-		const hasOrders = await db_find(db_name, db_collection_afd_orders, { uid: currentUser.uid });
-		if (hasOrders) {
-			return { success: false, message: "您已有兑换订单，无法解绑爱发电账号" };
-		}
-
-		// 更新用户信息
-		const success = await db_update(
-			db_name,
-			"users",
-			{ uid: currentUser.uid },
-			{
-				afdId: null,
-				updatedAt: new Date(),
-			},
-		);
-
-		if (!success) {
-			return { success: false, message: "解绑失败，请稍后重试" };
-		}
-
-		return { success: true, message: "爱发电账号解绑成功" };
-	} catch (error) {
-		console.error("解绑爱发电账号失败:", error);
-		return { success: false, message: "解绑失败，系统错误" };
-	}
-};
-
-/**
- * 获取账号绑定详情
- * @returns 账号绑定详情
- */
-export const getAccountBindingDetails = async (): Promise<{
-	email: { bound: boolean; value?: string | null };
-	qq: { bound: boolean; value?: string | null };
-	afdian: { bound: boolean; value?: string | null };
-	loginMethod?: "email" | "qq" | "afd" | null;
-}> => {
-	const user = await getCurrentUserInfo();
-
-	if (!user) {
-		return {
-			email: { bound: false },
-			qq: { bound: false },
-			afdian: { bound: false },
-		};
-	}
-
-	return {
-		email: {
-			bound: !!user.email,
-			value: user.email,
-		},
-		qq: {
-			bound: !!user.qqOpenid,
-			value: user.qqOpenid,
-		},
-		afdian: {
-			bound: !!user.afdId,
-			value: user.afdId,
-		},
-		loginMethod: user.loginMethod,
-	};
-};
+export const getAccountBindingDetails = async () =>
+	unwrapEdenPayload<{
+		email: { bound: boolean; value?: string | null };
+		qq: { bound: boolean; value?: string | null };
+		afdian: { bound: boolean; value?: string | null };
+		loginMethod?: "email" | "qq" | "afd" | null;
+	}>(
+		...(await (async () => {
+			const response = await createClientEden().api.v2.accounts.details.get();
+			return [
+				response.data,
+				response.error,
+				{ email: { bound: false }, qq: { bound: false }, afdian: { bound: false }, loginMethod: null },
+			] as const;
+		})()),
+	);

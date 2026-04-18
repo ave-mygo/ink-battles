@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import process from "node:process";
 import { redirect } from "next/navigation";
-import { getConfig } from "@/config";
 
 // 强制动态渲染，确保配置在运行时读取
 export const dynamic = "force-dynamic";
@@ -33,14 +33,11 @@ export default async function QQOAuthPage({ searchParams }: QQOAuthPageProps) {
 		inviteCode,
 	});
 
-	const config = getConfig();
-	const callbackUrl = `${config.app.base_url}/oauth/qq/callback`;
-
-	// 构建 QQ 授权 URL
-	const authUrl = new URL("https://api-space.tnxg.top/oauth/qq/authorize");
-	authUrl.searchParams.set("redirect", "true");
-	authUrl.searchParams.set("return_url", callbackUrl);
+	const authUrl = new URL("/api/v2/rpc/oauth.qqStart", process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_BASE_URL || "http://localhost:3001");
+	authUrl.searchParams.set("method", method);
 	authUrl.searchParams.set("state", state);
+	if (inviteCode)
+		authUrl.searchParams.set("inviteCode", inviteCode);
 
 	redirect(authUrl.toString());
 }

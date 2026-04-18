@@ -13,7 +13,8 @@ import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/Wri
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
 import { getFingerprintId } from "@/lib/fingerprint";
-import { submitAnalysisAction } from "@/utils/analysis";
+import { submitAnalysis } from "@/utils/analysis";
+import { notifyBillingBalanceUpdated } from "@/utils/billing/client";
 
 // 预编译正则表达式，避免每次调用时重新编译
 const NEWLINE_REGEX = /\n/g;
@@ -307,11 +308,11 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 		try {
 			const fingerprint = await getFingerprintId();
 			const currentModel = availableGradingModels.find(model => model.id === selectedModelId);
-			const currentModelName = currentModel?.model || "";
+			const currentModelName = currentModel?.id || "";
 			const currentModelDisplayName = currentModel?.name || currentModelName || "默认模型";
 			setCurrentAnalysisModelName(currentModelName);
 
-			const res = await submitAnalysisAction({
+			const res = await submitAnalysis({
 				articleText,
 				mode: selectedModeName.join(","),
 				modelId: selectedModelId,
@@ -338,10 +339,12 @@ export default function WriterAnalysisSystem({ availableGradingModels }: WriterA
 				modelName: currentModelDisplayName,
 				searchModelName: getSearchModelDisplayName(searchModel),
 				status: "pending",
+				progress: res.progress,
 			});
 			localStorage.setItem("ink_battles_tasks", JSON.stringify(activeTasks));
 			// Trigger a custom event so placeholder can re-render
 			window.dispatchEvent(new Event("ink_battles_tasks_updated"));
+			notifyBillingBalanceUpdated();
 
 			// Clear text area to indicate successful submission
 			setArticleText("");

@@ -1,13 +1,16 @@
 "use client";
 
+import type { AnalysisTaskProgress, AnalysisTaskValidation } from "@/utils/analysis";
 import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clock, Loader2, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cancelAnalysisTaskAction, deleteAnalysisTaskAction, getAnalysisStatusAction } from "@/utils/analysis";
+import { cancelAnalysisTask, deleteAnalysisTask, getAnalysisStatus, openAnalysisStatusStream } from "@/utils/analysis";
+import { notifyBillingBalanceUpdated } from "@/utils/billing/client";
 
 interface LocalTask {
 	taskId: string;
@@ -19,12 +22,16 @@ interface LocalTask {
 	status?: LocalTaskStatus;
 	error?: string;
 	resultId?: string;
+	progress?: AnalysisTaskProgress;
+	validation?: AnalysisTaskValidation;
 }
 
 type LocalTaskStatus = "pending" | "processing" | "completed" | "failed" | "cancelled";
 
 const REFRESH_COOLDOWN = 2000; // 2秒冷却
 const LONG_ANALYSIS_THRESHOLD = 600; // 10分钟（秒），超过此阈值提示用户取消重试
+const FALLBACK_POLL_INTERVAL = 3000;
+const SSE_RECONNECT_DELAY = 3000;
 
 export default function WriterAnalysisResultPlaceholder() {
 	const [tasks, setTasks] = useState<LocalTask[]>([]);
@@ -36,10 +43,16 @@ export default function WriterAnalysisResultPlaceholder() {
 	const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
 	const elapsedTimerRef = useRef<NodeJS.Timeout | null>(null);
+	const reconnectTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+	const healthyStreamTaskIdsRef = useRef<Set<string>>(new Set());
+	const eventSourcesRef = useRef<Map<string, EventSource>>(new Map());
 	const router = useRouter();
 	// 存储 setTasks 的稳定引用，避免在 useEffect 中直接调用
 	const setTasksRef = useRef(setTasks);
 	setTasksRef.current = setTasks;
+	// SSE 回调会在后续异步触发，这里保留最新任务快照，避免旧闭包覆盖新状态。
+	const tasksRef = useRef(tasks);
+	tasksRef.current = tasks;
 	// 存储 setElapsedSeconds 的稳定引用，避免在 useEffect 中直接调用
 	const setElapsedSecondsRef = useRef(setElapsedSeconds);
 	setElapsedSecondsRef.current = setElapsedSeconds;
@@ -51,6 +64,54 @@ export default function WriterAnalysisResultPlaceholder() {
 		setTasks(nextTasks);
 		localStorage.setItem("ink_battles_tasks", JSON.stringify(nextTasks));
 		window.dispatchEvent(new Event("ink_battles_tasks_updated"));
+	};
+
+	const updateTaskFromSnapshot = (
+		taskId: string,
+		snapshot: {
+			status?: string;
+			error?: string;
+			resultId?: string;
+			progress?: AnalysisTaskProgress;
+			validation?: AnalysisTaskValidation;
+		},
+	) => {
+		setTasks((previousTasks) => {
+			let changed = false;
+			const nextTasks = previousTasks.map((task) => {
+				if (task.taskId !== taskId)
+					return task;
+
+				const normalizedStatus = normalizeTaskStatus(snapshot.status);
+				const shouldRefreshBillingBalance
+					= task.status !== normalizedStatus
+						&& (normalizedStatus === "failed" || normalizedStatus === "cancelled");
+				const nextTask = {
+					...task,
+					status: normalizedStatus,
+					error: snapshot.error ?? task.error,
+					resultId: snapshot.resultId ?? task.resultId,
+					progress: snapshot.progress ?? task.progress,
+					validation: snapshot.validation ?? task.validation,
+				};
+
+				if (JSON.stringify(task) !== JSON.stringify(nextTask)) {
+					changed = true;
+					if (shouldRefreshBillingBalance) {
+						notifyBillingBalanceUpdated();
+					}
+					return nextTask;
+				}
+				return task;
+			});
+
+			if (changed) {
+				localStorage.setItem("ink_battles_tasks", JSON.stringify(nextTasks));
+				window.dispatchEvent(new Event("ink_battles_tasks_updated"));
+			}
+
+			return nextTasks;
+		});
 	};
 
 	// Initial load and listen to custom event
@@ -82,6 +143,15 @@ export default function WriterAnalysisResultPlaceholder() {
 			if (elapsedTimerRef.current) {
 				clearInterval(elapsedTimerRef.current);
 			}
+			for (const source of eventSourcesRef.current.values()) {
+				source.close();
+			}
+			eventSourcesRef.current.clear();
+			for (const timer of reconnectTimersRef.current.values()) {
+				clearTimeout(timer);
+			}
+			reconnectTimersRef.current.clear();
+			healthyStreamTaskIdsRef.current.clear();
 		};
 	}, []);
 
@@ -149,6 +219,128 @@ export default function WriterAnalysisResultPlaceholder() {
 	}, [tasks]);
 
 	/**
+	 * 拉取进行中任务的最新状态和阶段进度。
+	 */
+	const refreshTaskStatuses = async (targetTaskIds?: string[]) => {
+		const targetTaskIdSet = targetTaskIds ? new Set(targetTaskIds) : null;
+		let updated = false;
+		const nextTasks = [...tasksRef.current];
+
+		for (let index = 0; index < nextTasks.length; index++) {
+			const task = nextTasks[index];
+			if (!isActiveTask(task))
+				continue;
+			if (targetTaskIdSet && !targetTaskIdSet.has(task.taskId))
+				continue;
+
+			try {
+				const result = await getAnalysisStatus(task.taskId);
+				if (!result.success)
+					continue;
+
+				const normalizedStatus = normalizeTaskStatus(result.status);
+				const progressChanged = JSON.stringify(task.progress) !== JSON.stringify(result.progress);
+				const validationChanged = JSON.stringify(task.validation) !== JSON.stringify(result.validation);
+				if (task.status !== normalizedStatus || progressChanged || validationChanged) {
+					task.status = normalizedStatus;
+					task.progress = result.progress;
+					task.validation = result.validation;
+					updated = true;
+				}
+
+				if (normalizedStatus === "completed" && result.resultId) {
+					task.resultId = result.resultId;
+					task.error = undefined;
+					updated = true;
+				} else if (normalizedStatus === "failed" || normalizedStatus === "cancelled") {
+					task.error = result.error || task.error;
+					updated = true;
+				}
+			} catch {
+				// 网络波动时保留本地快照，不中断其他任务刷新。
+			}
+		}
+
+		if (updated) {
+			persistTasks(nextTasks);
+		}
+	};
+
+	/**
+	 * 关闭指定任务的 SSE 与重连定时器，避免任务结束后残留后台连接。
+	 */
+	const cleanupTaskRealtimeResources = (taskId: string) => {
+		eventSourcesRef.current.get(taskId)?.close();
+		eventSourcesRef.current.delete(taskId);
+		healthyStreamTaskIdsRef.current.delete(taskId);
+		const reconnectTimer = reconnectTimersRef.current.get(taskId);
+		if (reconnectTimer) {
+			clearTimeout(reconnectTimer);
+			reconnectTimersRef.current.delete(taskId);
+		}
+	};
+
+	/**
+	 * 为任务建立 SSE 订阅。
+	 * 当流式更新稳定后，该任务不再参与兜底轮询；只有断线时才恢复补偿拉取。
+	 */
+	const connectTaskStatusStream = (taskId: string) => {
+		if (eventSourcesRef.current.has(taskId))
+			return;
+
+		const source = openAnalysisStatusStream(taskId, {
+			onSnapshot: (snapshot) => {
+				healthyStreamTaskIdsRef.current.add(taskId);
+				updateTaskFromSnapshot(taskId, snapshot);
+			},
+			onEnd: () => {
+				cleanupTaskRealtimeResources(taskId);
+			},
+			onError: () => {
+				cleanupTaskRealtimeResources(taskId);
+				void refreshTaskStatuses([taskId]);
+				const reconnectTimer = setTimeout(() => {
+					reconnectTimersRef.current.delete(taskId);
+					connectTaskStatusStream(taskId);
+				}, SSE_RECONNECT_DELAY);
+				reconnectTimersRef.current.set(taskId, reconnectTimer);
+			},
+		});
+
+		eventSourcesRef.current.set(taskId, source);
+	};
+
+	useEffect(() => {
+		const activeTaskIds = new Set(tasks.filter(isActiveTask).map(task => task.taskId));
+		const taskIdsNeedingBootstrap: string[] = [];
+
+		for (const [taskId, source] of eventSourcesRef.current.entries()) {
+			if (!activeTaskIds.has(taskId)) {
+				source.close();
+				cleanupTaskRealtimeResources(taskId);
+			}
+		}
+
+		for (const [taskId, timer] of reconnectTimersRef.current.entries()) {
+			if (!activeTaskIds.has(taskId)) {
+				clearTimeout(timer);
+				reconnectTimersRef.current.delete(taskId);
+			}
+		}
+
+		for (const taskId of activeTaskIds) {
+			if (!eventSourcesRef.current.has(taskId) && !healthyStreamTaskIdsRef.current.has(taskId)) {
+				taskIdsNeedingBootstrap.push(taskId);
+			}
+			connectTaskStatusStream(taskId);
+		}
+
+		if (taskIdsNeedingBootstrap.length > 0) {
+			void refreshTaskStatuses(taskIdsNeedingBootstrap);
+		}
+	}, [tasks]);
+
+	/**
 	 * 手动刷新任务状态
 	 * 带有2秒冷却时间，避免频繁请求
 	 */
@@ -178,56 +370,32 @@ export default function WriterAnalysisResultPlaceholder() {
 		}, REFRESH_COOLDOWN);
 
 		try {
-			let updated = false;
-			const newTasks = [...tasks];
-
-			for (let i = 0; i < newTasks.length; i++) {
-				const t = newTasks[i];
-				if (!isActiveTask(t))
-					continue;
-
-				try {
-					const res = await getAnalysisStatusAction(t.taskId);
-					if (res.success) {
-						if (res.status === "completed" && res.resultId) {
-							// 只有有结果 ID 的 completed 才能进入查看结果流程
-							t.status = "completed";
-							t.resultId = res.resultId;
-							updated = true;
-						} else if (res.status === "failed") {
-							t.status = "failed";
-							t.error = res.error || "分析失败";
-							updated = true;
-						} else if (res.status === "cancelled") {
-							t.status = "cancelled";
-							t.error = res.error || "分析任务已取消";
-							updated = true;
-						} else {
-							// 仍在处理时仅同步状态，不改变任务列表顺序
-							if (t.status !== res.status) {
-								t.status = normalizeTaskStatus(res.status);
-								updated = true;
-							}
-						}
-					}
-				} catch {
-					// Network error, continue with next task
-				}
-			}
-
-			if (updated) {
-				persistTasks(newTasks);
-			}
+			await refreshTaskStatuses();
 		} finally {
 			setIsRefreshing(false);
 		}
 	};
 
+	useEffect(() => {
+		const fallbackTaskIds = tasks
+			.filter(task => isActiveTask(task) && !healthyStreamTaskIdsRef.current.has(task.taskId))
+			.map(task => task.taskId);
+
+		if (fallbackTaskIds.length === 0)
+			return;
+
+		const timer = setInterval(() => {
+			void refreshTaskStatuses(fallbackTaskIds);
+		}, FALLBACK_POLL_INTERVAL);
+
+		return () => clearInterval(timer);
+	}, [tasks]);
+
 	const cancelTask = async (taskId: string) => {
 		setCancellingTaskId(taskId);
 
 		try {
-			const result = await cancelAnalysisTaskAction(taskId);
+			const result = await cancelAnalysisTask(taskId);
 
 			if (!result.success) {
 				throw new Error(result.error || "取消任务失败");
@@ -235,6 +403,7 @@ export default function WriterAnalysisResultPlaceholder() {
 
 			const newTasks = tasks.filter(task => task.taskId !== taskId);
 			persistTasks(newTasks);
+			notifyBillingBalanceUpdated();
 			toast.success("已取消该分析任务");
 		} catch (error) {
 			toast.error((error as Error).message || "取消任务失败，请稍后重试");
@@ -247,7 +416,7 @@ export default function WriterAnalysisResultPlaceholder() {
 		const newTasks = tasks.filter(t => t.taskId !== taskId);
 		persistTasks(newTasks);
 		// 失败任务和已取消任务可以安全删除服务端记录，避免历史任务表堆积。
-		deleteAnalysisTaskAction(taskId).catch(console.error);
+		deleteAnalysisTask(taskId).catch(console.error);
 	};
 
 	/**
@@ -367,6 +536,29 @@ export default function WriterAnalysisResultPlaceholder() {
 							</span>
 						</div>
 
+						{task.progress && (
+							<div className="gap-2 grid">
+								<div className="text-xs text-slate-600 flex gap-3 items-center justify-between">
+									<span>{formatStageLabel(task.progress)}</span>
+									<span>
+										{task.progress.percent}
+										%
+										{typeof task.progress.chunkCount === "number" && ` · ${task.progress.chunkCount} 块`}
+										{typeof task.progress.contentLength === "number" && ` · ${task.progress.contentLength} 字符`}
+									</span>
+								</div>
+								<Progress value={task.progress.percent} className="h-2" />
+								<p className="text-xs text-slate-500">{task.progress.message}</p>
+							</div>
+						)}
+
+						{task.validation && (
+							<p className={`text-xs ${task.validation.success ? "text-emerald-600" : "text-red-500"}`}>
+								审核结果：
+								{task.validation.message}
+							</p>
+						)}
+
 						{/* 超时提示：分析用时超过 10 分钟时提示取消重试 */}
 						{isActiveTask(task)
 							&& (elapsedSeconds[task.taskId] ?? 0) >= LONG_ANALYSIS_THRESHOLD && (
@@ -445,6 +637,24 @@ function formatElapsed(seconds: number): string {
  */
 function isActiveTask(task: LocalTask): boolean {
 	return task.status === "pending" || task.status === "processing" || !task.status;
+}
+
+function formatStageLabel(progress: AnalysisTaskProgress): string {
+	if (progress.stage === "queued")
+		return "排队中";
+	if (progress.stage === "validating")
+		return "文本校验中";
+	if (progress.stage === "searching")
+		return "联网搜索中";
+	if (progress.stage === "analyzing")
+		return "流式分析中";
+	if (progress.stage === "finalizing")
+		return "结果整理中";
+	if (progress.stage === "completed")
+		return "分析完成";
+	if (progress.stage === "failed")
+		return "分析失败";
+	return "任务已取消";
 }
 
 /**

@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { USER_LIMITS, UserType } from "@/lib/constants";
 import { getFingerprintId } from "@/lib/fingerprint";
 import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
-import { getAvailableCalls } from "@/utils/billing/actions";
+import { BILLING_BALANCE_UPDATED_EVENT, getAvailableCalls } from "@/utils/billing/client";
 import { FILE_ACCEPT_STRING, parseFile, SUPPORTED_EXTENSIONS } from "@/utils/common/file-parser";
 
 interface UserTierData {
@@ -198,7 +198,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 			let availableCalls = 0;
 
 			if (isAuthenticated) {
-				// 用户已登录，使用 Server Action 获取计费信息
+				// 用户已登录，通过 backend API 获取计费信息
 				const callsResult = await getAvailableCalls();
 
 				if (callsResult.success && callsResult.data) {
@@ -274,6 +274,23 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
 		};
 
 		initializeData();
+	}, [authLoading, isLoggedIn, fetchUserTierData]);
+
+	useEffect(() => {
+		if (typeof window === "undefined")
+			return;
+
+		const handleBillingUpdated = () => {
+			if (!authLoading) {
+				void fetchUserTierData(isLoggedIn);
+			}
+		};
+
+		window.addEventListener(BILLING_BALANCE_UPDATED_EVENT, handleBillingUpdated);
+
+		return () => {
+			window.removeEventListener(BILLING_BALANCE_UPDATED_EVENT, handleBillingUpdated);
+		};
 	}, [authLoading, isLoggedIn, fetchUserTierData]);
 
 	// 监听 articleText 变化，当被外部清空时同步清除文件名

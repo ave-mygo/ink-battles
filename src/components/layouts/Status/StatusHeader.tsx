@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function StatusHeader({
-	autoRefresh = true,
+	autoRefresh = false,
 	secondsLeft = 60,
 	refreshing = false,
 	onToggleAuto,

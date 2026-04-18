@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { createClientEden } from "@/utils/api/eden-client";
+import { unwrapEdenPayload } from "@/utils/api/eden-response";
 
 function SponsorCardSkeleton() {
 	return (
@@ -44,8 +46,10 @@ export default function SponsorList() {
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const response = await fetch(`/api/sponsors?page=1`);
-				const newData: SponsorData = await response.json();
+				const response = await createClientEden().api.v2.sponsors.get({
+					query: { page: 1 },
+				});
+				const newData = await unwrapEdenPayload<SponsorData>(response.data, response.error, { data: { list: [], total_page: 0 } });
 				setData(newData);
 				setCurrentPage(1);
 			} catch (error) {
@@ -64,8 +68,10 @@ export default function SponsorList() {
 		setLoading(true);
 		try {
 			const nextPage = currentPage + 1;
-			const response = await fetch(`/api/sponsors?page=${nextPage}`);
-			const newData: SponsorData = await response.json();
+			const response = await createClientEden().api.v2.sponsors.get({
+				query: { page: nextPage },
+			});
+			const newData = await unwrapEdenPayload<SponsorData>(response.data, response.error, { data: { list: [], total_page: 0 } });
 
 			setData(prev => prev && newData
 				? {
@@ -217,7 +223,7 @@ export default function SponsorList() {
 						disabled={loading}
 						variant="outline"
 						size="lg"
-						className="text-base border-2 rounded-full min-w-[200px] dark:border-slate-700 hover:border-pink-300 hover:bg-pink-50 dark:hover:bg-slate-800/60"
+						className="text-base border-2 rounded-full min-w-50 dark:border-slate-700 hover:border-pink-300 hover:bg-pink-50 dark:hover:bg-slate-800/60"
 					>
 						{loading
 							? (

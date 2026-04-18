@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginSetState } from "@/utils/auth/client";
+import { createClientEden } from "@/utils/api/eden-client";
+import { unwrapEdenPayload } from "@/utils/api/eden-response";
+import { loginSetState, loginWithPassword } from "@/utils/auth/client";
 
 /**
  * 登录表单组件
@@ -34,9 +36,9 @@ const SignInForm = () => {
 	useEffect(() => {
 		const checkInviteConfig = async () => {
 			try {
-				const res = await fetch("/api/auth/invite-config");
-				const data = await res.json();
-				setInviteCodeRequired(data.required);
+				const { data, error } = await createClientEden().api.v2.config.public.get();
+				const response = await unwrapEdenPayload<{ registration?: { invite_code_required?: boolean } }>(data, error, {});
+				setInviteCodeRequired(response.registration?.invite_code_required ?? false);
 			} catch (error) {
 				console.error("获取邀请码配置失败:", error);
 			}
@@ -76,12 +78,7 @@ const SignInForm = () => {
 		}
 		try {
 			setLoading(true);
-			const res = await fetch("/api/login", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email, password }),
-			});
-			const data = await res.json();
+			const data = await loginWithPassword(email, password);
 			if (data.success) {
 				toast.success("登录成功");
 				// 同步登录状态到状态管理
