@@ -47,7 +47,7 @@ export const verifyOrderOwnership = async (orderNo: string, afdId: string) => {
 	return { valid: true, message: "订单验证成功", amount: Number(order.total_amount) || 0 };
 };
 
-export const exchangeAfdianCode = async (code: string) => {
+export const exchangeAfdianCode = async (code: string, redirectUri = getConfig().afdian.redirect_uri) => {
 	const { afdian } = getConfig();
 	const response = await fetch("https://ifdian.net/api/oauth2/access_token", {
 		method: "POST",
@@ -56,7 +56,7 @@ export const exchangeAfdianCode = async (code: string) => {
 			grant_type: "authorization_code",
 			client_id: afdian.client_id,
 			client_secret: afdian.client_secret,
-			redirect_uri: afdian.redirect_uri,
+			redirect_uri: redirectUri,
 			code,
 		}),
 	});

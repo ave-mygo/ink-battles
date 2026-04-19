@@ -17,6 +17,24 @@ interface OAuthState { method: "signin" | "signup" | "bind"; inviteCode?: string
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const VALID_OAUTH_METHODS = new Set(["signin", "signup", "bind"]);
 
+const firstForwardedValue = (value: string | null) => value?.split(",")[0]?.trim() || null;
+
+const getRequestPublicBaseUrl = (request: Request) => {
+	const requestUrl = new URL(request.url);
+	const forwardedHost = firstForwardedValue(request.headers.get("x-forwarded-host"));
+	const host = forwardedHost || firstForwardedValue(request.headers.get("host"));
+	const forwardedProto = firstForwardedValue(request.headers.get("x-forwarded-proto"));
+	const protocol = forwardedProto || requestUrl.protocol.replace(/:$/, "");
+
+	if (host)
+		return `${protocol}://${host}`;
+
+	return getConfig().app.base_url;
+};
+
+const createPublicUrl = (request: Request, path: string) =>
+	new URL(path, getRequestPublicBaseUrl(request)).toString();
+
 const normalizeOAuthMethod = (value: unknown): OAuthState["method"] =>
 	value === "signup" || value === "bind" ? value : "signin";
 
@@ -80,30 +98,30 @@ const upsertAfdUser = async (uid: number, afdId: string, nickname?: string, avat
 	else await insertOne(COLLECTIONS.afdUsers, data);
 };
 
-const redirectAfterAuth = async (uid: number, path = "/dashboard") => {
-	const loginResponse = await issueLoginResponse(uid);
+const redirectAfterAuth = async (request: Request, uid: number, path = "/dashboard") => {
+	const loginResponse = await issueLoginResponse(uid, {}, request);
 	return new Response(null, {
 		status: 302,
 		headers: {
-			"Location": new URL(path, getConfig().app.base_url).toString(),
+			"Location": createPublicUrl(request, path),
 			"Set-Cookie": loginResponse.headers.get("Set-Cookie") ?? "",
 		},
 	});
 };
 
 export const oauthModule = new Elysia()
-	.get("/api/v2/rpc/oauth.qqStart", ({ query }) => {
+	.get("/api/v2/rpc/oauth.qqStart", ({ request, query }) => {
 		const state = createState({
 			method: normalizeOAuthMethod(query.method),
 			inviteCode: typeof query.inviteCode === "string" ? query.inviteCode : undefined,
 		});
 		const authUrl = new URL("https://api-space.tnxg.top/oauth/qq/authorize");
 		authUrl.searchParams.set("redirect", "true");
-		authUrl.searchParams.set("return_url", `${getConfig().app.base_url}/api/v2/rpc/oauth.qqCallback`);
+		authUrl.searchParams.set("return_url", createPublicUrl(request, "/oauth/qq/callback"));
 		authUrl.searchParams.set("state", state);
 		return Response.redirect(authUrl, 302);
 	}, { detail: { tags: ["RPC: OAuth"] } })
-	.get("/api/v2/rpc/oauth.afdianStart", ({ query }) => {
+	.get("/api/v2/rpc/oauth.afdianStart", ({ request, query }) => {
 		const { afdian } = getConfig();
 		const state = createState({
 			method: normalizeOAuthMethod(query.method),
@@ -113,7 +131,7 @@ export const oauthModule = new Elysia()
 		authUrl.searchParams.set("response_type", "code");
 		authUrl.searchParams.set("scope", "basic");
 		authUrl.searchParams.set("client_id", afdian.client_id);
-		authUrl.searchParams.set("redirect_uri", `${getConfig().app.base_url}/api/v2/rpc/oauth.afdianCallback`);
+		authUrl.searchParams.set("redirect_uri", createPublicUrl(request, "/oauth/afdian/callback"));
 		authUrl.searchParams.set("state", state);
 		return Response.redirect(authUrl, 302);
 	}, { detail: { tags: ["RPC: OAuth"] } })
@@ -122,20 +140,20 @@ export const oauthModule = new Elysia()
 		const code = url.searchParams.get("code");
 		const state = parseState(url.searchParams.get("state"));
 		if (!code || !state)
-			return redirectWithMessage("/signin", "qq_error", "缺少必要参数", getConfig().app.base_url);
+			return redirectWithMessage("/signin", "qq_error", "缺少必要参数", getRequestPublicBaseUrl(request));
 
 		try {
 			const qq = await qqInfo(code);
 			if (state.method === "bind") {
 				const currentUser = await getCurrentUser(request.headers);
 				if (!currentUser)
-					return redirectWithMessage("/signin", "qq_bind_need_login", "请先登录后再绑定 QQ", getConfig().app.base_url);
+					return redirectWithMessage("/signin", "qq_bind_need_login", "请先登录后再绑定 QQ", getRequestPublicBaseUrl(request));
 				const existing = await getUserByQQ(qq.qq_openid);
 				if (existing && existing.uid !== currentUser.uid)
-					return redirectWithMessage("/dashboard/accounts", "qq_bind_error", "该 QQ 账号已被其他用户绑定", getConfig().app.base_url);
+					return redirectWithMessage("/dashboard/accounts", "qq_bind_error", "该 QQ 账号已被其他用户绑定", getRequestPublicBaseUrl(request));
 				await updateOne<AuthUser>(COLLECTIONS.users, { uid: currentUser.uid }, { qqOpenid: qq.qq_openid, avatar: qq.avatar, nickname: qq.nickname, updatedAt: new Date() });
 				writeAuditLog({ event: "oauth_bind", uid: currentUser.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "qq" } });
-				return redirectWithMessage("/dashboard/accounts", "qq_bind_success", "QQ 账号绑定成功", getConfig().app.base_url);
+				return redirectWithMessage("/dashboard/accounts", "qq_bind_success", "QQ 账号绑定成功", getRequestPublicBaseUrl(request));
 			}
 
 			let user = await getUserByQQ(qq.qq_openid);
@@ -143,15 +161,15 @@ export const oauthModule = new Elysia()
 				const uid = await generateNextUID();
 				const invite = await consumeInviteIfNeeded(state.inviteCode, uid);
 				if (!invite.success)
-					return redirectWithMessage("/signup", "need_invite_code", invite.message!, getConfig().app.base_url);
+					return redirectWithMessage("/signup", "need_invite_code", invite.message!, getRequestPublicBaseUrl(request));
 				await createUser({ uid, qqOpenid: qq.qq_openid, loginMethod: "qq", avatar: qq.avatar, nickname: qq.nickname, isActive: true, createdAt: new Date(), updatedAt: new Date() });
 				await initializeUserBilling(uid);
 				user = await getUserByQQ(qq.qq_openid);
 			}
 			writeAuditLog({ event: "oauth_login", uid: user!.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "qq" } });
-			return redirectAfterAuth(user!.uid);
+			return redirectAfterAuth(request, user!.uid);
 		} catch (error) {
-			return redirectWithMessage("/signin", "qq_error", error instanceof Error ? error.message : "QQ 登录失败", getConfig().app.base_url);
+			return redirectWithMessage("/signin", "qq_error", error instanceof Error ? error.message : "QQ 登录失败", getRequestPublicBaseUrl(request));
 		}
 	}, { detail: { tags: ["RPC: OAuth"] } })
 	.get("/api/v2/rpc/oauth.afdianCallback", async ({ request }) => {
@@ -159,24 +177,24 @@ export const oauthModule = new Elysia()
 		const code = url.searchParams.get("code");
 		const state = parseState(url.searchParams.get("state"));
 		if (!code || !state)
-			return redirectWithMessage("/signin", "afdian_error", "缺少必要参数", getConfig().app.base_url);
+			return redirectWithMessage("/signin", "afdian_error", "缺少必要参数", getRequestPublicBaseUrl(request));
 
 		try {
-			const data = await exchangeAfdianCode(code);
+			const data = await exchangeAfdianCode(code, createPublicUrl(request, "/oauth/afdian/callback"));
 			if (data.ec !== 200 || !data.data?.user_id)
 				throw new Error(data.em || "获取爱发电用户信息失败");
 			const { user_id: afdId, name, avatar } = data.data;
 			if (state.method === "bind") {
 				const currentUser = await getCurrentUser(request.headers);
 				if (!currentUser)
-					return redirectWithMessage("/signin", "afdian_bind_need_login", "请先登录后再绑定爱发电", getConfig().app.base_url);
+					return redirectWithMessage("/signin", "afdian_bind_need_login", "请先登录后再绑定爱发电", getRequestPublicBaseUrl(request));
 				const existing = await getUserByAfdian(afdId);
 				if (existing && existing.uid !== currentUser.uid)
-					return redirectWithMessage("/dashboard/accounts", "afdian_bind_error", "该爱发电账号已被其他账号绑定", getConfig().app.base_url);
+					return redirectWithMessage("/dashboard/accounts", "afdian_bind_error", "该爱发电账号已被其他账号绑定", getRequestPublicBaseUrl(request));
 				await updateOne<AuthUser>(COLLECTIONS.users, { uid: currentUser.uid }, { afdId, updatedAt: new Date() });
 				await upsertAfdUser(currentUser.uid, afdId, name, avatar);
 				writeAuditLog({ event: "oauth_bind", uid: currentUser.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "afdian" } });
-				return redirectWithMessage("/dashboard/accounts", "afdian_bind_success", "绑定成功", getConfig().app.base_url);
+				return redirectWithMessage("/dashboard/accounts", "afdian_bind_success", "绑定成功", getRequestPublicBaseUrl(request));
 			}
 
 			let user = await getUserByAfdian(afdId);
@@ -184,15 +202,15 @@ export const oauthModule = new Elysia()
 				const uid = await generateNextUID();
 				const invite = await consumeInviteIfNeeded(state.inviteCode, uid);
 				if (!invite.success)
-					return redirectWithMessage("/signup", "need_invite_code", invite.message!, getConfig().app.base_url);
+					return redirectWithMessage("/signup", "need_invite_code", invite.message!, getRequestPublicBaseUrl(request));
 				await createUser({ uid, afdId, loginMethod: "afd", isActive: true, createdAt: new Date(), updatedAt: new Date() });
 				await initializeUserBilling(uid);
 				await upsertAfdUser(uid, afdId, name, avatar);
 				user = await getUserByAfdian(afdId);
 			}
 			writeAuditLog({ event: "oauth_login", uid: user!.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "afdian" } });
-			return redirectAfterAuth(user!.uid);
+			return redirectAfterAuth(request, user!.uid);
 		} catch (error) {
-			return redirectWithMessage("/signin", "afdian_error", error instanceof Error ? error.message : "爱发电登录失败", getConfig().app.base_url);
+			return redirectWithMessage("/signin", "afdian_error", error instanceof Error ? error.message : "爱发电登录失败", getRequestPublicBaseUrl(request));
 		}
 	}, { detail: { tags: ["RPC: OAuth"] } });

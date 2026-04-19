@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getOAuthAppBaseUrl } from "@/utils/auth/oauth-server";
 
 // 强制动态渲染，确保配置在运行时读取
 export const dynamic = "force-dynamic";
@@ -25,10 +24,9 @@ export default async function QQOAuthPage({ searchParams }: QQOAuthPageProps) {
 	const method = (typeof params?.method === "string" ? params.method : "signin") as QQOAuthMethod;
 	const inviteCode = typeof params?.inviteCode === "string" ? params.inviteCode : undefined;
 
-	const authUrl = new URL("/api/v2/rpc/oauth.qqStart", getOAuthAppBaseUrl());
-	authUrl.searchParams.set("method", method);
+	const authParams = new URLSearchParams({ method });
 	if (inviteCode)
-		authUrl.searchParams.set("inviteCode", inviteCode);
+		authParams.set("inviteCode", inviteCode);
 
-	redirect(authUrl.toString());
+	redirect(`/api/v2/rpc/oauth.qqStart?${authParams.toString()}`);
 }
