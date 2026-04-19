@@ -13,46 +13,23 @@ import { issueLoginResponse } from "./auth";
 import { initializeUserBilling } from "./billing";
 
 interface OAuthState { method: "signin" | "signup" | "bind"; inviteCode?: string }
-interface SignedOAuthState extends OAuthState { timestamp: number; random: string; signature?: string }
 
 const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
 const VALID_OAUTH_METHODS = new Set(["signin", "signup", "bind"]);
 
-const firstForwardedValue = (value: string | null) => value?.split(",")[0]?.trim() || null;
-
 /**
  * 获取请求的公网 Base URL，用于构建 OAuth 回调地址。
- * 优先级：config.app.base_url > x-forwarded headers > request URL
  */
 const getRequestPublicBaseUrl = (request: Request) => {
-	// 优先使用配置的公网地址（生产环境必须配置）
-	const configBaseUrl = getConfig().app.base_url;
-	if (configBaseUrl && !configBaseUrl.includes("localhost"))
-		return configBaseUrl;
+	const configuredBaseUrl = getConfig().app.base_url;
+	if (configuredBaseUrl && !configuredBaseUrl.includes("localhost"))
+		return configuredBaseUrl;
 
-	// 回退到反向代理 headers
-	const requestUrl = new URL(request.url);
-	const forwardedHost = firstForwardedValue(request.headers.get("x-forwarded-host"));
-	const host = forwardedHost || firstForwardedValue(request.headers.get("host"));
-	const forwardedProto = firstForwardedValue(request.headers.get("x-forwarded-proto"));
-	const protocol = forwardedProto || requestUrl.protocol.replace(/:$/, "");
-
-	if (host)
-		return `${protocol}://${host}`;
-
-	return configBaseUrl;
+	return new URL(request.url).origin;
 };
 
 const createPublicUrl = (request: Request, path: string) =>
 	new URL(path, getRequestPublicBaseUrl(request)).toString();
-
-const createQqAuthorizeUrl = (state: string, returnUrl: string) => {
-	const authUrl = new URL("https://api-space.tnxg.top/oauth/qq/authorize");
-	authUrl.searchParams.set("redirect", "true");
-	authUrl.searchParams.set("return_url", returnUrl);
-	authUrl.searchParams.set("state", state);
-	return authUrl.toString();
-};
 
 const normalizeOAuthMethod = (value: unknown): OAuthState["method"] =>
 	value === "signup" || value === "bind" ? value : "signin";
@@ -62,27 +39,16 @@ const encodeBase64Url = (value: string) => Buffer.from(value).toString("base64ur
 const signStatePayload = (payload: string) =>
 	crypto.createHmac("sha256", getConfig().jwt.secret).update(payload).digest("base64url");
 
-const createStatePayload = (input: OAuthState): SignedOAuthState => ({
-	...input,
-	timestamp: Date.now(),
-	random: crypto.randomUUID(),
-});
-
 const createState = (input: OAuthState) => {
-	const payload = encodeBase64Url(JSON.stringify(createStatePayload(input)));
+	const payload = encodeBase64Url(JSON.stringify({
+		...input,
+		timestamp: Date.now(),
+		random: crypto.randomUUID(),
+	}));
 	return `${payload}.${signStatePayload(payload)}`;
 };
 
-const createJsonState = (input: OAuthState) => {
-	const state = createStatePayload(input);
-	const payload = encodeBase64Url(JSON.stringify(state));
-	return JSON.stringify({
-		...state,
-		signature: signStatePayload(payload),
-	});
-};
-
-const normalizeParsedState = (parsed: SignedOAuthState): OAuthState | null => {
+const normalizeParsedState = (parsed: OAuthState & { timestamp?: number }): OAuthState | null => {
 	if (!VALID_OAUTH_METHODS.has(parsed.method) || typeof parsed.timestamp !== "number")
 		return null;
 	if (Date.now() - parsed.timestamp > OAUTH_STATE_TTL_MS)
@@ -90,30 +56,14 @@ const normalizeParsedState = (parsed: SignedOAuthState): OAuthState | null => {
 	return { method: parsed.method, inviteCode: parsed.inviteCode };
 };
 
-const parseJsonState = (value: string): OAuthState | null => {
-	const parsed = JSON.parse(value) as SignedOAuthState;
-	if (!parsed.signature)
-		return normalizeParsedState(parsed);
-
-	const { signature, ...state } = parsed;
-	const payload = encodeBase64Url(JSON.stringify(state));
-	if (signature !== signStatePayload(payload))
-		return null;
-
-	return normalizeParsedState(parsed);
-};
-
 const parseState = (value: string | null): OAuthState | null => {
 	if (!value)
 		return null;
 	try {
-		if (value.startsWith("{"))
-			return parseJsonState(value);
-
 		const [payload, signature] = value.split(".");
 		if (!payload || !signature || signature !== signStatePayload(payload))
 			return null;
-		const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8")) as SignedOAuthState;
+		const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8")) as OAuthState & { timestamp?: number };
 		return normalizeParsedState(parsed);
 	} catch {
 		return null;
@@ -161,13 +111,15 @@ const redirectAfterAuth = async (request: Request, uid: number, path = "/dashboa
 
 export const oauthModule = new Elysia()
 	.get("/api/v2/rpc/oauth.qqStart", ({ request, query }) => {
-		const state = createJsonState({
+		const state = createState({
 			method: normalizeOAuthMethod(query.method),
 			inviteCode: typeof query.inviteCode === "string" ? query.inviteCode : undefined,
 		});
-		const returnUrl = createPublicUrl(request, "/oauth/qq/callback");
-		console.log("Redirecting to QQ OAuth with state and return URL:", state, returnUrl);
-		return Response.redirect(createQqAuthorizeUrl(state, returnUrl), 302);
+		const authUrl = new URL("https://api-space.tnxg.top/oauth/qq/authorize");
+		authUrl.searchParams.set("redirect", "true");
+		authUrl.searchParams.set("return_url", createPublicUrl(request, "/api/v2/rpc/oauth.qqCallback"));
+		authUrl.searchParams.set("state", state);
+		return Response.redirect(authUrl.toString(), 302);
 	}, { detail: { tags: ["RPC: OAuth"] } })
 	.get("/api/v2/rpc/oauth.afdianStart", ({ request, query }) => {
 		const { afdian } = getConfig();
@@ -179,7 +131,7 @@ export const oauthModule = new Elysia()
 		authUrl.searchParams.set("response_type", "code");
 		authUrl.searchParams.set("scope", "basic");
 		authUrl.searchParams.set("client_id", afdian.client_id);
-		authUrl.searchParams.set("redirect_uri", createPublicUrl(request, "/oauth/afdian/callback"));
+		authUrl.searchParams.set("redirect_uri", createPublicUrl(request, "/api/v2/rpc/oauth.afdianCallback"));
 		authUrl.searchParams.set("state", state);
 		return Response.redirect(authUrl, 302);
 	}, { detail: { tags: ["RPC: OAuth"] } })
@@ -228,7 +180,7 @@ export const oauthModule = new Elysia()
 			return redirectWithMessage("/signin", "afdian_error", "缺少必要参数", getRequestPublicBaseUrl(request));
 
 		try {
-			const data = await exchangeAfdianCode(code, createPublicUrl(request, "/oauth/afdian/callback"));
+			const data = await exchangeAfdianCode(code, createPublicUrl(request, "/api/v2/rpc/oauth.afdianCallback"));
 			if (data.ec !== 200 || !data.data?.user_id)
 				throw new Error(data.em || "获取爱发电用户信息失败");
 			const { user_id: afdId, name, avatar } = data.data;
