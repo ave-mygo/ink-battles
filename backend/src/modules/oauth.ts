@@ -19,7 +19,17 @@ const VALID_OAUTH_METHODS = new Set(["signin", "signup", "bind"]);
 
 const firstForwardedValue = (value: string | null) => value?.split(",")[0]?.trim() || null;
 
+/**
+ * 获取请求的公网 Base URL，用于构建 OAuth 回调地址。
+ * 优先级：config.app.base_url > x-forwarded headers > request URL
+ */
 const getRequestPublicBaseUrl = (request: Request) => {
+	// 优先使用配置的公网地址（生产环境必须配置）
+	const configBaseUrl = getConfig().app.base_url;
+	if (configBaseUrl && !configBaseUrl.includes("localhost"))
+		return configBaseUrl;
+
+	// 回退到反向代理 headers
 	const requestUrl = new URL(request.url);
 	const forwardedHost = firstForwardedValue(request.headers.get("x-forwarded-host"));
 	const host = forwardedHost || firstForwardedValue(request.headers.get("host"));
@@ -29,7 +39,7 @@ const getRequestPublicBaseUrl = (request: Request) => {
 	if (host)
 		return `${protocol}://${host}`;
 
-	return getConfig().app.base_url;
+	return configBaseUrl;
 };
 
 const createPublicUrl = (request: Request, path: string) =>
