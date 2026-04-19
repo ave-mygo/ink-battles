@@ -36,6 +36,7 @@ let cachedConfig: RuntimeConfig | null = null;
 
 const MINIMUM_SECRET_BYTES = 32;
 const FORBIDDEN_JWT_SECRETS = new Set(["dev_secret_change_me"]);
+const LOCAL_APP_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
 
 const assertRequiredString = (value: unknown, name: string) => {
 	if (typeof value !== "string" || value.trim().length === 0) {
@@ -50,6 +51,13 @@ const validateRuntimeConfig = (config: RuntimeConfig) => {
 		throw new Error("jwt.secret 必须是至少 32 字节的高熵随机值");
 	}
 	config.jwt.secret = jwtSecret;
+
+	const appBaseUrl = assertRequiredString(config.app?.base_url, "app.base_url");
+	const parsedAppBaseUrl = new URL(appBaseUrl);
+	if (Bun.env.NODE_ENV === "production" && LOCAL_APP_HOSTNAMES.has(parsedAppBaseUrl.hostname)) {
+		throw new Error("生产环境 app.base_url 不能使用 localhost，请设置为公网域名");
+	}
+	config.app.base_url = parsedAppBaseUrl.origin + parsedAppBaseUrl.pathname.replace(/\/$/, "");
 };
 
 /**

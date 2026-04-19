@@ -36,6 +36,7 @@ services:
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
+      - APP_BASE_URL=https://ink-battles.couqie.moe
       - FRONTEND_ORIGIN=http://frontend:3000
       - ALLOWED_ORIGINS=https://ink-battles.couqie.moe,http://localhost:${BACKEND_PORT:-3001}
     depends_on:
