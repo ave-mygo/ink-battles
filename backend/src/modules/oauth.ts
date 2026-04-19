@@ -48,14 +48,10 @@ const createPublicUrl = (request: Request, path: string) =>
 
 const createQqAuthorizeUrl = (state: string, returnUrl: string) => {
 	const authUrl = new URL("https://api-space.tnxg.top/oauth/qq/authorize");
-	const params = new URLSearchParams({
-		state,
-		redirect: "true",
-	});
-
-	// api-space 的文档示例要求 return_url 作为顶层 URL 参数传递。
-	// 这里保持 return_url 原始 URL 形态，避免被中转服务再次写入 state 后无法还原。
-	return `${authUrl.toString()}?${params.toString()}&return_url=${returnUrl}`;
+	authUrl.searchParams.set("redirect", "true");
+	authUrl.searchParams.set("return_url", returnUrl);
+	authUrl.searchParams.set("state", state);
+	return authUrl.toString();
 };
 
 const normalizeOAuthMethod = (value: unknown): OAuthState["method"] =>
@@ -169,7 +165,9 @@ export const oauthModule = new Elysia()
 			method: normalizeOAuthMethod(query.method),
 			inviteCode: typeof query.inviteCode === "string" ? query.inviteCode : undefined,
 		});
-		return Response.redirect(createQqAuthorizeUrl(state, createPublicUrl(request, "/oauth/qq/callback")), 302);
+		const returnUrl = createPublicUrl(request, "/oauth/qq/callback");
+		console.log("Redirecting to QQ OAuth with state and return URL:", state, returnUrl);
+		return Response.redirect(createQqAuthorizeUrl(state, returnUrl), 302);
 	}, { detail: { tags: ["RPC: OAuth"] } })
 	.get("/api/v2/rpc/oauth.afdianStart", ({ request, query }) => {
 		const { afdian } = getConfig();
