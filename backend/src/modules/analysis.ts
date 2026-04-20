@@ -1,18 +1,20 @@
 import { Elysia, t } from "elysia";
 import { ObjectId } from "mongodb";
 import { getGradingModelById } from "../config";
-import { COLLECTIONS, findOne, insertOne, isObjectId, objectId, withTransaction } from "../db/mongo";
+import { COLLECTIONS, count, findOne, insertOne, isObjectId, objectId, withTransaction } from "../db/mongo";
+import { env } from "../env";
 import { getCurrentUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { createProgress } from "./analysis-progress";
-import { cancelRunningTask, cleanModelName, createCachedTask, deleteTask, findCachedAnalysis, runAnalysisTask, sha1Article } from "./analysis-worker";
+import { canAcceptAnalysisTask, cancelRunningTask, cleanModelName, createCachedTask, deleteTask, findCachedAnalysis, getAnalysisBackpressure, runAnalysisTask, sha1Article } from "./analysis-worker";
 import { deductCallBalanceInTransaction } from "./billing";
 
 const normalizeSearchModel = (value?: string): "none" | "gemini" | "gemini-lite" =>
 	value === "gemini" || value === "gemini-lite" ? value : "none";
 
 const terminalStatuses = new Set(["completed", "failed", "cancelled"]);
+const activeTaskStatuses = ["pending", "processing"];
 
 const createTaskSnapshot = (task: Record<string, any>) => ({
 	success: true,
@@ -24,6 +26,11 @@ const createTaskSnapshot = (task: Record<string, any>) => ({
 	createdAt: task.createdAt,
 	updatedAt: task.updatedAt,
 });
+
+const countActiveTasksForSubmitter = (uid: number | null, fingerprint: string) =>
+	count(COLLECTIONS.analysisTasks, uid
+		? { uid, status: { $in: activeTaskStatuses } }
+		: { uid: null, "metadata.fingerprint": fingerprint, status: { $in: activeTaskStatuses } });
 
 export const analysisModule = new Elysia()
 	.post("/api/v2/analysis/tasks", async ({ request, body }) => {
@@ -37,6 +44,10 @@ export const analysisModule = new Elysia()
 		const user = await getCurrentUser(request.headers);
 		if (model.premium && !user)
 			return { success: false, error: "高级模型需要登录后使用，请先登录" };
+		if (!canAcceptAnalysisTask()) {
+			console.warn("[analysis:submit] rejected by backpressure", getAnalysisBackpressure());
+			throw new Error("SERVICE_BUSY");
+		}
 		const sha1 = sha1Article(body.articleText);
 		const modelName = cleanModelName(model.model);
 		const cached = await findCachedAnalysis(sha1, body.mode, modelName);
@@ -44,6 +55,10 @@ export const analysisModule = new Elysia()
 			const taskId = await createCachedTask({ uid: user?.uid ?? null, articleText: body.articleText, mode: body.mode, modelId: body.modelId, fingerprint: body.fingerprint, sha1, resultId: cached._id.toString() });
 			return { success: true, taskId };
 		}
+
+		const activeTaskCount = await countActiveTasksForSubmitter(user?.uid ?? null, body.fingerprint);
+		if (activeTaskCount >= env.analysisMaxActiveTasksPerUser)
+			return { success: false, error: `最多只能同时创建 ${env.analysisMaxActiveTasksPerUser} 个进行中的分析任务，请等待已有任务完成` };
 
 		const taskId = new ObjectId();
 		const createdAt = new Date().toISOString();
@@ -111,10 +126,10 @@ export const analysisModule = new Elysia()
 		};
 	}, {
 		body: t.Object({
-			articleText: t.String(),
-			mode: t.String(),
-			modelId: t.String(),
-			fingerprint: t.String(),
+			articleText: t.String({ minLength: 1, maxLength: env.analysisMaxArticleChars }),
+			mode: t.String({ minLength: 1, maxLength: env.analysisMaxModeChars }),
+			modelId: t.String({ minLength: 1, maxLength: 128 }),
+			fingerprint: t.String({ minLength: 1, maxLength: env.analysisMaxFingerprintChars }),
 			searchModel: t.Optional(t.String({ enum: ["none", "gemini", "gemini-lite"] })),
 		}),
 		detail: { tags: ["REST: Analysis"] },
@@ -142,14 +157,17 @@ export const analysisModule = new Elysia()
 		const taskId = objectId(params.taskId);
 		const encoder = new TextEncoder();
 
+		let cleanupStream = () => {};
+
 		return new Response(new ReadableStream({
 			start(controller) {
 				let closed = false;
 				let lastPayload = "";
 				let heartbeatTimer: Timer | null = null;
 				let pollTimer: Timer | null = null;
+				let snapshotInFlight = false;
 
-				const close = () => {
+				const cleanup = () => {
 					if (closed)
 						return;
 					closed = true;
@@ -157,45 +175,80 @@ export const analysisModule = new Elysia()
 						clearInterval(heartbeatTimer);
 					if (pollTimer)
 						clearInterval(pollTimer);
-					controller.close();
+					request.signal.removeEventListener("abort", cleanup);
+				};
+				cleanupStream = cleanup;
+
+				const close = () => {
+					cleanup();
+					try {
+						controller.close();
+					} catch {
+						// 客户端断开时底层 stream 可能已关闭，只需要确保资源已释放。
+					}
 				};
 
 				const send = (event: string, payload: unknown) => {
 					if (closed)
 						return;
-					controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
+					try {
+						controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
+					} catch {
+						cleanup();
+					}
 				};
 
 				const pushSnapshot = async () => {
-					const task = await findOne(COLLECTIONS.analysisTasks, { _id: taskId });
-					if (!task) {
-						send("error", { success: false, error: "Task not found", status: "not_found" });
-						close();
+					if (closed || snapshotInFlight)
 						return;
-					}
+					snapshotInFlight = true;
 
-					const payload = JSON.stringify(createTaskSnapshot(task as Record<string, any>));
-					if (payload !== lastPayload) {
-						lastPayload = payload;
-						send("snapshot", JSON.parse(payload));
-					}
+					try {
+						const task = await findOne(COLLECTIONS.analysisTasks, { _id: taskId });
+						if (closed)
+							return;
+						if (!task) {
+							send("error", { success: false, error: "Task not found", status: "not_found" });
+							close();
+							return;
+						}
 
-					if (terminalStatuses.has(String(task.status))) {
-						send("end", { success: true, status: task.status });
+						const payload = JSON.stringify(createTaskSnapshot(task as Record<string, any>));
+						if (payload !== lastPayload) {
+							lastPayload = payload;
+							send("snapshot", JSON.parse(payload));
+						}
+
+						if (terminalStatuses.has(String(task.status))) {
+							send("end", { success: true, status: task.status });
+							close();
+						}
+					} catch (error) {
+						send("error", { success: false, error: (error as Error).message || "Task stream failed", status: "error" });
 						close();
+					} finally {
+						snapshotInFlight = false;
 					}
 				};
 
 				void pushSnapshot();
 				pollTimer = setInterval(() => void pushSnapshot(), 1000);
 				heartbeatTimer = setInterval(() => {
-					if (!closed)
+					if (closed)
+						return;
+					try {
 						controller.enqueue(encoder.encode(": keep-alive\n\n"));
+					} catch {
+						cleanup();
+					}
 				}, 15000);
-				request.signal.addEventListener("abort", close);
+				if (request.signal.aborted)
+					cleanup();
+				else
+					request.signal.addEventListener("abort", cleanup, { once: true });
 			},
 			cancel() {
-				// stream cleanup is handled by abort listener and close()
+				cleanupStream();
 			},
 		}), {
 			headers: {

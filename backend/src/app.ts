@@ -15,8 +15,19 @@ import { dashboardModule } from "./modules/dashboard";
 import { oauthModule } from "./modules/oauth";
 import { publicModule } from "./modules/public";
 import { statusModule } from "./modules/status";
+import { recoverInterruptedAnalysisTasks } from "./modules/analysis-worker";
 
 const shouldProxy = (path: string) => !path.startsWith("/api/v2");
+const methodsWithBody = new Set(["POST", "PUT", "PATCH"]);
+
+const assertRequestBodySize = (request: Request) => {
+	if (!methodsWithBody.has(request.method))
+		return;
+
+	const contentLength = Number(request.headers.get("content-length") || 0);
+	if (Number.isFinite(contentLength) && contentLength > env.maxJsonBodyBytes)
+		throw new Error("PAYLOAD_TOO_LARGE");
+};
 
 const createTypedApp = () =>
 	new Elysia()
@@ -30,6 +41,7 @@ const createTypedApp = () =>
 		.use(openapi({ path: "/api/v2/openapi" }))
 		.onRequest(async ({ request }) => {
 			console.log(`${request.method} ${new URL(request.url).pathname}`);
+			assertRequestBodySize(request);
 			assertOrigin(request);
 			await assertRateLimit(request);
 		})
@@ -48,6 +60,9 @@ export type App = ReturnType<typeof createTypedApp>;
 
 export const createApp = async () => {
 	await ensureBackendIndexes();
+	const recoveredTasks = await recoverInterruptedAnalysisTasks();
+	if (recoveredTasks > 0)
+		console.warn(`[analysis] recovered ${recoveredTasks} interrupted tasks`);
 
 	return createTypedApp();
 };

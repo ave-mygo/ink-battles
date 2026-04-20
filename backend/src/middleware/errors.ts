@@ -9,6 +9,12 @@ export const mapError = (error: unknown) => {
 	if (message === "RATE_LIMITED") {
 		return Response.json({ success: false, message: "请求过于频繁，请稍后再试" }, { status: 429 });
 	}
+	if (message === "PAYLOAD_TOO_LARGE") {
+		return Response.json({ success: false, message: "请求内容过大，请分段提交" }, { status: 413 });
+	}
+	if (message === "SERVICE_BUSY") {
+		return Response.json({ success: false, message: "分析服务繁忙，请稍后再试" }, { status: 503 });
+	}
 	console.error("[backend]", error);
 	return Response.json({ success: false, message: "服务器错误" }, { status: 500 });
 };

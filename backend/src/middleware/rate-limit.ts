@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { COLLECTIONS, ensureCollectionExists, findOneAndUpdate } from "../db/mongo";
+import { env } from "../env";
 import { getCurrentUser } from "./auth";
 import { normalizeEmail } from "../utils/validators";
 import { getRequestIp } from "../utils/request";
@@ -28,6 +29,9 @@ const readJsonBody = async (request: Request) => {
 		const contentType = request.headers.get("content-type") || "";
 		if (!contentType.includes("application/json"))
 			return {};
+		const contentLength = Number(request.headers.get("content-length") || 0);
+		if (Number.isFinite(contentLength) && contentLength > env.maxJsonBodyBytes)
+			throw new Error("PAYLOAD_TOO_LARGE");
 		const body = await request.clone().json();
 		return typeof body === "object" && body !== null ? body as Record<string, unknown> : {};
 	} catch {

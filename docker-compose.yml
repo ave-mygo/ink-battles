@@ -27,6 +27,8 @@ services:
     image: ghcr.io/ave-mygo/ink-battles-backend:latest
     container_name: ink-battles-backend
     restart: unless-stopped
+    mem_limit: 2g
+    memswap_limit: 2g
     ports:
       - '${BACKEND_PORT:-3001}:3000'
     extra_hosts:

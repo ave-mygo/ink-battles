@@ -1,7 +1,8 @@
 import crypto from "crypto-js";
 import { ObjectId } from "mongodb";
 import { getGradingModelById } from "../config";
-import { COLLECTIONS, deleteOne, findOne, findOneAndUpdate, insertOne, updateOne, withTransaction } from "../db/mongo";
+import { COLLECTIONS, deleteOne, findOne, findOneAndUpdate, insertOne, updateMany, updateOne, withTransaction } from "../db/mongo";
+import { env } from "../env";
 import { runAnalysisModel } from "../integrations/ai";
 import { verifyArticleValue } from "../integrations/validator";
 import { writeAuditLog } from "../utils/audit";
@@ -13,7 +14,7 @@ const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
 const MODEL_PREFIX_REGEX = /^(按次|公益)-/;
 const CANCELLED_MESSAGE = "分析任务已取消";
 const abortControllers = new Map<string, AbortController>();
-const STREAM_LIMITS = { maxContentSize: 1024 * 1024, maxTimeoutMs: 7 * 60 * 1000, maxChunks: 20000 } as const;
+const STREAM_LIMITS = { maxContentSize: env.analysisMaxOutputChars, maxTimeoutMs: 7 * 60 * 1000, maxChunks: 20000 } as const;
 
 interface AnalysisResult {
 	title: string;
@@ -34,8 +35,51 @@ interface AnalysisTaskBillingSnapshot {
 	};
 }
 
+interface AnalysisTaskOptions {
+	uid: number | null;
+	modelId: string;
+	articleText: string;
+	mode: string;
+	fingerprint: string;
+	searchModel: "none" | "gemini" | "gemini-lite";
+	isPremium: boolean;
+}
+
+interface QueuedAnalysisTask {
+	taskId: ObjectId;
+	options: AnalysisTaskOptions;
+	abortController: AbortController;
+}
+
+const queuedAnalysisTasks: QueuedAnalysisTask[] = [];
+let runningAnalysisTaskCount = 0;
+
 export const sha1Article = (articleText: string) => crypto.SHA1(articleText.replace(NORMALIZE_TEXT_REGEX, "")).toString();
 export const cleanModelName = (modelName: string) => modelName.replace(MODEL_PREFIX_REGEX, "");
+
+export const getAnalysisBackpressure = () => ({
+	running: runningAnalysisTaskCount,
+	queued: queuedAnalysisTasks.length,
+	maxRunning: env.analysisMaxConcurrentTasks,
+	maxQueued: env.analysisMaxQueuedTasks,
+	accepting: queuedAnalysisTasks.length < env.analysisMaxQueuedTasks,
+});
+
+export const canAcceptAnalysisTask = () => queuedAnalysisTasks.length < env.analysisMaxQueuedTasks;
+
+export const recoverInterruptedAnalysisTasks = async () => {
+	const now = new Date().toISOString();
+	return updateMany(COLLECTIONS.analysisTasks, {
+		status: { $in: ["pending", "processing"] },
+	}, {
+		$set: {
+			status: "failed",
+			error: "服务重启，未完成的分析任务已中断，请重新提交",
+			progress: createProgress("failed", "服务重启，未完成的分析任务已中断，请重新提交", 100),
+			updatedAt: now,
+		},
+	});
+};
 
 export const createCachedTask = async (input: {
 	uid: number | null;
@@ -68,83 +112,98 @@ export const findCachedAnalysis = async (sha1: string, mode: string, modelName: 
 		"metadata.modelName": cleanModelName(modelName),
 	});
 
-export const runAnalysisTask = (taskId: ObjectId, options: {
-	uid: number | null;
-	modelId: string;
-	articleText: string;
-	mode: string;
-	fingerprint: string;
-	searchModel: "none" | "gemini" | "gemini-lite";
-	isPremium: boolean;
-}) => {
+export const runAnalysisTask = (taskId: ObjectId, options: AnalysisTaskOptions) => {
 	const key = taskId.toString();
 	const abortController = new AbortController();
 	abortControllers.set(key, abortController);
+	queuedAnalysisTasks.push({ taskId, options, abortController });
+	queueMicrotask(drainAnalysisQueue);
+	return true;
+};
 
-	queueMicrotask(async () => {
-		try {
-			const model = getGradingModelById(options.modelId);
-			if (!model)
-				throw new Error("无效的评分模型");
-			await ensureTaskActive(taskId);
-			const modelName = cleanModelName(model.model);
-			console.log(`[analysis:${taskId}] worker-start model=${modelName} searchModel=${options.searchModel} articleLength=${options.articleText.length}`);
-			await logTaskProgress(taskId, options.searchModel === "none"
-				? createProgress("validating", "正在校验文本内容", 12)
-				: createProgress("searching", "正在联网搜索并校验文本内容", 12));
-			const verification = await verifyArticleValue({ ...options, modelName });
-			if (!verification.success)
-				throw new Error(`校验失败: ${verification.error || "文章内容不符合分析标准"}`);
+const drainAnalysisQueue = () => {
+	while (runningAnalysisTaskCount < env.analysisMaxConcurrentTasks && queuedAnalysisTasks.length > 0) {
+		const nextTask = queuedAnalysisTasks.shift();
+		if (!nextTask)
+			return;
 
-			console.log(`[analysis:${taskId}] validation-passed session=${verification.session || "none"}`);
-			await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, { "metadata.session": verification.session || "" });
-			await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
-				validation: {
-					success: true,
-					message: options.searchModel === "none" ? "文本审核通过" : "联网审核通过",
-					checkedAt: new Date().toISOString(),
-				},
-			});
-			const search = await loadSearchContext(verification.session);
-			await logTaskProgress(taskId, createProgress("analyzing", "文本审核通过，模型已开始流式分析", 45), "processing");
-			const accumulatedContent = await accumulateStreamContent(taskId, options.fingerprint, async progress =>
-				runAnalysisModel({
-					articleText: options.articleText,
-					mode: options.mode,
-					modelId: options.modelId,
-					fingerprint: options.fingerprint,
-					searchResults: search.searchResults,
-					signal: abortController.signal,
-					onProgress: progress,
-				}));
-
-			await logTaskProgress(taskId, createProgress("finalizing", "正在解析结果并写入数据库", 95), "processing");
-			await saveAnalysisResult({ taskId, uid: options.uid, accumulatedContent, search });
-			if (verification.session) {
-				await deleteOne(COLLECTIONS.sessions, { session: verification.session });
+		runningAnalysisTaskCount++;
+		queueMicrotask(async () => {
+			try {
+				await executeAnalysisTask(nextTask.taskId, nextTask.options, nextTask.abortController);
+			} finally {
+				runningAnalysisTaskCount--;
+				drainAnalysisQueue();
 			}
-		} catch (error) {
-			if (await shouldTreatAsCancelled(taskId, error)) {
-				await logTaskProgress(taskId, createProgress("cancelled", CANCELLED_MESSAGE, 100), "cancelled");
-				if (options.uid)
-					await refundTaskCallBalance(taskId, options.uid, "cancelled");
-				return;
-			}
-			if (options.uid)
-				await refundTaskCallBalance(taskId, options.uid, "failed");
-			await logTaskProgress(taskId, createProgress("failed", formatAnalysisError(error), 100), "failed");
-			await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
-				error: formatAnalysisError(error),
-				validation: {
-					success: false,
-					message: formatAnalysisError(error),
-					checkedAt: new Date().toISOString(),
-				},
-			});
-		} finally {
-			abortControllers.delete(key);
+		});
+	}
+};
+
+const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOptions, abortController: AbortController) => {
+	const key = taskId.toString();
+	try {
+		const model = getGradingModelById(options.modelId);
+		if (!model)
+			throw new Error("无效的评分模型");
+		await ensureTaskActive(taskId);
+		const modelName = cleanModelName(model.model);
+		console.log(`[analysis:${taskId}] worker-start model=${modelName} searchModel=${options.searchModel} articleLength=${options.articleText.length}`);
+		await logTaskProgress(taskId, options.searchModel === "none"
+			? createProgress("validating", "正在校验文本内容", 12)
+			: createProgress("searching", "正在联网搜索并校验文本内容", 12));
+		const verification = await verifyArticleValue({ ...options, modelName });
+		if (!verification.success)
+			throw new Error(`校验失败: ${verification.error || "文章内容不符合分析标准"}`);
+
+		console.log(`[analysis:${taskId}] validation-passed session=${verification.session || "none"}`);
+		await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, { "metadata.session": verification.session || "" });
+		await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
+			validation: {
+				success: true,
+				message: options.searchModel === "none" ? "文本审核通过" : "联网审核通过",
+				checkedAt: new Date().toISOString(),
+			},
+		});
+		const search = await loadSearchContext(verification.session);
+		await logTaskProgress(taskId, createProgress("analyzing", "文本审核通过，模型已开始流式分析", 45), "processing");
+		const accumulatedContent = await accumulateStreamContent(taskId, options.fingerprint, async progress =>
+			runAnalysisModel({
+				articleText: options.articleText,
+				mode: options.mode,
+				modelId: options.modelId,
+				fingerprint: options.fingerprint,
+				searchResults: search.searchResults,
+				signal: abortController.signal,
+				maxOutputChars: STREAM_LIMITS.maxContentSize,
+				onProgress: progress,
+			}));
+
+		await logTaskProgress(taskId, createProgress("finalizing", "正在解析结果并写入数据库", 95), "processing");
+		await saveAnalysisResult({ taskId, uid: options.uid, accumulatedContent, search });
+		if (verification.session) {
+			await deleteOne(COLLECTIONS.sessions, { session: verification.session });
 		}
-	});
+	} catch (error) {
+		if (await shouldTreatAsCancelled(taskId, error)) {
+			await logTaskProgress(taskId, createProgress("cancelled", CANCELLED_MESSAGE, 100), "cancelled");
+			if (options.uid)
+				await refundTaskCallBalance(taskId, options.uid, "cancelled");
+			return;
+		}
+		if (options.uid)
+			await refundTaskCallBalance(taskId, options.uid, "failed");
+		await logTaskProgress(taskId, createProgress("failed", formatAnalysisError(error), 100), "failed");
+		await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
+			error: formatAnalysisError(error),
+			validation: {
+				success: false,
+				message: formatAnalysisError(error),
+				checkedAt: new Date().toISOString(),
+			},
+		});
+	} finally {
+		abortControllers.delete(key);
+	}
 };
 
 const accumulateStreamContent = async (
@@ -354,6 +413,9 @@ const isValidAnalysisResult = (result: AnalysisResult) =>
 export const cancelRunningTask = async (taskId: string) => {
 	abortControllers.get(taskId)?.abort(CANCELLED_MESSAGE);
 	abortControllers.delete(taskId);
+	const queuedIndex = queuedAnalysisTasks.findIndex(task => task.taskId.toString() === taskId);
+	if (queuedIndex >= 0)
+		queuedAnalysisTasks.splice(queuedIndex, 1);
 	const cancelledAt = new Date().toISOString();
 	return updateOne(COLLECTIONS.analysisTasks, { _id: new ObjectId(taskId) }, {
 		$set: {

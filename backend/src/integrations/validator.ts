@@ -4,11 +4,13 @@ import crypto from "crypto-js";
 import OpenAI from "openai";
 import { getConfig } from "../config";
 import { COLLECTIONS, ensureTtlIndex, findOne, insertOne } from "../db/mongo";
+import { env } from "../env";
 import { parseModelOutput } from "../utils/json-parser";
 
 const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
 const JSON_MATCH_REGEX = /data:\s*(\{[\s\S]*\})/;
 const DATA_PREFIX_REGEX = /^data:\s*/;
+const MAX_VALIDATION_TEXT_CHARS = 200_000;
 
 type SearchModel = "none" | "gemini" | "gemini-lite";
 
@@ -118,6 +120,8 @@ const validateWithGemini = async (input: {
 		},
 	});
 	const rawText = response.text || "";
+	if (rawText.length > MAX_VALIDATION_TEXT_CHARS)
+		throw new Error("AI验证服务返回内容过大");
 	const parsed = parseValidation(rawText);
 	const searchWebPages = response.candidates?.[0]?.groundingMetadata?.groundingChunks
 		?.map(chunk => chunk.web)
@@ -144,6 +148,8 @@ const validateWithOpenAI = async (input: {
 		response_format: { type: "json_object" },
 	});
 	const rawText = response.choices[0]?.message?.content || "";
+	if (rawText.length > MAX_VALIDATION_TEXT_CHARS)
+		throw new Error("AI验证服务返回内容过大");
 	return createValidationSession(input.fingerprint, input.sha1, parseValidation(rawText), []);
 };
 
@@ -166,11 +172,12 @@ const createValidationSession = async (
 ): Promise<ValidationResult> => {
 	const session = randomBytes(8).toString("hex");
 	await ensureTtlIndex(COLLECTIONS.sessions, "createdAt", 30 * 60);
+	const searchSummary = parsed.searchSummary?.slice(0, env.analysisMaxOutputChars);
 	await insertOne(COLLECTIONS.sessions, {
 		fingerprint,
 		session,
 		sha1,
-		...(parsed.searchSummary && { searchResults: parsed.searchSummary }),
+		...(searchSummary && { searchResults: searchSummary }),
 		...(searchWebPages.length > 0 && { searchWebPages }),
 		used: false,
 		createdAt: new Date(),

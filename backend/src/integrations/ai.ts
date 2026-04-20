@@ -9,18 +9,11 @@ export interface AnalysisStreamInput {
 	fingerprint: string;
 	searchResults?: string | null;
 	signal?: AbortSignal;
+	maxOutputChars?: number;
 	onProgress?: (chunk: string, chunkCount: number) => Promise<void> | void;
 }
 
-export const runAnalysisModel = async (input: {
-	articleText: string;
-	mode: string;
-	modelId: string;
-	fingerprint: string;
-	searchResults?: string | null;
-	signal?: AbortSignal;
-	onProgress?: (chunk: string, chunkCount: number) => Promise<void> | void;
-}) => {
+export const runAnalysisModel = async (input: AnalysisStreamInput) => {
 	const model = getGradingModelById(input.modelId);
 	if (!model)
 		throw new Error("无效的评分模型");
@@ -46,17 +39,21 @@ export const runAnalysisModel = async (input: {
 		stream: true,
 	}, { signal: input.signal });
 
-	let content = "";
+	const contentChunks: string[] = [];
+	let contentLength = 0;
 	let chunkCount = 0;
 	for await (const chunk of stream) {
 		const delta = chunk.choices[0]?.delta?.content ?? "";
 		if (!delta)
 			continue;
-		content += delta;
+		if (input.maxOutputChars && contentLength + delta.length > input.maxOutputChars)
+			throw new Error(`流式内容大小超过限制 (${Math.round(input.maxOutputChars / 1024)}KB)`);
+		contentChunks.push(delta);
+		contentLength += delta.length;
 		chunkCount++;
 		await input.onProgress?.(delta, chunkCount);
 	}
-	return content;
+	return contentChunks.join("");
 };
 
 export const calculateScorePercentile = (score: number) => ({
