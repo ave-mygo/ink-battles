@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
+import type { ApiResult } from "@ink-battles/shared/types/api";
+import type { AuthUserInfoSafe } from "@ink-battles/shared/types/users/user";
 import { User } from "lucide-react";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
 import { AccountStatusCard } from "@/components/dashboard/profile/AccountStatusCard";
 import { BasicInfoCard } from "@/components/dashboard/profile/BasicInfoCard";
 import { ProfileHeader } from "@/components/dashboard/profile/ProfileHeader";
 import { Card, CardContent } from "@/components/ui/card";
-import { getDashboardUserInfo } from "@/utils/dashboard/server";
+import { createServerEden } from "@/utils/api/eden-server";
 
 export const metadata: Metadata = {
 	title: "用户信息",
@@ -13,7 +15,10 @@ export const metadata: Metadata = {
 };
 
 export default async function ProfilePage() {
-	const user = await getDashboardUserInfo();
+	const api = await createServerEden();
+	const { data, error } = await api.api.v2.auth.me.get();
+	const response = (data ?? error) as ApiResult<AuthUserInfoSafe | null>;
+	const user = response.success ? response.data ?? null : null;
 
 	if (!user) {
 		return (

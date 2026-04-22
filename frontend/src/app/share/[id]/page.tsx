@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { SharedHistoryRecordResult } from "@ink-battles/shared/types/common/history";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: SharePageProps): Promise<Meta
 	const { id } = await params;
 	const api = await createServerEden();
 	const response = await api.api.v2.analysis.share({ id }).get();
-	const result = await normalizeEdenResult<any>(response.data, response.error, "记录未公开");
+	const result = await normalizeEdenResult<SharedHistoryRecordResult>(response.data, response.error, "记录未公开");
 
 	if (!result.success || !result.data?.record) {
 		return {
@@ -36,7 +37,7 @@ export default async function SharePage({ params }: SharePageProps) {
 	const { id } = await params;
 	const api = await createServerEden();
 	const response = await api.api.v2.analysis.share({ id }).get();
-	const result = await normalizeEdenResult<any>(response.data, response.error, "记录未公开");
+	const result = await normalizeEdenResult<SharedHistoryRecordResult>(response.data, response.error, "记录未公开");
 
 	if (!result.success || !result.data?.record) {
 		notFound();
@@ -85,7 +86,7 @@ export default async function SharePage({ params }: SharePageProps) {
 
 				{/* 分析记录详情 - 不显示原文内容 */}
 				<HistoryDetailView
-					record={result.data}
+					record={result.data.record}
 					showShareControls={false}
 					showOriginalText={false}
 					percentileData={percentileData}

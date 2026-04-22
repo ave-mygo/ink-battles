@@ -1,4 +1,6 @@
+import type { PublicConfigResponse } from "@ink-battles/shared/types/common/public-config";
 import type { Metadata } from "next";
+import { DEFAULT_PUBLIC_CONFIG } from "@ink-battles/shared/types/common/public-config";
 
 import { NoticeBar } from "@/components/common/notice-bar";
 import WriterAnalysisSystem from "@/components/layouts";
@@ -11,22 +13,15 @@ import {
 	createPageMetadata,
 	getSiteUrl,
 } from "@/lib/seo";
+import { WriterConfigProvider } from "@/store/writer-config";
 import { unwrapEdenPayload } from "@/utils/api/eden-response";
 import { createServerEden } from "@/utils/api/eden-server";
 
 // 动态渲染，确保每次都读取最新的 config.toml
 export const dynamic = "force-dynamic";
 
-const DEFAULT_PUBLIC_CONFIG = {
-	app: {
-		notice: {
-			enabled: false,
-			content: "",
-			link: "",
-		},
-	},
-	gradingModels: [],
-};
+/** 当前页面模块初始化时间（ISO 格式），避免在渲染期间创建 Date 实例 */
+const PAGE_DATE_MODIFIED_ISO = new Date().toISOString();
 
 export async function generateMetadata(): Promise<Metadata> {
 	return createPageMetadata({
@@ -54,17 +49,20 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Home() {
 	const api = await createServerEden();
-	const { data, error } = await api.api.v2.config.public.get();
-	const publicConfig = (await unwrapEdenPayload<any>(data, error, DEFAULT_PUBLIC_CONFIG)) ?? DEFAULT_PUBLIC_CONFIG;
-	const noticeConf = publicConfig.app?.notice ?? DEFAULT_PUBLIC_CONFIG.app.notice;
+	const response = await api.api.v2.config.public.get();
+	const publicConfig = await unwrapEdenPayload<PublicConfigResponse>(response.data, response.error, DEFAULT_PUBLIC_CONFIG);
+	const noticeConf = publicConfig.app?.notice ?? {
+		enabled: false,
+		content: "",
+		link: "",
+	};
 	const siteUrl = getSiteUrl();
-	// 在服务器端获取评分模型配置，传递给客户端组件
-	const availableGradingModels = (publicConfig.gradingModels ?? []).map((model: any) => ({ ...model, enabled: true }));
+	const availableGradingModels = publicConfig.gradingModels ?? [];
 
 	return (
 		<>
 			{noticeConf.enabled && (
-				<NoticeBar message={noticeConf.content} link={noticeConf.link} />
+				<NoticeBar message={noticeConf.content ?? ""} link={noticeConf.link ?? ""} />
 			)}
 
 			{/* SEO-friendly hidden content for AI crawlers */}
@@ -81,7 +79,7 @@ export default async function Home() {
 					description:
 						"利用先进的人工智能技术，为创作者提供全方位的文本分析服务。通过多维度评估系统，深入分析写作风格、内容质量、语言表达等关键要素，为作家提供可操作的改进建议，助力创作水平提升。",
 					datePublished: "2024-01-01T00:00:00Z",
-					dateModified: new Date().toISOString(),
+					dateModified: PAGE_DATE_MODIFIED_ISO,
 				})}
 			/>
 
@@ -107,7 +105,9 @@ export default async function Home() {
 				})}
 			/>
 
-			<WriterAnalysisSystem availableGradingModels={availableGradingModels} />
+			<WriterConfigProvider initialAvailableGradingModels={availableGradingModels}>
+				<WriterAnalysisSystem />
+			</WriterConfigProvider>
 		</>
 	);
 }

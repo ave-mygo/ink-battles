@@ -19,7 +19,7 @@ export default function ProfileAvatar({
 	const displayName = user?.nickname || fallbackName || "User";
 	const initials = displayName
 		.split(" ")
-		.map(n => n[0])
+		.map((name: string) => name[0])
 		.join("")
 		.toUpperCase()
 		.slice(0, 2);

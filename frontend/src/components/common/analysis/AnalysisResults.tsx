@@ -1,7 +1,7 @@
 "use client";
 
 import type { Dimension } from "@/components/common/analysis/DimensionsCard";
-import type { AnalysisOutput, AnalysisResult, ScorePercentileResult } from "@/types/ai";
+import type { AnalysisOutput, AnalysisResult, ScorePercentileResult } from "@ink-battles/shared/types/ai";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { AnalysisCard } from "@/components/common/analysis/AnalysisCard";

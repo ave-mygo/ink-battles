@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import type { StatusApiResponse } from "@ink-battles/shared/types/common/status";
 import StatusDashboard from "@/components/layouts/Status/StatusDashboard";
-import { getStatusPage } from "@/utils/status/server";
+import { normalizeEdenResult } from "@/utils/api/eden-response";
+import { createServerEden } from "@/utils/api/eden-server";
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
@@ -10,7 +12,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function StatusPage() {
-	const initialData = await getStatusPage(1, 20);
+	const api = await createServerEden();
+	const response = await api.api.v2.status.get({
+		query: { page: 1, pageSize: 20 },
+	});
+	const initialData = await normalizeEdenResult<StatusApiResponse>(response.data, response.error, "加载系统状态失败");
 
 	return (
 		<div className="min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">

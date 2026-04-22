@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { AccountBindingsDetails } from "@ink-battles/shared/types/common/accounts";
 import { Link2 } from "lucide-react";
 import { AccountBindings } from "@/components/dashboard/AccountBindings";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
@@ -13,12 +14,7 @@ export const metadata: Metadata = {
 export default async function AccountsPage() {
 	const api = await createServerEden();
 	const response = await api.api.v2.accounts.details.get();
-	const bindings = await unwrapEdenPayload<{
-		email: { bound: boolean; value?: string | null };
-		qq: { bound: boolean; value?: string | null };
-		afdian: { bound: boolean; value?: string | null };
-		loginMethod?: "email" | "qq" | "afd" | null;
-	}>(response.data, response.error, {
+	const bindings = await unwrapEdenPayload<AccountBindingsDetails>(response.data, response.error, {
 		email: { bound: false },
 		qq: { bound: false },
 		afdian: { bound: false },

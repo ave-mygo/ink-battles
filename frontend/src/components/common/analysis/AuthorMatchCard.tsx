@@ -1,6 +1,6 @@
 "use client";
 
-import type { AuthorStyleMatch } from "@/types/ai";
+import type { AuthorStyleMatch } from "@ink-battles/shared/types/ai";
 import { Feather, Scale } from "lucide-react";
 
 interface AuthorMatchCardProps {

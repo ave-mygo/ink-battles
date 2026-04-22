@@ -1,15 +1,10 @@
-import type { AuthUserInfoSafe } from "@/types/users/user";
+import type { ApiResult } from "@ink-battles/shared/types/api";
+import type { AuthUserInfoSafe } from "@ink-battles/shared/types/users/user";
 import { normalizeEdenResult } from "@/utils/api/eden-response";
 import { createServerEden } from "@/utils/api/eden-server";
 
-interface ApiResponse<T> {
-	success: boolean;
-	message?: string;
-	data?: T;
-}
-
-const unwrapAuthResponse = <T>(data: unknown, error: unknown): ApiResponse<T> =>
-	(data ?? error ?? { success: false, message: "请求失败" }) as ApiResponse<T>;
+const unwrapAuthResponse = <T>(data: unknown, error: unknown): ApiResult<T> =>
+	(data ?? error ?? { success: false, message: "请求失败" }) as ApiResult<T>;
 
 export async function registerUser(email: string, password: string): Promise<{ success: boolean; message: string; uid?: number }> {
 	const api = await createServerEden();

@@ -1,6 +1,6 @@
 "use client";
 
-import type { UserProfileUpdate } from "@/types/users/user";
+import type { UserProfileUpdate } from "@ink-battles/shared/types/users/user";
 import { createClientEden } from "@/utils/api/eden-client";
 import { normalizeEdenResult } from "@/utils/api/eden-response";
 

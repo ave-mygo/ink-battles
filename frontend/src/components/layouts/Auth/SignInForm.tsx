@@ -11,41 +11,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createClientEden } from "@/utils/api/eden-client";
-import { unwrapEdenPayload } from "@/utils/api/eden-response";
 import { loginSetState, loginWithPassword } from "@/utils/auth/client";
 
 /**
  * 登录表单组件
  * @returns 登录交互卡片
  */
-const SignInForm = () => {
+const SignInForm = ({ inviteCodeRequired }: { inviteCodeRequired: boolean }) => {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [inviteCode, setInviteCode] = useState("");
-	const [inviteCodeRequired, setInviteCodeRequired] = useState(false);
 
 	// 从 URL 参数初始化错误信息
 	const initialErrorMessage = searchParams.get("status") && searchParams.get("msg") ? searchParams.get("msg") : null;
 	const [errorMessage] = useState<string | null>(initialErrorMessage);
 
-	// 检查是否需要邀请码
 	useEffect(() => {
-		const checkInviteConfig = async () => {
-			try {
-				const { data, error } = await createClientEden().api.v2.config.public.get();
-				const response = await unwrapEdenPayload<{ registration?: { invite_code_required?: boolean } }>(data, error, {});
-				setInviteCodeRequired(response.registration?.invite_code_required ?? false);
-			} catch (error) {
-				console.error("获取邀请码配置失败:", error);
-			}
-		};
-		checkInviteConfig();
-
-		// 如果有错误信息，显示 toast
 		if (initialErrorMessage) {
 			toast.error(initialErrorMessage);
 		}

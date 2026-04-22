@@ -1,7 +1,7 @@
 "use client";
 
+import type { MermaidDiagram as MermaidDiagramType } from "@ink-battles/shared/types/ai";
 import type { ReactNode } from "react";
-import type { MermaidDiagram as MermaidDiagramType } from "@/types/ai";
 import { AlertTriangle, GitBranch, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import mermaid from "mermaid";
 import { Component, useCallback, useEffect, useId, useRef, useState } from "react";
@@ -175,12 +175,13 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 
 	useEffect(() => {
 		let cancelled = false;
+		const container = containerRef.current;
 
 		const renderDiagram = async () => {
-			if (!containerRef.current)
+			if (!container)
 				return;
 
-			containerRef.current.innerHTML = "";
+			container.innerHTML = "";
 			setIsRendered(false);
 			setError(null);
 
@@ -200,9 +201,9 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 
 				// 渲染图表
 				const { svg } = await mermaid.render(diagramId, formattedCode);
-				if (cancelled || !containerRef.current)
+				if (cancelled || !container)
 					return;
-				containerRef.current.innerHTML = svg;
+				container.innerHTML = svg;
 				setIsRendered(true);
 				setError(null);
 			} catch (err) {
@@ -218,8 +219,8 @@ function MermaidChart({ code, title }: MermaidChartProps) {
 
 		return () => {
 			cancelled = true;
-			if (containerRef.current) {
-				containerRef.current.innerHTML = "";
+			if (container) {
+				container.innerHTML = "";
 			}
 		};
 	}, [code, title, uniqueId]);

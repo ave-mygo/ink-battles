@@ -13,15 +13,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isPasswordValid } from "@/lib/password-strength";
-import { createClientEden } from "@/utils/api/eden-client";
-import { unwrapEdenPayload } from "@/utils/api/eden-response";
 import { loginSetState, loginWithPassword, registerWithPassword, sendVerificationEmail } from "@/utils/auth/client";
 
 /**
  * 注册表单组件（含邮箱验证码和可选邀请码）
  * @returns 注册交互卡片
  */
-const SignUpForm = () => {
+const SignUpForm = ({ inviteCodeRequired }: { inviteCodeRequired: boolean }) => {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [email, setEmail] = useState("");
@@ -29,7 +27,6 @@ const SignUpForm = () => {
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [code, setCode] = useState("");
 	const [inviteCode, setInviteCode] = useState("");
-	const [inviteCodeRequired, setInviteCodeRequired] = useState(false);
 	const [sending, setSending] = useState(false);
 	const [countdown, setCountdown] = useState(0);
 	const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -40,20 +37,7 @@ const SignUpForm = () => {
 
 	const canSend = useMemo(() => countdown <= 0 && !!email, [countdown, email]);
 
-	// 检查是否需要邀请码
 	useEffect(() => {
-		const checkInviteConfig = async () => {
-			try {
-				const { data, error } = await createClientEden().api.v2.config.public.get();
-				const response = await unwrapEdenPayload<{ registration?: { invite_code_required?: boolean } }>(data, error, {});
-				setInviteCodeRequired(response.registration?.invite_code_required ?? false);
-			} catch (error) {
-				console.error("获取邀请码配置失败:", error);
-			}
-		};
-		checkInviteConfig();
-
-		// 如果有错误信息，显示 toast
 		if (initialErrorMessage) {
 			toast.error(initialErrorMessage);
 		}

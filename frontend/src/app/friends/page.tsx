@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { PublicConfigResponse } from "@ink-battles/shared/types/common/public-config";
 import { ExternalLink, Globe, Home, LinkIcon, Plus } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -6,12 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createPageMetadata } from "@/lib/seo";
 import { unwrapEdenPayload } from "@/utils/api/eden-response";
 import { createServerEden } from "@/utils/api/eden-server";
-
-interface FriendLink {
-	title: string;
-	description: string;
-	url: string;
-}
 
 // 强制动态渲染，确保配置在运行时读取
 export const dynamic = "force-dynamic";
@@ -29,8 +24,8 @@ export default async function FriendsPage() {
 	// 在组件内部获取配置，确保运行时读取
 	const api = await createServerEden();
 	const { data, error } = await api.api.v2.config.public.get();
-	const publicConfig = await unwrapEdenPayload<any>(data, error, {});
-	const friends = (publicConfig.friends ?? []) as FriendLink[];
+	const publicConfig = await unwrapEdenPayload<PublicConfigResponse>(data, error, {});
+	const friends = publicConfig.friends ?? [];
 
 	return (
 		<div className="min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">

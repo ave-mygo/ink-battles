@@ -1,8 +1,8 @@
 "use client";
 
-import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import useSWR from "swr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { HistorySortOption, HistoryVisibilityOption } from "@/utils/dashboard/history";
+import type { HistoryPageData, HistorySortOption, HistoryVisibilityOption } from "@/utils/dashboard/history";
 import { deleteAnalysisRecord, getUserAnalysisHistory, toggleRecordPublic } from "@/utils/dashboard/history";
 import { HistoryCard } from "./HistoryCard";
 
@@ -32,13 +32,7 @@ const HISTORY_VISIBILITY_LABELS: Record<HistoryVisibilityOption, string> = {
 };
 
 interface HistoryListProps {
-	initialData?: {
-		records: DatabaseAnalysisRecord[];
-		total: number;
-		page: number;
-		limit: number;
-		totalPages: number;
-	};
+	initialData?: HistoryPageData;
 	initialSort?: HistorySortOption;
 	initialVisibility?: HistoryVisibilityOption;
 }
@@ -98,67 +92,77 @@ export function HistoryList({
 	initialSort = "time_desc",
 	initialVisibility = "all",
 }: HistoryListProps) {
-	const [data, setData] = useState(initialData);
 	const [sort, setSort] = useState<HistorySortOption>(initialSort);
 	const [visibility, setVisibility] = useState<HistoryVisibilityOption>(initialVisibility);
-	const [isLoading, setIsLoading] = useState(false);
+	const [currentPage, setCurrentPage] = useState(initialData?.page ?? 1);
 	const [pageInput, setPageInput] = useState(() => String(initialData?.page ?? 1));
 	const listRef = useRef<HTMLDivElement>(null);
+
+	const historyKey = useMemo(() => {
+		if (!initialData) {
+			return null;
+		}
+
+		return ["dashboard-history", currentPage, initialData.limit, sort, visibility] as const;
+	}, [currentPage, initialData, sort, visibility]);
+
+	const { data, isLoading, mutate } = useSWR(
+		historyKey,
+		async ([, page, limit, nextSort, nextVisibility]) => {
+			const result = await getUserAnalysisHistory(page, limit, nextSort, nextVisibility);
+			if (!result.success || !result.data) {
+				throw new Error(result.message || "无法加载历史记录，请稍后重试");
+			}
+
+			return result.data;
+		},
+		{
+			fallbackData:
+				initialData && currentPage === initialData.page && sort === initialSort && visibility === initialVisibility
+					? initialData
+					: undefined,
+			revalidateOnMount: false,
+			revalidateOnFocus: false,
+			keepPreviousData: true,
+			onError: (error) => {
+				toast.error("加载失败", {
+					description: error instanceof Error ? error.message : "无法加载历史记录，请稍后重试",
+				});
+			},
+		},
+	);
 
 	useEffect(() => {
 		setPageInput(String(data?.page ?? 1));
 	}, [data?.page]);
 
-	/** 加载指定页码的数据 */
-	const loadPage = useCallback(async (
-		newPage: number,
-		nextSort: HistorySortOption = sort,
-		nextVisibility: HistoryVisibilityOption = visibility,
-	) => {
-		if (!data)
-			return;
-		setIsLoading(true);
-
+	/**
+	 * 更新查询条件时，先滚动回顶部，再交由 SWR 基于新 key 拉取数据。
+	 */
+	const updateQuery = useCallback((nextPage: number, nextSort: HistorySortOption, nextVisibility: HistoryVisibilityOption) => {
 		// 滚动到列表顶部
 		listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-		try {
-			const result = await getUserAnalysisHistory(newPage, data.limit, nextSort, nextVisibility);
-			if (result.success && result.data) {
-				setData(result.data);
-			} else {
-				toast.error("加载失败", {
-					description: result.message || "无法加载历史记录，请稍后重试",
-				});
-			}
-		} catch (error) {
-			console.error("加载页面失败:", error);
-			toast.error("加载失败", {
-				description: "网络请求出错，请检查网络连接后重试",
-			});
-		} finally {
-			setIsLoading(false);
-		}
-	}, [data, sort, visibility]);
+		setSort(nextSort);
+		setVisibility(nextVisibility);
+		setCurrentPage(nextPage);
+	}, []);
 
 	/** 切换排序方式 */
-	const handleSortChange = useCallback(async (nextSort: HistorySortOption) => {
+	const handleSortChange = useCallback((nextSort: HistorySortOption) => {
 		if (!data || nextSort === sort)
 			return;
-		setSort(nextSort);
-		await loadPage(1, nextSort, visibility);
-	}, [data, loadPage, sort, visibility]);
+		updateQuery(1, nextSort, visibility);
+	}, [data, sort, updateQuery, visibility]);
 
 	/** 切换分享筛选 */
-	const handleVisibilityChange = useCallback(async (nextVisibility: HistoryVisibilityOption) => {
+	const handleVisibilityChange = useCallback((nextVisibility: HistoryVisibilityOption) => {
 		if (!data || nextVisibility === visibility)
 			return;
-		setVisibility(nextVisibility);
-		await loadPage(1, sort, nextVisibility);
-	}, [data, loadPage, sort, visibility]);
+		updateQuery(1, sort, nextVisibility);
+	}, [data, sort, updateQuery, visibility]);
 
 	/** 跳转到指定页码 */
-	const handleJumpToPage = useCallback(async () => {
+	const handleJumpToPage = useCallback(() => {
 		if (!data)
 			return;
 
@@ -183,8 +187,8 @@ export function HistoryList({
 			return;
 		}
 
-		await loadPage(normalizedPage, sort, visibility);
-	}, [data, loadPage, pageInput, sort, visibility]);
+		updateQuery(normalizedPage, sort, visibility);
+	}, [data, pageInput, sort, updateQuery, visibility]);
 
 	/** 切换记录公开状态 */
 	const handleTogglePublic = useCallback(async (recordId: string, isPublic: boolean) => {
@@ -193,19 +197,19 @@ export function HistoryList({
 			throw new Error(result.message || "操作失败");
 		}
 
-		setData((prev) => {
+		await mutate((prev: HistoryPageData | undefined) => {
 			if (!prev)
 				return prev;
 			return {
 				...prev,
-				records: prev.records.map(record =>
+				records: prev.records.map((record) =>
 					record._id === recordId
 						? { ...record, settings: { ...record.settings, public: isPublic } }
 						: record,
 				),
 			};
-		});
-	}, []);
+		}, false);
+	}, [mutate]);
 
 	/** 删除分析记录 */
 	const handleDelete = useCallback(async (recordId: string) => {
@@ -214,16 +218,16 @@ export function HistoryList({
 			throw new Error(result.message || "删除失败");
 		}
 
-		setData((prev) => {
+		await mutate((prev: HistoryPageData | undefined) => {
 			if (!prev)
 				return prev;
-			const newRecords = prev.records.filter(record => record._id !== recordId);
+			const newRecords = prev.records.filter((record) => record._id !== recordId);
 			const newTotal = prev.total - 1;
-			const newTotalPages = Math.ceil(newTotal / prev.limit);
+			const newTotalPages = Math.max(Math.ceil(newTotal / prev.limit), 1);
 
 			// 若当前页已无记录且不是第一页，自动跳转到上一页
 			if (newRecords.length === 0 && prev.page > 1) {
-				loadPage(prev.page - 1);
+				updateQuery(prev.page - 1, sort, visibility);
 				return prev;
 			}
 
@@ -233,8 +237,8 @@ export function HistoryList({
 				total: newTotal,
 				totalPages: newTotalPages,
 			};
-		});
-	}, [loadPage]);
+		}, false);
+	}, [mutate, sort, updateQuery, visibility]);
 
 	// 空状态
 	if (!data || data.records.length === 0) {
@@ -284,7 +288,7 @@ export function HistoryList({
 					? Array.from({ length: data.limit }).map((_, i) => (
 							<HistoryCardSkeleton key={i} />
 						))
-					: data.records.map(record => (
+					: data.records.map((record: HistoryPageData["records"][number]) => (
 							<HistoryCard
 								key={record._id}
 								record={record}
@@ -353,29 +357,29 @@ export function HistoryList({
 						</div>
 
 						<div className="flex gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => loadPage(data.page - 1, sort, visibility)}
-							disabled={data.page === 1 || isLoading}
-							className="cursor-pointer"
-						>
-							<ChevronLeft className="mr-1 h-4 w-4" />
-							上一页
-						</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => loadPage(data.page + 1, sort, visibility)}
-							disabled={data.page >= data.totalPages || isLoading}
-							className="cursor-pointer"
-						>
-							下一页
-							<ChevronRight className="ml-1 h-4 w-4" />
-						</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => updateQuery(data.page - 1, sort, visibility)}
+									disabled={data.page === 1 || isLoading}
+									className="cursor-pointer"
+								>
+									<ChevronLeft className="mr-1 h-4 w-4" />
+									上一页
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => updateQuery(data.page + 1, sort, visibility)}
+									disabled={data.page >= data.totalPages || isLoading}
+									className="cursor-pointer"
+								>
+									下一页
+									<ChevronRight className="ml-1 h-4 w-4" />
+								</Button>
+							</div>
 						</div>
 					</div>
-				</div>
 			)}
 		</div>
 	);

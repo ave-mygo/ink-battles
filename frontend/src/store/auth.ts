@@ -1,6 +1,6 @@
 "use client";
 
-import type { UserStore, UserStoreData } from "@/types/users";
+import type { UserStore, UserStoreData } from "@ink-battles/shared/types/users";
 import { useEffect } from "react";
 import { create } from "zustand";
 

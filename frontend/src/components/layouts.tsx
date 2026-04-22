@@ -1,7 +1,7 @@
 "use client";
 
-import type { AnalysisResult, ScorePercentileResult } from "@/types/ai";
-import type { GradingModelConfig } from "@/types/common/config";
+import type { AnalysisResult, ScorePercentileResult } from "@ink-battles/shared/types/ai";
+import type { GradingModelConfig } from "@ink-battles/shared/types/common/config";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/Wri
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
 import { getFingerprintId } from "@/lib/fingerprint";
+import { useAvailableGradingModels } from "@/store/writer-config";
 import { submitAnalysis } from "@/utils/analysis";
 import { notifyBillingBalanceUpdated } from "@/utils/billing/client";
 
@@ -33,10 +34,6 @@ const getSearchModelDisplayName = (searchModel: "none" | "gemini" | "gemini-lite
 
 	return "关闭搜索";
 };
-
-interface WriterAnalysisSystemProps {
-	availableGradingModels: GradingModelConfig[];
-}
 
 const evaluationModes = [
 	{
@@ -122,7 +119,8 @@ const evaluationModes = [
 	},
 ];
 
-export default function WriterAnalysisSystem({ availableGradingModels }: WriterAnalysisSystemProps) {
+export default function WriterAnalysisSystem() {
+	const availableGradingModels = useAvailableGradingModels();
 	const [articleText, setArticleText] = useState("");
 	const [selectedMode, setSelectedMode] = useState<string[]>([]);
 	const [isAnalyzing, setIsAnalyzing] = useState(false);

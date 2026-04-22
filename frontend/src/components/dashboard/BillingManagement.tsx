@@ -1,77 +1,33 @@
 "use client";
 
-import type { SerializedUserBilling } from "@/types/database/user_billing";
 import { AlertCircle, Calendar, Coins, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BILLING_BALANCE_UPDATED_EVENT, getBillingInfo } from "@/utils/billing/client";
+import { useBillingAutoRefresh, useBillingContext } from "./BillingProvider";
 
 /**
  * 计费管理组件
  * 展示用户的会员等级、累计消费、调用次数余额等信息
  */
 export default function BillingManagement() {
-	const [loading, setLoading] = useState(true);
-	const [billing, setBilling] = useState<SerializedUserBilling | null>(null);
-	const [memberName, setMemberName] = useState("");
-	const [discount, setDiscount] = useState(0);
-	const [paidCallPrice, setPaidCallPrice] = useState(0);
+	const {
+		billingSummary,
+		isLoading,
+		errorMessage,
+		refreshBilling,
+	} = useBillingContext();
 
-	const loadBillingInfo = useCallback(async () => {
-		setLoading(true);
-		const result = await getBillingInfo();
-		if (result.success && result.data) {
-			setBilling(result.data.billing);
-			setMemberName(result.data.memberName);
-			setDiscount(result.data.discount);
-			setPaidCallPrice(result.data.paidCallPrice);
-		}
-		setLoading(false);
-	}, []);
+	useBillingAutoRefresh(refreshBilling);
 
-	useEffect(() => {
-		let isMounted = true;
+	const billing = billingSummary?.billing ?? null;
+	const memberName = billingSummary?.memberName ?? "";
+	const discount = billingSummary?.discount ?? 0;
+	const paidCallPrice = billingSummary?.paidCallPrice ?? 0;
 
-		const fetchData = async () => {
-			const result = await getBillingInfo();
-			if (isMounted && result.success && result.data) {
-				setBilling(result.data.billing);
-				setMemberName(result.data.memberName);
-				setDiscount(result.data.discount);
-				setPaidCallPrice(result.data.paidCallPrice);
-			}
-			if (isMounted) {
-				setLoading(false);
-			}
-		};
-
-		void fetchData();
-
-		return () => {
-			isMounted = false;
-		};
-	}, []);
-
-	useEffect(() => {
-		if (typeof window === "undefined")
-			return;
-
-		const handleBillingUpdated = () => {
-			void loadBillingInfo();
-		};
-
-		window.addEventListener(BILLING_BALANCE_UPDATED_EVENT, handleBillingUpdated);
-
-		return () => {
-			window.removeEventListener(BILLING_BALANCE_UPDATED_EVENT, handleBillingUpdated);
-		};
-	}, [loadBillingInfo]);
-
-	if (loading) {
+	if (isLoading) {
 		return (
 			<div className="space-y-4">
 				<Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
@@ -119,12 +75,14 @@ export default function BillingManagement() {
 					<div className="space-y-2">
 						<h3 className="text-lg font-semibold">无法获取计费信息</h3>
 						<p className="text-muted-foreground text-sm mx-auto max-w-xs">
-							获取您的会员权益和余额信息时出现问题，请检查网络连接或稍后重试。
+							{errorMessage || "获取您的会员权益和余额信息时出现问题，请检查网络连接或稍后重试。"}
 						</p>
 					</div>
 					<Button
 						variant="outline"
-						onClick={loadBillingInfo}
+						onClick={() => {
+							void refreshBilling();
+						}}
 						className="gap-2"
 					>
 						<RefreshCw className="h-4 w-4" />

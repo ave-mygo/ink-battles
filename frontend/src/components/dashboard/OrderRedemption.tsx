@@ -9,12 +9,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { notifyBillingBalanceUpdated, redeemOrder } from "@/utils/billing/client";
+import { useBillingContext } from "./BillingProvider";
 
 /**
  * 订单兑换组件
  * 允许用户输入爱发电订单号进行兑换
  */
 export default function OrderRedemption() {
+	const { refreshBilling } = useBillingContext();
 	const [orderNo, setOrderNo] = useState("");
 	const [loading, setLoading] = useState(false);
 
@@ -35,6 +37,7 @@ export default function OrderRedemption() {
 				});
 				setOrderNo(""); // 清空输入框
 				notifyBillingBalanceUpdated();
+				await refreshBilling();
 			} else {
 				toast.error("兑换失败", {
 					description: response.message,

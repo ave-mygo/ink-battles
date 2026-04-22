@@ -1,6 +1,6 @@
 "use client";
 
-import type { QQOAuthResponse } from "@/types/users/user";
+import type { QQOAuthResponse } from "@ink-battles/shared/types/users/user";
 
 /**
  * 使用临时代码获取QQ用户信息

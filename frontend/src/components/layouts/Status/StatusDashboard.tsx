@@ -1,8 +1,9 @@
 "use client";
 
-import type { StatusApiResponse, StatusDashboardProps, UsageLog } from "@/types/common/status";
+import type { StatusApiResponse, StatusDashboardProps, UsageLog } from "@ink-battles/shared/types/common/status";
 import { Activity, Clock, Cpu, MessageSquare } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import useSWRInfinite from "swr/infinite";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIntersectionObserver } from "@/hooks/useIntersectionObserver";
@@ -78,46 +79,47 @@ function StatCardsSkeleton() {
 }
 
 export default function StatusDashboard({ initialData }: StatusDashboardProps) {
-	const [logs, setLogs] = useState<UsageLog[]>(initialData.items);
-	const [loading, setLoading] = useState(false);
-	const [initialLoading, setInitialLoading] = useState(false);
 	const [autoRefresh, setAutoRefresh] = useState(false);
 	const [secondsLeft, setSecondsLeft] = useState(60);
-	const [stats, setStats] = useState(initialData.stats);
-	const [currentPage, setCurrentPage] = useState(initialData.page || 1);
-	const [hasMore, setHasMore] = useState(initialData.has_more);
 	const loadingRef = useRef<HTMLDivElement>(null);
 
-	const fetchLogs = async (page: number, isFirstLoad = false) => {
-		try {
-			if (isFirstLoad) {
-				setInitialLoading(true);
-			} else {
-				setLoading(true);
+	const { data, isLoading, size, setSize, mutate } = useSWRInfinite(
+		(index, previousPageData) => {
+			if (previousPageData && !previousPageData.has_more) {
+				return null;
 			}
 
+			return ["status", index + 1] as const;
+		},
+		async ([, page]) => {
 			const response = await createClientEden().api.v2.status.get({
 				query: { page, pageSize: STATUS_PAGE_SIZE },
 			});
 			const responseData = await normalizeEdenResult<StatusApiResponse>(response.data, response.error, "加载状态失败");
-
-			if (responseData.success) {
-				if (isFirstLoad) {
-					setLogs(responseData.items);
-					setStats(responseData.stats);
-					setCurrentPage(responseData.page);
-				} else {
-					setLogs(prev => mergeStatusLogs(prev, responseData.items));
-				}
-				setHasMore(responseData.has_more);
+			if (!responseData.success) {
+				throw new Error("加载状态失败");
 			}
-		} catch (error) {
-			console.error("Failed to fetch logs:", error);
-		} finally {
-			setInitialLoading(false);
-			setLoading(false);
-		}
-	};
+
+			return responseData;
+		},
+		{
+			fallbackData: [initialData],
+			revalidateFirstPage: false,
+			revalidateOnFocus: false,
+		},
+	);
+
+	const pages = data?.length ? data : [initialData];
+	const stats = (pages[0] ?? initialData).stats;
+	const logs = useMemo(
+		() =>
+			pages.reduce<UsageLog[]>((mergedLogs, page) => mergeStatusLogs(mergedLogs, page.items), []),
+		[pages],
+	);
+	const currentPage = data?.length ?? 1;
+	const hasMore = (pages[pages.length - 1] ?? initialData).has_more;
+	const loading = Boolean(data && size > data.length);
+	const initialLoading = !data && isLoading;
 
 	// 友好自动刷新：可开关、显示倒计时、页面隐藏时暂停
 	useEffect(() => {
@@ -128,8 +130,7 @@ export default function StatusDashboard({ initialData }: StatusDashboardProps) {
 				return; // 页面不可见时暂停计时
 			setSecondsLeft((prev) => {
 				if (prev <= 1) {
-					// 触发静默刷新（不改变 currentPage，刷新第一页与统计）
-					fetchLogs(1, true);
+					void mutate();
 					return 60;
 				}
 				return prev - 1;
@@ -138,11 +139,11 @@ export default function StatusDashboard({ initialData }: StatusDashboardProps) {
 		return () => {
 			clearInterval(interval);
 		};
-	}, [autoRefresh]);
+	}, [autoRefresh, mutate]);
 
 	const handleManualRefresh = () => {
 		setSecondsLeft(60);
-		fetchLogs(1, true);
+		void mutate();
 	};
 
 	useIntersectionObserver({
@@ -150,16 +151,10 @@ export default function StatusDashboard({ initialData }: StatusDashboardProps) {
 		onIntersect: (entries) => {
 			const [entry] = entries;
 			if (entry?.isIntersecting && hasMore && !loading && !initialLoading) {
-				setCurrentPage(prev => prev + 1);
+				void setSize(size + 1);
 			}
 		},
 	});
-
-	useEffect(() => {
-		if (currentPage === 1)
-			return;
-		fetchLogs(currentPage);
-	}, [currentPage]);
 
 	return (
 		<div className="space-y-8">

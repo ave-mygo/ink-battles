@@ -1,9 +1,11 @@
+import type { HistoryPageResult } from "@ink-battles/shared/types/common/history";
 import type { Metadata } from "next";
 import { History } from "lucide-react";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
 import { HistoryList } from "@/components/dashboard/history/HistoryList";
 import { normalizeEdenResult } from "@/utils/api/eden-response";
 import { createServerEden } from "@/utils/api/eden-server";
+import { mapHistoryData } from "@/utils/dashboard/history-shared";
 
 export const metadata: Metadata = {
 	title: "分析历史",
@@ -20,16 +22,8 @@ export default async function HistoryPage() {
 	const response = await api.api.v2.analysis.history.get({
 		query: { page: 1, limit: 10, visibility: initialVisibility, ...initialSortQuery },
 	});
-	const result = await normalizeEdenResult<any>(response.data, response.error, "无法加载历史记录");
-	const data = result.success
-		? {
-				records: result.data.records,
-				total: result.data.pagination.total,
-				page: result.data.pagination.page,
-				limit: result.data.pagination.limit,
-				totalPages: result.data.pagination.totalPages,
-			}
-		: undefined;
+	const result = await normalizeEdenResult<HistoryPageResult>(response.data, response.error, "无法加载历史记录");
+	const data = result.success && result.data ? mapHistoryData(result.data) : undefined;
 
 	if (!result.success) {
 		return (

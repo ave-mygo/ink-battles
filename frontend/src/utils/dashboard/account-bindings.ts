@@ -1,5 +1,6 @@
 "use client";
 
+import type { AccountBindingsDetails } from "@ink-battles/shared/types/common/accounts";
 import { createClientEden } from "@/utils/api/eden-client";
 import { normalizeEdenResult, unwrapEdenPayload } from "@/utils/api/eden-response";
 
@@ -40,12 +41,7 @@ export const unbindAfdianAccount = async () =>
 	);
 
 export const getAccountBindingDetails = async () =>
-	unwrapEdenPayload<{
-		email: { bound: boolean; value?: string | null };
-		qq: { bound: boolean; value?: string | null };
-		afdian: { bound: boolean; value?: string | null };
-		loginMethod?: "email" | "qq" | "afd" | null;
-	}>(
+	unwrapEdenPayload<AccountBindingsDetails>(
 		...(await (async () => {
 			const response = await createClientEden().api.v2.accounts.details.get();
 			return [

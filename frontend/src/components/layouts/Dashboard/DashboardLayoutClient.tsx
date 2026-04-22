@@ -1,6 +1,6 @@
 "use client";
 
-import type { AuthUserInfoSafe } from "@/types/users/user";
+import type { AuthUserInfoSafe } from "@ink-battles/shared/types/users/user";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

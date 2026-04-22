@@ -1,5 +1,6 @@
 "use client";
 
+import type { AccountBindingsDetails } from "@ink-battles/shared/types/common/accounts";
 import type { FC } from "react";
 import { Icon } from "@iconify/react";
 import { Link2, Mail } from "lucide-react";
@@ -23,12 +24,7 @@ import { sendVerificationEmail } from "@/utils/auth/client";
 import { bindEmailAccount, unbindAfdianAccount, unbindEmailAccount, unbindQQAccount } from "@/utils/dashboard/account-bindings";
 
 interface AccountBindingsProps {
-	bindings: {
-		email: { bound: boolean; value?: string | null };
-		qq: { bound: boolean; value?: string | null };
-		afdian: { bound: boolean; value?: string | null };
-		loginMethod?: "email" | "qq" | "afd" | null;
-	};
+	bindings: AccountBindingsDetails;
 }
 
 /**

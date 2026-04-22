@@ -1,6 +1,6 @@
 "use client";
 
-import type { AnalysisResult } from "@/types/ai";
+import type { AnalysisResult } from "@ink-battles/shared/types/ai";
 import { BadgeCheck, BookOpen, Lightbulb, Star, Target } from "lucide-react";
 import { AuthorMatchCard } from "@/components/common/analysis/AuthorMatchCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { MermaidDiagram } from "@/types/ai";
+import type { MermaidDiagram } from "@ink-battles/shared/types/ai";
 import { usePathname } from "next/navigation";
 import MermaidDiagrams from "@/components/layouts/WriterPage/MermaidDiagram";
 

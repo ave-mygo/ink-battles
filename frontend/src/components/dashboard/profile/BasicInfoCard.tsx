@@ -1,4 +1,4 @@
-import type { AuthUserInfoSafe } from "@/types/users/user";
+import type { AuthUserInfoSafe } from "@ink-battles/shared/types/users/user";
 import { Mail, Shield, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

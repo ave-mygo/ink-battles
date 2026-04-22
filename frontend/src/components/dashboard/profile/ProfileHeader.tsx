@@ -1,6 +1,6 @@
 "use client";
 
-import type { AuthUserInfoSafe } from "@/types/users/user";
+import type { AuthUserInfoSafe } from "@ink-battles/shared/types/users/user";
 import { Check, Pencil, User, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

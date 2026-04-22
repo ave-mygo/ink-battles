@@ -1,6 +1,6 @@
 "use client";
 
-import type { ScorePercentileResult } from "@/types/ai";
+import type { ScorePercentileResult } from "@ink-battles/shared/types/ai";
 import { Copy, Heart, Share, Share2, Star, Trophy } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";

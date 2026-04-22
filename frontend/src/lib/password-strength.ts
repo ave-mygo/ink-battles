@@ -1,4 +1,4 @@
-import type { PasswordStrength } from "@/types/common/password";
+import type { PasswordStrength } from "@ink-battles/shared/types/common/password";
 
 // 预编译正则表达式，避免每次调用时重新编译
 const LOWERCASE_REGEX = /[a-z]/;

@@ -1,7 +1,8 @@
 "use client";
 
-import type { SponsorData } from "@/types/common/sponsor";
-import { useEffect, useRef, useState } from "react";
+import type { SponsorData } from "@ink-battles/shared/types/common/sponsor";
+import { useEffect, useMemo, useRef } from "react";
+import useSWRInfinite from "swr/infinite";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,77 +25,70 @@ function SponsorCardSkeleton() {
 	);
 }
 
-function SponsorLoadingSkeleton() {
-	return (
-		<div className="space-y-8">
-			<div className="gap-8 grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1">
-				{Array.from({ length: 9 }).map((_, i) => (
-					<SponsorCardSkeleton key={i} />
-				))}
-			</div>
-		</div>
-	);
+interface SponsorListProps {
+	initialData: SponsorData;
 }
 
-export default function SponsorList() {
-	const [data, setData] = useState<SponsorData | null>(null);
-	const [currentPage, setCurrentPage] = useState(1);
-	const [loading, setLoading] = useState(false);
-	const [initialLoading, setInitialLoading] = useState(true);
+const EMPTY_SPONSOR_DATA: SponsorData = {
+	data: {
+		list: [],
+		total_page: 0,
+	},
+};
+
+export default function SponsorList({ initialData }: SponsorListProps) {
 	const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-	useEffect(() => {
-		const fetchData = async () => {
-			try {
-				const response = await createClientEden().api.v2.sponsors.get({
-					query: { page: 1 },
-				});
-				const newData = await unwrapEdenPayload<SponsorData>(response.data, response.error, { data: { list: [], total_page: 0 } });
-				setData(newData);
-				setCurrentPage(1);
-			} catch (error) {
-				console.error("Failed to fetch sponsors:", error);
-			} finally {
-				setInitialLoading(false);
+	const { data, isLoading, size, setSize } = useSWRInfinite(
+		(index, previousPageData) => {
+			if (previousPageData && previousPageData.data.list.length === 0) {
+				return null;
 			}
+
+			return ["sponsors", index + 1] as const;
+		},
+		async ([, page]) => {
+			const response = await createClientEden().api.v2.sponsors.get({
+				query: { page },
+			});
+			return unwrapEdenPayload<SponsorData>(response.data, response.error, EMPTY_SPONSOR_DATA);
+		},
+		{
+			fallbackData: [initialData],
+			revalidateFirstPage: false,
+			revalidateOnFocus: false,
+		},
+	);
+
+	const mergedData = useMemo(() => {
+		const pages = data?.length ? data : [initialData];
+		const firstPage = pages[0] ?? EMPTY_SPONSOR_DATA;
+
+		return {
+			data: {
+				total_page: firstPage.data.total_page,
+				list: pages.flatMap(page => page.data.list),
+			},
 		};
-		fetchData();
-	}, []);
+	}, [data, initialData]);
+
+	const currentPage = data?.length ?? 1;
+	const totalPages = mergedData.data.total_page;
+	const loading = Boolean(data && size > data.length);
 
 	const loadMoreData = async () => {
-		if (!data || loading)
+		if (loading || currentPage >= totalPages) {
 			return;
-
-		setLoading(true);
-		try {
-			const nextPage = currentPage + 1;
-			const response = await createClientEden().api.v2.sponsors.get({
-				query: { page: nextPage },
-			});
-			const newData = await unwrapEdenPayload<SponsorData>(response.data, response.error, { data: { list: [], total_page: 0 } });
-
-			setData(prev => prev && newData
-				? {
-						data: {
-							...prev.data,
-							list: [...prev.data.list, ...newData.data.list],
-						},
-					}
-				: newData);
-			setCurrentPage(nextPage);
-		} catch (error) {
-			console.error("Failed to load more sponsors:", error);
-		} finally {
-			setLoading(false);
 		}
+
+		await setSize(size + 1);
 	};
 
 	// 自动加载：滚动至底部哨兵时触发加载更多
 	useEffect(() => {
-		if (initialLoading)
+		if (isLoading)
 			return;
-		const total = data?.data.total_page ?? 0;
-		if (!sentinelRef.current || !data || currentPage >= total)
+		if (!sentinelRef.current || currentPage >= totalPages)
 			return;
 
 		const el = sentinelRef.current;
@@ -123,15 +117,10 @@ export default function SponsorList() {
 				clearTimeout(timer);
 			observer.disconnect();
 		};
-	}, [data, currentPage, loading, initialLoading]);
-
-	// 如果还在初始加载，显示骨架屏
-	if (initialLoading) {
-		return <SponsorLoadingSkeleton />;
-	}
+	}, [currentPage, isLoading, loading, totalPages]);
 
 	// 如果没有数据，显示空状态
-	if (!data || !data.data.list.length) {
+	if (!mergedData.data.list.length) {
 		return (
 			<div className="py-16 text-center">
 				<div className="text-6xl mb-4">💝</div>
@@ -142,15 +131,15 @@ export default function SponsorList() {
 	}
 
 	// 找到累计最多和最新的赞助者
-	const mostSponsor = data.data.list.reduce((max, cur) =>
-		Number.parseFloat(cur.all_sum_amount) > Number.parseFloat(max.all_sum_amount) ? cur : max, data.data.list[0]);
-	const latestSponsor = data.data.list.reduce((latest, cur) =>
-		cur.last_pay_time > latest.last_pay_time ? cur : latest, data.data.list[0]);
+	const mostSponsor = mergedData.data.list.reduce((max, cur) =>
+		Number.parseFloat(cur.all_sum_amount) > Number.parseFloat(max.all_sum_amount) ? cur : max, mergedData.data.list[0]);
+	const latestSponsor = mergedData.data.list.reduce((latest, cur) =>
+		cur.last_pay_time > latest.last_pay_time ? cur : latest, mergedData.data.list[0]);
 
 	return (
 		<div className="space-y-8">
 			<div className="gap-8 grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1">
-				{data.data.list.map((sponsor) => {
+				{mergedData.data.list.map((sponsor) => {
 					const isMost = sponsor.user.user_id === mostSponsor?.user.user_id;
 					const isLatest = sponsor.user.user_id === latestSponsor?.user.user_id;
 					return (
@@ -216,7 +205,7 @@ export default function SponsorList() {
 			<div ref={sentinelRef} className="h-1" />
 
 			{/* 加载更多按钮（兜底） */}
-			{currentPage < data.data.total_page && (
+			{currentPage < totalPages && (
 				<div className="py-6 text-center">
 					<Button
 						onClick={loadMoreData}

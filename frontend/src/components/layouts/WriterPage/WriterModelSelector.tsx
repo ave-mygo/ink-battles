@@ -1,6 +1,6 @@
 "use client";
 
-import type { GradingModelConfig } from "@/types/common/config";
+import type { GradingModelConfig } from "@ink-battles/shared/types/common/config";
 import { AlertTriangle, Brain, Clock, Crown, Globe, Lightbulb, Settings, Sparkles, Target, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

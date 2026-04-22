@@ -1,10 +1,12 @@
 "use client";
 
+import type { ApiResult } from "@ink-battles/shared/types/api";
+import type { HistoryPageResult, HistoryRecordResult } from "@ink-battles/shared/types/common/history";
+import type { DatabaseAnalysisRecord } from "@ink-battles/shared/types/database/analysis_requests";
+import type { HistorySortOption, HistoryVisibilityOption } from "./history-shared";
 import { createClientEden } from "@/utils/api/eden-client";
 import { normalizeEdenResult } from "@/utils/api/eden-response";
-
-export type HistorySortOption = "time_desc" | "time_asc" | "score_desc" | "score_asc";
-export type HistoryVisibilityOption = "all" | "public" | "private";
+import { mapHistoryData } from "./history-shared";
 
 const HISTORY_SORT_QUERY: Record<HistorySortOption, { sortBy: "time" | "score"; sortOrder: "asc" | "desc" }> = {
 	time_desc: { sortBy: "time", sortOrder: "desc" },
@@ -13,13 +15,7 @@ const HISTORY_SORT_QUERY: Record<HistorySortOption, { sortBy: "time" | "score"; 
 	score_asc: { sortBy: "score", sortOrder: "asc" },
 };
 
-const mapHistoryData = (data: any) => ({
-	records: data.records,
-	total: data.pagination?.total ?? data.total ?? 0,
-	page: data.pagination?.page ?? data.page ?? 1,
-	limit: data.pagination?.limit ?? data.limit ?? 10,
-	totalPages: data.pagination?.totalPages ?? data.totalPages ?? 1,
-});
+export type { HistoryPageData, HistorySortOption, HistoryVisibilityOption } from "./history-shared";
 
 /**
  * 将排序选项映射为历史记录接口可识别的查询参数。
@@ -27,30 +23,66 @@ const mapHistoryData = (data: any) => ({
 export const getHistorySortQuery = (sort: HistorySortOption = "time_desc") =>
 	HISTORY_SORT_QUERY[sort] ?? HISTORY_SORT_QUERY.time_desc;
 
+type HistoryPageDataResult = ApiResult<import("@ink-battles/shared/types/common/history").HistoryPageData>;
+type HistoryRecordDataResult = ApiResult<DatabaseAnalysisRecord>;
+
 export async function getUserAnalysisHistory(
 	page = 1,
 	limit = 10,
 	sort: HistorySortOption = "time_desc",
 	visibility: HistoryVisibilityOption = "all",
-) {
+): Promise<HistoryPageDataResult> {
 	const sortQuery = getHistorySortQuery(sort);
 	const edenResponse = await createClientEden().api.v2.analysis.history.get({
 		query: { page, limit, visibility, ...sortQuery },
 	});
-	const response = await normalizeEdenResult<any>(edenResponse.data, edenResponse.error, "加载历史记录失败");
-	return response.success ? { ...response, data: mapHistoryData(response.data) } : response;
+	const response = await normalizeEdenResult<HistoryPageResult>(edenResponse.data, edenResponse.error, "加载历史记录失败");
+	if (!response.success || !response.data) {
+		return {
+			success: false,
+			message: response.message,
+			error: response.error,
+		};
+	}
+
+	return {
+		...response,
+		data: mapHistoryData(response.data),
+	};
 }
 
-export async function getAnalysisRecordById(recordId: string) {
+export async function getAnalysisRecordById(recordId: string): Promise<HistoryRecordDataResult> {
 	const edenResponse = await createClientEden().api.v2.analysis.history({ id: recordId }).get();
-	const response = await normalizeEdenResult<any>(edenResponse.data, edenResponse.error, "加载记录失败");
-	return response.success ? { ...response, data: response.data?.record } : response;
+	const response = await normalizeEdenResult<HistoryRecordResult>(edenResponse.data, edenResponse.error, "加载记录失败");
+	if (!response.success || !response.data) {
+		return {
+			success: false,
+			message: response.message,
+			error: response.error,
+		};
+	}
+
+	return {
+		...response,
+		data: response.data.record,
+	};
 }
 
-export async function getPublicAnalysisRecord(recordId: string) {
+export async function getPublicAnalysisRecord(recordId: string): Promise<HistoryRecordDataResult> {
 	const edenResponse = await createClientEden().api.v2.analysis.share({ id: recordId }).get();
-	const response = await normalizeEdenResult<any>(edenResponse.data, edenResponse.error, "加载分享记录失败");
-	return response.success ? { ...response, data: response.data?.record } : response;
+	const response = await normalizeEdenResult<HistoryRecordResult>(edenResponse.data, edenResponse.error, "加载分享记录失败");
+	if (!response.success || !response.data) {
+		return {
+			success: false,
+			message: response.message,
+			error: response.error,
+		};
+	}
+
+	return {
+		...response,
+		data: response.data.record,
+	};
 }
 
 export async function getViewableAnalysisRecord(taskId: string) {

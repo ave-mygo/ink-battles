@@ -1,7 +1,7 @@
 "use client";
 
-import type { ScorePercentileResult } from "@/types/ai";
-import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
+import type { ScorePercentileResult } from "@ink-battles/shared/types/ai";
+import type { DatabaseAnalysisRecord } from "@ink-battles/shared/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Check, Copy, Globe, Lock } from "lucide-react";

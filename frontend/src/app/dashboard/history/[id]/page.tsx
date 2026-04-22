@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { HistoryRecordResult } from "@ink-battles/shared/types/common/history";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -24,7 +25,7 @@ export default async function HistoryDetailPage({ params }: HistoryDetailPagePro
 	const { id } = await params;
 	const api = await createServerEden();
 	const response = await api.api.v2.analysis.history({ id }).get();
-	const result = await normalizeEdenResult<any>(response.data, response.error, "记录不存在");
+	const result = await normalizeEdenResult<HistoryRecordResult>(response.data, response.error, "记录不存在");
 
 	if (!result.success || !result.data?.record) {
 		notFound();

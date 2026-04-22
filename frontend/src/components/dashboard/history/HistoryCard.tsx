@@ -1,12 +1,12 @@
 "use client";
 
-import type { AnalysisResult } from "@/types/ai";
-import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
+import type { AnalysisResult } from "@ink-battles/shared/types/ai";
+import type { DatabaseAnalysisRecord } from "@ink-battles/shared/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Bot, Calendar, Clock, Copy, ExternalLink, Globe, Lock, Search, Settings2, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
 	AlertDialog,
@@ -38,8 +38,11 @@ interface HistoryCardProps {
 export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardProps) {
 	const isPublic = record.settings?.public || false;
 	const recordId = record._id || "";
-	const timestamp = new Date(record.timestamp);
-	const timeAgo = formatDistanceToNow(timestamp, { addSuffix: true, locale: zhCN });
+	const { timestamp, timeAgo } = useMemo(() => {
+		const ts = new Date(record.timestamp);
+		const ta = formatDistanceToNow(ts, { addSuffix: true, locale: zhCN });
+		return { timestamp: ts, timeAgo: ta };
+	}, [record.timestamp]);
 	const [isToggling, setIsToggling] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { AuthUserInfoSafe, UserStore } from "@/types/users";
+import type { AuthUserInfoSafe, UserStore } from "@ink-battles/shared/types/users";
 import { clearAuthStore, syncAuthStoreAfterLogin } from "@/store";
 import { createClientEden } from "@/utils/api/eden-client";
 import { normalizeEdenResult } from "@/utils/api/eden-response";

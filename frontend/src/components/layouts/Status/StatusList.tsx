@@ -1,4 +1,4 @@
-import type { StatusListProps } from "@/types/common/status";
+import type { StatusListProps } from "@ink-battles/shared/types/common/status";
 import { format } from "date-fns";
 import { AlertCircle, CheckCircle, Database } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
