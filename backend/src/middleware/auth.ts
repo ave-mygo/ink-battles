@@ -1,4 +1,4 @@
-import type { AuthUser } from "../types";
+import type { AuthUser } from "@ink-battles/shared/types/users/user";
 import { COLLECTIONS, findOne } from "../db/mongo";
 import { verifyAuthToken } from "../utils/crypto";
 

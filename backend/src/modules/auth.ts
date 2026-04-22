@@ -1,4 +1,4 @@
-import type { AuthUser } from "../types";
+import type { AuthUser } from "@ink-battles/shared/types/users/user";
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { Elysia, t } from "elysia";

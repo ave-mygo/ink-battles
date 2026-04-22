@@ -1,4 +1,4 @@
-import type { AuthUser } from "../types";
+import type { AuthUser } from "@ink-battles/shared/types/users/user";
 import crypto from "node:crypto";
 import { Elysia } from "elysia";
 import { getConfig } from "../config";

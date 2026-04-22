@@ -1,4 +1,5 @@
-import type { AuthUser, UserBilling } from "../types";
+import type { UserBilling } from "@ink-battles/shared/types/database/user_billing";
+import type { AuthUser } from "@ink-battles/shared/types/users/user";
 import { COLLECTIONS, count, findMany, findOne, findOneAndUpdate, insertOne, updateOne } from "./mongo";
 
 export const getUserByUid = (uid: number) => findOne<AuthUser>(COLLECTIONS.users, { uid });

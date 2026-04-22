@@ -1,4 +1,4 @@
-import type { AuthUser } from "../types";
+import type { AuthUser } from "@ink-battles/shared/types/users/user";
 import { Elysia, t } from "elysia";
 import { COLLECTIONS, deleteOne, findMany, findOne, isObjectId, objectId, updateOne } from "../db/mongo";
 import { countAnalysisRecords } from "../db/repositories";

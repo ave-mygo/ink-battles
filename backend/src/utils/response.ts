@@ -1,4 +1,4 @@
-import type { SafeUser } from "../types";
+import type { SafeUser } from "@ink-battles/shared/types/users/user";
 
 export const ok = <T>(data?: T, message?: string) => ({ success: true, data, message });
 export const fail = (message: string, status = 400) => Response.json({ success: false, message }, { status });
