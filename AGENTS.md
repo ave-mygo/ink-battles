@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-**Ink Battles** 是一个基于 AI 技术的专业文本分析工具，采用 **Monorepo** 架构，包含前端（Next.js 16）和后端（Node.js）两个独立服务。
+**Ink Battles** 是一个基于 AI 技术的专业文本分析工具，采用 **Monorepo** 架构，包含前端（Next.js 16）和后端（Elysia）两个独立服务。
 
 ### 技术栈
 
@@ -10,22 +10,24 @@
 
 - Next.js 16.2.3 (App Router) + React 19.2.5
 - TypeScript (严格模式)
-- UnoCSS + TailwindCSS v4
+- Tailwind CSS v4 + UnoCSS
 - Radix UI + shadcn/ui
 - Zustand (状态管理)
 
 **后端 (Backend)**
 
-- Node.js + TypeScript
-- Express.js
+- Elysia + Bun 运行时
+- TypeScript (严格模式)
 - MongoDB (数据库)
-- OpenAI API / Google Gemini (AI 服务)
+- OpenAI API (AI 服务)
 
 **开发工具**
 
-- pnpm (包管理器)
-- ESLint + Prettier
+- pnpm 10+ (包管理器)
+- ESLint + Prettier (代码质量和格式)
 - Concurrently (并发运行前后端)
+- Bun 1.0+ (后端运行时)
+- TypeScript 6.0+ (类型检查)
 
 ---
 
@@ -33,73 +35,164 @@
 
 ```
 ink_battles/
-├── src/                    # 前端源码 (Next.js)
-│   ├── app/                # App Router 路由
-│   │   ├── api/            # API Routes (前端 API 层)
-│   │   ├── dashboard/      # 用户仪表盘
-│   │   ├── analysis/       # 分析页面
-│   │   ├── oauth/          # OAuth 认证
-│   │   └── ...
-│   ├── components/         # React 组件
-│   │   ├── ui/             # ShadCN UI 基础组件
-│   │   ├── common/         # 通用组件
-│   │   ├── layouts/        # 页面级布局组件
-│   │   ├── dashboard/      # 仪表盘组件
-│   │   └── analysis/       # 分析相关组件
-│   ├── utils/              # 前端工具函数
-│   │   ├── auth/           # 认证工具 (client.ts/server.ts)
-│   │   ├── api/            # API 调用封装
-│   │   ├── billing/        # 计费逻辑
-│   │   └── dashboard/      # 仪表盘工具
-│   ├── lib/                # 核心库函数
-│   ├── types/              # TypeScript 类型定义
-│   ├── store/              # Zustand 状态管理
-│   └── hooks/              # 自定义 React Hooks
-│
-├── backend/                # 后端源码 (Node.js)
+├── frontend/              # Next.js 16 前端应用 (App Router)
 │   ├── src/
-│   │   ├── app.ts          # Express 应用入口
-│   │   ├── index.ts        # 服务器启动文件
-│   │   ├── config.ts       # 配置加载器
-│   │   ├── modules/        # 业务模块 (路由 + 控制器)
-│   │   ├── integrations/   # 第三方集成 (AI/验证器)
-│   │   ├── db/             # 数据库操作 (MongoDB)
-│   │   ├── middleware/     # Express 中间件
-│   │   ├── utils/          # 后端工具函数
-│   │   └── constants/      # 常量定义
-│   └── package.json        # 后端依赖
-│
-├── shared/                 # 前后端共享代码 (可选)
-├── public/                 # 静态资源
-├── config.toml             # 全局配置文件
-├── pnpm-workspace.yaml     # pnpm workspace 配置
-├── CLAUDE.md               # 开发规范文档
-└── package.json            # 根 package.json
+│   │   ├── app/           # 页面路由与布局
+│   │   │   ├── analysis/  # 分析页面
+│   │   │   ├── dashboard/ # 用户仪表盘
+│   │   │   ├── signin/    # 登录页面
+│   │   │   ├── oauth/     # OAuth 回调处理
+│   │   │   └── api/       # API Routes (前端服务端点)
+│   │   ├── components/    # React 组件库
+│   │   │   ├── ui/        # ShadCN UI 基础组件
+│   │   │   ├── common/    # 通用组件
+│   │   │   ├── layouts/   # 页面级布局组件
+│   │   │   ├── dashboard/ # 仪表盘业务组件
+│   │   │   ├── analysis/  # 分析相关业务组件
+│   │   │   └── marketing/ # 营销页面组件
+│   │   ├── lib/           # 核心库函数
+│   │   │   ├── db.ts      # 数据库统一接口
+│   │   │   └── constants.ts # 全局常量
+│   │   ├── utils/         # 业务逻辑工具（按功能域组织）
+│   │   │   ├── auth/      # 认证工具 (client/server/common)
+│   │   │   ├── api/       # API 调用工具
+│   │   │   ├── analysis/  # 分析工具
+│   │   │   ├── dashboard/ # 仪表盘工具
+│   │   │   ├── billing/   # 计费相关工具
+│   │   │   ├── common/    # 通用工具函数
+│   │   │   └── status/    # 状态查询工具
+│   │   ├── types/         # TypeScript 类型定义
+│   │   │   ├── auth/      # 认证相关类型
+│   │   │   ├── database/  # 数据库模型类型
+│   │   │   ├── ai/        # AI 服务类型
+│   │   │   ├── users/     # 用户类型
+│   │   │   └── common/    # 通用类型
+│   │   ├── store/         # Zustand 状态管理
+│   │   ├── hooks/         # 自定义 React Hooks
+│   │   └── public/        # 静态资源
+│   ├── package.json
+│   └── tsconfig.json
+├── backend/               # Elysia 后端服务
+│   ├── src/
+│   │   ├── index.ts       # 应用入口与服务器启动
+│   │   ├── modules/       # 业务模块（核心业务逻辑）
+│   │   │   ├── auth.ts    # 认证模块
+│   │   │   ├── analysis.ts # 分析模块
+│   │   │   ├── analysis-worker.ts # 分析工作流程
+│   │   │   ├── dashboard.ts # 仪表盘模块
+│   │   │   ├── billing.ts # 计费模块
+│   │   │   ├── accounts.ts # 账户模块
+│   │   │   ├── oauth.ts   # OAuth 模块
+│   │   │   └── ...        # 其他模块
+│   │   ├── integrations/  # 第三方服务集成
+│   │   │   ├── ai.ts      # OpenAI/AI 服务
+│   │   │   ├── afdian.ts  # 爱发电支付集成
+│   │   │   ├── mail.ts    # 邮件服务
+│   │   │   ├── validator.ts # 数据验证器
+│   │   │   └── external-status.ts # 外部服务状态监控
+│   │   ├── middleware/    # Elysia 中间件
+│   │   ├── db/            # 数据库层
+│   │   ├── constants/     # 常量定义
+│   │   │   ├── prompts/   # AI 系统提示词
+│   │   │   └── other/     # 其他常量
+│   │   └── utils/         # 工具函数
+│   ├── package.json
+│   └── tsconfig.json
+├── shared/                # 前后端共享代码
+│   ├── constants/         # 共享常量
+│   └── package.json
+├── scripts/               # 构建与工具脚本
+├── config.toml            # 应用配置文件（核心配置）
+├── config.example.toml    # 配置文件模板
+├── docker-compose.yml     # Docker 编排
+├── package.json           # Monorepo 根配置
+└── pnpm-workspace.yaml    # pnpm workspace 配置
 ```
 
 ### 关键目录说明
 
-**前端 (`src/`)**
+**前端 (`frontend/src/`)**
 
-- `app/` - Next.js App Router，页面仅作编排者
-- `components/` - 按功能域分类的 React 组件
-- `utils/` - 按功能域分类的工具函数（含 client/server 分离）
-- `lib/` - 核心基础设施（数据库、配置、常量）
-- `types/` - 按域分类的 TypeScript 类型
+- `app/` - Next.js App Router，页面仅作编排者角色
+- `components/` - 按功能域分类的 React 组件库
+- `utils/` - 按功能域分类的工具函数（含 client/server/common 分离）
+- `lib/` - 核心基础设施（数据库接口、配置、常量）
+- `types/` - 按域分类的 TypeScript 类型定义
+- `store/` - Zustand 全局状态管理
+- `hooks/` - 自定义 React Hooks
 
 **后端 (`backend/src/`)**
 
-- `modules/` - RESTful API 模块（路由 + 控制器）
-- `integrations/` - AI 模型集成、验证器等
+- `modules/` - 业务模块（包含业务逻辑、数据处理）
+- `integrations/` - 第三方 API 集成（AI 服务、支付、邮件等）
 - `db/` - MongoDB 数据库操作封装
-- `middleware/` - 认证、CORS、错误处理等中间件
+- `middleware/` - Elysia 中间件（认证、错误处理等）
+- `constants/` - 系统常量（特别是 AI 提示词）
 - `utils/` - 后端专用工具函数
 
 ---
 
-## 2. 前端开发规范 (Next.js 16)
+## 2. 后端开发规范 (Elysia)
 
-### 2.1 App Router 架构
+### 2.1 项目结构
+
+**modules/** - 核心业务模块
+- 每个模块对应一个业务功能（auth, analysis, dashboard 等）
+- 模块内包含业务逻辑、数据处理和控制器
+- 模块间通过明确的接口进行调用
+
+**integrations/** - 第三方服务集成
+- `ai.ts` - OpenAI API 调用封装
+- `afdian.ts` - 爱发电支付系统集成
+- `mail.ts` - 邮件服务
+- `validator.ts` - 数据验证和格式检查
+- `external-status.ts` - 外部服务状态监控
+
+**db/** - 数据库层
+- MongoDB 连接和操作封装
+- 统一的 CRUD 接口
+- 数据模型定义
+
+**middleware/** - Elysia 中间件
+- 认证中间件（JWT 验证）
+- 错误处理中间件
+- 日志中间件
+- CORS 中间件
+
+**constants/** - 系统常量
+- `prompts/` - AI 系统提示词和用户提示词配置
+- `other/` - 其他常量定义
+
+### 2.2 代码规范
+
+- **TypeScript 严格模式：** 所有代码必须启用 TypeScript 严格模式
+- **函数返回类型：** 必须明确标注所有函数的返回类型，严禁使用 `any`
+- **错误处理：** 统一的错误响应格式，包含 code、message、data
+- **数据验证：** 使用 validator 集成进行输入数据验证
+- **异步处理：** 统一使用 `async/await`，避免使用 Promise 链
+
+### 2.3 模块开发流程
+
+1. **定义接口** - 在模块顶部定义输入/输出类型
+2. **实现业务逻辑** - 核心业务函数
+3. **错误处理** - 统一的 try-catch 和错误响应
+4. **数据库操作** - 通过 db 层进行数据操作
+5. **第三方集成** - 通过 integrations 进行外部服务调用
+6. **导出路由** - 导出 Elysia 路由定义
+
+### 2.4 最佳实践
+
+- **单一职责：** 每个模块只负责一个业务域
+- **复用性：** 通用逻辑提取到 utils 或 integrations
+- **性能：** 合理使用数据库查询优化和缓存
+- **安全性：** 验证所有用户输入，防止注入攻击
+- **可维护性：** 清晰的代码结构，充分的代码注释
+
+---
+
+## 3. 前端开发规范 (Next.js 16)
+
+### 3.1 App Router 架构
 
 - **页面角色明确：** `page.tsx` **仅作为"编排者" (Orchestrator)**
   - 职责：1. 获取数据；2. 定义元数据；3. 导入并组装组件
@@ -108,10 +201,10 @@ ink_battles/
 - **路由组：** 使用 `()` 组织路由，实现逻辑分组而不影响 URL
 - **复杂布局：** 通过并行路由/拦截路由实现模态框等高级 UI
 
-### 2.2 组件分类组织
+### 3.2 组件分类组织
 
 ```
-src/components/
+frontend/src/components/
 ├── ui/             # ShadCN UI 基础组件 (Button, Card, Dialog...)
 ├── common/         # 通用组件 (Header, Footer, ThemeToggle...)
 ├── layouts/        # 页面级布局组件 (WriterPage, DashboardLayout...)
@@ -127,7 +220,7 @@ src/components/
 - **组合模式：** 优先使用 `children` 或 Slot 模式组合组件
 - **单一职责：** 当组件逻辑复杂时，立即拆分为子组件或 Hooks
 
-### 2.3 工具函数组织 (`src/utils/`)
+### 3.3 工具函数组织 (`src/utils/`)
 
 **按功能域分类，客户端/服务器分离：**
 
@@ -155,7 +248,7 @@ src/utils/
 - ✅ 优先：`import { functionName } from "@/utils/auth"`
 - ❌ 避免：`import { functionName } from "@/utils/auth/client"`
 
-### 2.4 核心库函数 (`src/lib/`)
+### 3.4 核心库函数 (`src/lib/`)
 
 **仅用于核心基础设施：**
 
@@ -168,7 +261,7 @@ src/utils/
 - `lib/` - 框架基础设施
 - `utils/` - 业务功能域工具
 
-### 2.5 类型定义 (`src/types/`)
+### 3.5 类型定义 (`src/types/`)
 
 ```
 src/types/
@@ -179,7 +272,7 @@ src/types/
 └── ai/             # AI 相关类型
 ```
 
-### 2. 代码风格与TypeScript
+### 3.6 代码风格与TypeScript
 
 - **TypeScript 强制：** 始终使用 TypeScript，并启用严格模式 (`strict: true`)。明确定义类型，**严禁使用 `any`**，优先使用 `unknown` 或更具体的类型。
 - **组件类型：** 优先使用 React 19 函数式组件、Hooks 和 Next.js 16 服务器组件。避免使用 `React.FC`。
@@ -195,7 +288,7 @@ src/types/
 - **缩进风格：** 强制使用 2 个空格进行缩进，保持全局一致性。
 - **工具链：** 强制使用 ESLint 和 Prettier 进行代码风格和质量检查，并在提交前自动格式化。
 
-### 3. 注释与代码组织
+### 3.7 注释与代码组织
 
 - **函数注释：** 每个函数都必须有明确的 JSDoc 风格注释，说明其功能、参数和返回值。
 - **逻辑注释：** 复杂或非直观的逻辑部分需要添加适当的行内注释，解释代码意图和实现方式。
@@ -205,7 +298,7 @@ src/types/
 - **简洁性：** 循环和条件语句保持逻辑简洁，避免嵌套过深（建议不超过三层）。
 - **单一职责原则与拆分：** 当组件的逻辑变得复杂或功能过多时，应立即将其拆分为更小、职责单一的子组件或Hooks，以增强可读性和复用性。
 
-### 4. 导入规范
+### 5. 导入规范
 
 - **导入顺序：**
   1.  Node.js 内置模块 (例如 `path`, `fs`)。
@@ -223,7 +316,7 @@ src/types/
 - **禁止通配符导入：** 严禁使用 `import * as Library from "library"`，除非特殊场景（如导入大型库的所有内容）。
 - **await import：** 尽量避免使用动态导入 (`await import(...)`)，除非用于代码分割或按需加载脚本。
 
-### 5. 服务器组件 (Server Components)
+### 6. 服务器组件 (Server Components)
 
 - **角色定位：** **编排者 (Orchestrator)**。所有 `app/` 目录下的组件默认都是服务器组件。
 - **瘦组件原则 (Thin Components)：** **严禁**在服务器组件中编写复杂的逻辑。它们的主要职责是：1. 调用 Server Actions/Utils 获取数据；2. 将数据传递给子组件。
@@ -235,7 +328,7 @@ src/types/
 - **SEO 优化：** 在 `layout.tsx` 或 `page.tsx` 中使用 `generateMetadata` 进行静态或动态的 SEO 元数据配置。
 - **完全动态：** 对于需要完全动态、不缓存的渲染，在 Server Actions 内部使用 `unstable_noStore()`。
 
-### 6. 客户端组件 (Client Components)
+### 7. 客户端组件 (Client Components)
 
 - **明确标记：** 必须在文件顶部明确标记 `"use client"`。
 - **职责：** **交互叶子节点**。仅用于包含用户交互、状态管理和浏览器 API 等客户端专属逻辑。**尽量将客户端组件推向组件树的末端**，保持父组件为服务器组件。
@@ -244,7 +337,7 @@ src/types/
 - **数据交互：** 所有需要数据获取或变更的客户端交互，都必须通过调用 Server Actions 来实现。
 - **限制：** 仅在真正需要交互式、有状态的部分使用客户端组件，避免过度使用，最小化客户端包体积。
 
-### 7. 数据获取与服务器 Actions (核心)
+### 8. 数据获取与服务器 Actions (核心)
 
 - **服务器 Actions 定义：** 必须使用 `"use server"` 指令在函数顶部定义服务器 Actions，或标记整个文件为 `"use server"`。
 - **Server Actions 优先：** **所有数据获取 (reads)、数据变更 (mutations)、表单提交以及任何需要与后端交互的逻辑，都应优先且强制使用服务器 Actions 实现**。这是 Next.js 16 的核心范式，旨在简化数据流和提高安全性。
@@ -261,14 +354,14 @@ src/types/
   - 在 Server Actions 内部，可以使用 `React.use` Hook 读取 Promise 或 Context。
 - **Serverless 环境：** 最小化服务器 Actions 中的外部请求，优化冷启动时间。
 
-### 8. 中间件与Edge Runtime
+### 9. 中间件与Edge Runtime
 
 - **中间件：** 使用 `middleware.ts` 进行路由拦截、认证、重定向、重写和国际化处理。
 - **Edge Runtime：** 优先选择 Edge Runtime (`export const runtime = 'edge'`) 以获得更快的启动时间和更低的延迟，适用于轻量级、I/O 密集型任务。
 - **处理：** 在中间件中高效处理 cookies、headers 和动态重写。
 - **注意：** 留意 Edge Runtime 的约束，避免使用 Node.js 特有的 API。
 
-### 9. 样式与资产
+### 10. 样式与资产
 
 - **主要样式方案：** **优先且主要使用 Tailwind CSS 工具类** 进行一致性样式设计。
 - **自定义 CSS：** 仅在特殊、复杂或 Tailwind 无法直接实现的场景下，才使用自定义 CSS（例如 CSS Modules）。
@@ -283,7 +376,7 @@ src/types/
   - 其样式完全依赖 Tailwind CSS，确保正确配置并清除未使用的 CSS。
   - 使用 `npx shadcn@latest add <component>` 命令添加组件。
 
-### 10. UI/UX 与 ShadCN UI 风格推荐 (核心)
+### 11. UI/UX 与 ShadCN UI 风格推荐 (核心)
 
 - **ShadCN UI 体系：** 严格遵循 `shadcn/ui` 组件体系进行构建。所有新功能界面都应优先复用或组合 `shadcn/ui` 提供的基础组件（如 `Card`, `Button`, `Switch`, `Progress` 等），**避免从零开始造轮子**，以确保整个应用在视觉风格、交互行为和代码结构上保持高度一致性和可维护性。
 - **原子化构建与组合 (Composition)：**
@@ -307,7 +400,7 @@ src/types/
 - **样式表管理：** 控制加载顺序，确保关键样式优先加载，并利用构建工具自动去重。
 - **脚本加载：** 使用 `script async` 后台加载非关键脚本，利用构建工具自动去重，确保关键资源优先加载。
 
-### 11. 性能优化
+### 12. 性能优化
 
 - **渲染优化：** 使用流式传输 (Streaming) 和 Suspense 加快初始渲染时间。
 - **代码分割：** 在客户端组件中动态导入大型依赖 (`React.lazy` 和 `next/dynamic`)，减少初始加载包体积。
@@ -316,7 +409,7 @@ src/types/
 - **客户端包体积：** 避免阻塞主线程，利用代码分割或将逻辑迁移到服务器组件。
 - **图像/字体优化：** 使用 Next.js 内置的 `<Image />` 和 `@next/font` 进行优化。
 
-### 12. 工具函数组织架构 (`@/utils/`)
+### 13. 工具函数组织架构 (`@/utils/`)
 
 - **功能域优先原则：** 所有工具函数按业务功能域组织在 `@/utils/` 目录下，而非按运行环境分离。
 - **标准目录结构：**
@@ -345,14 +438,14 @@ src/types/
   - `@/utils/` - 业务功能域的工具函数
   - `@/lib/` - 框架基础设施（数据库、配置、常量等）
 
-### 13. SEO
+### 14. SEO
 
 - **元数据管理：** 统一使用 `generateMetadata` 函数在 `layout.tsx` 或 `page.tsx` 中进行 SEO 元数据管理，包括 `title`、`description`、`og:image` 等。
 - **React 19 Head API：** 结合 React 19 的新特性，更灵活地管理 `<head>` 中的 `link` 和 `meta` 标签。
 - **SSR/SSG 优势：** 充分利用 Next.js 的 SSR/SSG 能力，确保搜索引擎能抓取到完整的页面内容。
 - **语义化 HTML：** 使用语义化 HTML 结构，提高内容可理解性。
 
-### 14. 部署与开发设置
+### 15. 部署与开发设置
 
 - **部署平台：** 优先考虑 Vercel 进行部署，或自托管 (Node/Docker)。
 - **测试：** 彻底测试 SSR 和静态输出，确保在生产环境下的表现一致。
@@ -361,14 +454,14 @@ src/types/
 - **工具：** 强制使用 TypeScript、ESLint、Prettier。
 - **Monorepo：** 对于大型项目，考虑使用 Pnpm workspaces 或 Turborepo 进行 Monorepo 管理。
 
-### 15. 测试与Linting
+### 16. 测试与Linting
 
 - **Linting：** 使用 `next lint` (ESLint) 并紧密集成 Prettier，确保代码质量和风格一致性。
 - **测试框架：** 优先选择 Jest 结合 React Testing Library 进行单元和集成测试，或 Cypress 进行端到端测试。
 - **文件位置：** 测试文件应靠近相关组件或模块，遵循 `*.test.tsx` 或 `*.spec.tsx` 命名约定。
 - **覆盖率：** 争取达到高代码覆盖率，特别是核心业务逻辑。
 
-### 16. 最佳实践 (Dos & Don'ts)
+### 17. 最佳实践 (Dos & Don'ts)
 
 - **Do：**
   - 在 `app` 目录组织路由和组件，遵循共置原则。

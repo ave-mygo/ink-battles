@@ -3,6 +3,16 @@
 import { createClientEden } from "@/utils/api/eden-client";
 import { normalizeEdenResult } from "@/utils/api/eden-response";
 
+export type HistorySortOption = "time_desc" | "time_asc" | "score_desc" | "score_asc";
+export type HistoryVisibilityOption = "all" | "public" | "private";
+
+const HISTORY_SORT_QUERY: Record<HistorySortOption, { sortBy: "time" | "score"; sortOrder: "asc" | "desc" }> = {
+	time_desc: { sortBy: "time", sortOrder: "desc" },
+	time_asc: { sortBy: "time", sortOrder: "asc" },
+	score_desc: { sortBy: "score", sortOrder: "desc" },
+	score_asc: { sortBy: "score", sortOrder: "asc" },
+};
+
 const mapHistoryData = (data: any) => ({
 	records: data.records,
 	total: data.pagination?.total ?? data.total ?? 0,
@@ -11,9 +21,21 @@ const mapHistoryData = (data: any) => ({
 	totalPages: data.pagination?.totalPages ?? data.totalPages ?? 1,
 });
 
-export async function getUserAnalysisHistory(page = 1, limit = 10) {
+/**
+ * 将排序选项映射为历史记录接口可识别的查询参数。
+ */
+export const getHistorySortQuery = (sort: HistorySortOption = "time_desc") =>
+	HISTORY_SORT_QUERY[sort] ?? HISTORY_SORT_QUERY.time_desc;
+
+export async function getUserAnalysisHistory(
+	page = 1,
+	limit = 10,
+	sort: HistorySortOption = "time_desc",
+	visibility: HistoryVisibilityOption = "all",
+) {
+	const sortQuery = getHistorySortQuery(sort);
 	const edenResponse = await createClientEden().api.v2.analysis.history.get({
-		query: { page, limit },
+		query: { page, limit, visibility, ...sortQuery },
 	});
 	const response = await normalizeEdenResult<any>(edenResponse.data, edenResponse.error, "加载历史记录失败");
 	return response.success ? { ...response, data: mapHistoryData(response.data) } : response;

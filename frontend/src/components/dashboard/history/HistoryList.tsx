@@ -2,12 +2,34 @@
 
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { HistorySortOption, HistoryVisibilityOption } from "@/utils/dashboard/history";
 import { deleteAnalysisRecord, getUserAnalysisHistory, toggleRecordPublic } from "@/utils/dashboard/history";
 import { HistoryCard } from "./HistoryCard";
+
+const HISTORY_SORT_LABELS: Record<HistorySortOption, string> = {
+	time_desc: "按时间：最新优先",
+	time_asc: "按时间：最早优先",
+	score_desc: "按总分：最高优先",
+	score_asc: "按总分：最低优先",
+};
+
+const HISTORY_VISIBILITY_LABELS: Record<HistoryVisibilityOption, string> = {
+	all: "全部记录",
+	public: "仅已分享",
+	private: "仅未分享",
+};
 
 interface HistoryListProps {
 	initialData?: {
@@ -17,6 +39,8 @@ interface HistoryListProps {
 		limit: number;
 		totalPages: number;
 	};
+	initialSort?: HistorySortOption;
+	initialVisibility?: HistoryVisibilityOption;
 }
 
 /**
@@ -69,13 +93,28 @@ function HistoryCardSkeleton() {
  * 历史记录列表组件
  * 支持分页、公开状态切换和删除，带骨架屏加载状态
  */
-export function HistoryList({ initialData }: HistoryListProps) {
+export function HistoryList({
+	initialData,
+	initialSort = "time_desc",
+	initialVisibility = "all",
+}: HistoryListProps) {
 	const [data, setData] = useState(initialData);
+	const [sort, setSort] = useState<HistorySortOption>(initialSort);
+	const [visibility, setVisibility] = useState<HistoryVisibilityOption>(initialVisibility);
 	const [isLoading, setIsLoading] = useState(false);
+	const [pageInput, setPageInput] = useState(() => String(initialData?.page ?? 1));
 	const listRef = useRef<HTMLDivElement>(null);
 
+	useEffect(() => {
+		setPageInput(String(data?.page ?? 1));
+	}, [data?.page]);
+
 	/** 加载指定页码的数据 */
-	const loadPage = useCallback(async (newPage: number) => {
+	const loadPage = useCallback(async (
+		newPage: number,
+		nextSort: HistorySortOption = sort,
+		nextVisibility: HistoryVisibilityOption = visibility,
+	) => {
 		if (!data)
 			return;
 		setIsLoading(true);
@@ -84,7 +123,7 @@ export function HistoryList({ initialData }: HistoryListProps) {
 		listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 		try {
-			const result = await getUserAnalysisHistory(newPage, data.limit);
+			const result = await getUserAnalysisHistory(newPage, data.limit, nextSort, nextVisibility);
 			if (result.success && result.data) {
 				setData(result.data);
 			} else {
@@ -100,7 +139,52 @@ export function HistoryList({ initialData }: HistoryListProps) {
 		} finally {
 			setIsLoading(false);
 		}
-	}, [data]);
+	}, [data, sort, visibility]);
+
+	/** 切换排序方式 */
+	const handleSortChange = useCallback(async (nextSort: HistorySortOption) => {
+		if (!data || nextSort === sort)
+			return;
+		setSort(nextSort);
+		await loadPage(1, nextSort, visibility);
+	}, [data, loadPage, sort, visibility]);
+
+	/** 切换分享筛选 */
+	const handleVisibilityChange = useCallback(async (nextVisibility: HistoryVisibilityOption) => {
+		if (!data || nextVisibility === visibility)
+			return;
+		setVisibility(nextVisibility);
+		await loadPage(1, sort, nextVisibility);
+	}, [data, loadPage, sort, visibility]);
+
+	/** 跳转到指定页码 */
+	const handleJumpToPage = useCallback(async () => {
+		if (!data)
+			return;
+
+		const targetPage = Number.parseInt(pageInput, 10);
+		if (!Number.isInteger(targetPage)) {
+			toast.error("页码无效", {
+				description: "请输入有效的页码数字",
+			});
+			setPageInput(String(data.page));
+			return;
+		}
+
+		const normalizedPage = Math.min(Math.max(targetPage, 1), data.totalPages);
+		if (normalizedPage !== targetPage) {
+			toast.info("页码已自动调整", {
+				description: `已跳转到第 ${normalizedPage} 页`,
+			});
+		}
+
+		if (normalizedPage === data.page) {
+			setPageInput(String(normalizedPage));
+			return;
+		}
+
+		await loadPage(normalizedPage, sort, visibility);
+	}, [data, loadPage, pageInput, sort, visibility]);
 
 	/** 切换记录公开状态 */
 	const handleTogglePublic = useCallback(async (recordId: string, isPublic: boolean) => {
@@ -166,6 +250,34 @@ export function HistoryList({ initialData }: HistoryListProps) {
 
 	return (
 		<div ref={listRef} className="space-y-6">
+			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+				<Select value={visibility} onValueChange={(value) => { void handleVisibilityChange(value as HistoryVisibilityOption); }}>
+					<SelectTrigger className="w-full bg-white/80 sm:w-[180px] dark:bg-slate-900/80">
+						<SelectValue placeholder="选择分享状态" />
+					</SelectTrigger>
+					<SelectContent>
+						{Object.entries(HISTORY_VISIBILITY_LABELS).map(([value, label]) => (
+							<SelectItem key={value} value={value}>
+								{label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+
+				<Select value={sort} onValueChange={(value) => { void handleSortChange(value as HistorySortOption); }}>
+					<SelectTrigger className="w-full bg-white/80 sm:w-[220px] dark:bg-slate-900/80">
+						<SelectValue placeholder="选择排序方式" />
+					</SelectTrigger>
+					<SelectContent>
+						{Object.entries(HISTORY_SORT_LABELS).map(([value, label]) => (
+							<SelectItem key={value} value={value}>
+								{label}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
+			</div>
+
 			{/* 记录列表 / 骨架屏 */}
 			<div className="gap-6 grid md:grid-cols-2">
 				{isLoading
@@ -184,7 +296,7 @@ export function HistoryList({ initialData }: HistoryListProps) {
 
 			{/* 分页控件 */}
 			{data.totalPages > 1 && (
-				<div className="pt-4 flex items-center justify-between">
+				<div className="pt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 					<p className="text-sm text-slate-600 dark:text-slate-400">
 						{isLoading
 							? (
@@ -212,11 +324,39 @@ export function HistoryList({ initialData }: HistoryListProps) {
 								)}
 					</p>
 
-					<div className="flex gap-2">
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+						<div className="flex gap-2 items-center">
+							<Input
+								type="number"
+								min={1}
+								max={data.totalPages}
+								value={pageInput}
+								onChange={event => setPageInput(event.target.value)}
+								onKeyDown={(event) => {
+									if (event.key === "Enter") {
+										event.preventDefault();
+										void handleJumpToPage();
+									}
+								}}
+								disabled={isLoading}
+								className="w-24 bg-white/80 dark:bg-slate-900/80"
+							/>
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => { void handleJumpToPage(); }}
+								disabled={isLoading}
+								className="cursor-pointer"
+							>
+								跳转
+							</Button>
+						</div>
+
+						<div className="flex gap-2">
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() => loadPage(data.page - 1)}
+							onClick={() => loadPage(data.page - 1, sort, visibility)}
 							disabled={data.page === 1 || isLoading}
 							className="cursor-pointer"
 						>
@@ -226,13 +366,14 @@ export function HistoryList({ initialData }: HistoryListProps) {
 						<Button
 							variant="outline"
 							size="sm"
-							onClick={() => loadPage(data.page + 1)}
+							onClick={() => loadPage(data.page + 1, sort, visibility)}
 							disabled={data.page >= data.totalPages || isLoading}
 							className="cursor-pointer"
 						>
 							下一页
 							<ChevronRight className="ml-1 h-4 w-4" />
 						</Button>
+						</div>
 					</div>
 				</div>
 			)}

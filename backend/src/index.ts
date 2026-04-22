@@ -1,5 +1,6 @@
 import { createApp } from "./app";
 import { env } from "./env";
+import '@sinclair/typebox/compiler'
 
 const startServer = async () => {
 	const app = await createApp();

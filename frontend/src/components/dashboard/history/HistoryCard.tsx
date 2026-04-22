@@ -4,7 +4,7 @@ import type { AnalysisResult } from "@/types/ai";
 import type { DatabaseAnalysisRecord } from "@/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { Calendar, Clock, Copy, ExternalLink, Globe, Lock, Search, Trash2 } from "lucide-react";
+import { Bot, Calendar, Clock, Copy, ExternalLink, Globe, Lock, Search, Settings2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -53,6 +53,15 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 
 	const overallAssessment = aiResult?.overallAssessment || "";
 	const textPreview = overallAssessment.substring(0, 150);
+	const displayModeName = record.article.input.mode || "默认模式";
+	const displayModelName = record.metadata?.modelName || record.article.output.modelName || "未知模型";
+	const displaySearchModelName = record.metadata?.searchModel === "gemini"
+		? "Gemini 搜索"
+		: record.metadata?.searchModel === "gemini-lite"
+			? "Gemini Lite 搜索"
+			: record.metadata?.searchModel === "none"
+				? "关闭搜索"
+				: "未知搜索方案";
 
 	const handleTogglePublic = async () => {
 		if (!onTogglePublic)
@@ -103,7 +112,7 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 					<div className="space-y-1.5">
 						<div className="flex flex-wrap gap-2 items-center">
 							<Badge variant="outline" className="font-medium bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50">
-								{record.article.input.mode || "默认模式"}
+								{displayModeName}
 							</Badge>
 							{isPublic
 								? (
@@ -167,6 +176,21 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 						{overallAssessment.length > 150 && "..."}
 					</p>
 				)}
+
+				<div className="text-xs text-slate-500 flex flex-wrap gap-x-4 gap-y-2 items-center dark:text-slate-400">
+					<span className="flex gap-1.5 items-center">
+						<Bot className="h-3.5 w-3.5" />
+						{displayModelName}
+					</span>
+					<span className="flex gap-1.5 items-center">
+						<Settings2 className="h-3.5 w-3.5" />
+						{displayModeName}
+					</span>
+					<span className="flex gap-1.5 items-center">
+						<Search className="h-3.5 w-3.5" />
+						{displaySearchModelName}
+					</span>
+				</div>
 
 				{/* 标签 */}
 				{record.article.output.tags && record.article.output.tags.length > 0 && (

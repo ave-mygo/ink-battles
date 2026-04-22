@@ -17,6 +17,7 @@
     "@elysiajs/openapi": "^1.4.14",
     "@google/genai": "^1.50.0",
     "@ink-battles/shared": "workspace:*",
+    "@sinclair/typebox": "^0.34.49",
     "bcryptjs": "^3.0.3",
     "crypto-js": "^4.2.0",
     "elysia": "^1.4.28",

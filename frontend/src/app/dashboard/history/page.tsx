@@ -11,10 +11,14 @@ export const metadata: Metadata = {
 };
 
 export default async function HistoryPage() {
+	const initialSort = "time_desc" as const;
+	const initialVisibility = "all" as const;
+	const initialSortQuery = { sortBy: "time", sortOrder: "desc" } as const;
+
 	// 获取第一页数据（服务器端）
 	const api = await createServerEden();
 	const response = await api.api.v2.analysis.history.get({
-		query: { page: 1, limit: 10 },
+		query: { page: 1, limit: 10, visibility: initialVisibility, ...initialSortQuery },
 	});
 	const result = await normalizeEdenResult<any>(response.data, response.error, "无法加载历史记录");
 	const data = result.success
@@ -50,7 +54,7 @@ export default async function HistoryPage() {
 				description={`共 ${data?.total || 0} 条分析记录`}
 			/>
 
-			<HistoryList initialData={data} />
+			<HistoryList initialData={data} initialSort={initialSort} initialVisibility={initialVisibility} />
 		</div>
 	);
 }

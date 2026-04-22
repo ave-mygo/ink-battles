@@ -31,23 +31,33 @@
 
 ## 🛠️ 技术栈
 
+**前端 (Frontend)**
 - **框架**：Next.js 16.0.1 (React 19.2.0)
 - **语言**：TypeScript
-- **样式**：UnoCSS + TailwindCSS v4
-- **数据库**：MongoDB
+- **样式**：Tailwind CSS v4 + UnoCSS
 - **UI 组件**：Radix UI + shadcn/ui
 - **状态管理**：Zustand
+- **工具库**：Date-fns, Crypto-js, Sonner (Toast)
+
+**后端 (Backend)**
+- **框架**：Elysia (Bun 运行时)
+- **语言**：TypeScript
+- **中间件**：Elysia 生态中间件集
+
+**数据库与服务**
+- **数据库**：MongoDB
 - **AI 服务**：OpenAI API (支持自定义模型配置)
 - **认证安全**：Jose (JWT), Bcryptjs, FingerprintJS
-- **工具库**：Date-fns, Crypto-js, Nodemailer
+- **第三方集成**：爱发电 (Afdian) 赞助系统
+- **邮件服务**：Nodemailer
 
 ## 📦 安装与运行
 
 ### 环境要求
 
-- Node.js 18+
-- pnpm (推荐) 或 npm
-- MongoDB
+- **Node.js** 18+ (前端)，或 **Bun** 1.0+ (后端推荐)
+- **pnpm** 10+ (推荐) 或 npm
+- **MongoDB** 5.0+
 
 ### 本地开发
 
@@ -64,72 +74,136 @@ cd ink-battles
 pnpm install
 ```
 
-3. **配置环境变量**
+3. **配置项目**
 
 复制配置文件模板并重命名：
 
 ```bash
-cp src/config.example.ts src/config.ts
+cp config.example.toml config.toml
 ```
 
-编辑 `src/config.ts` 文件，填入必要的配置信息（详见配置说明）。
-
-此外，参考 `.env.example` 创建 `.env` 文件（如果项目依赖环境变量）：
-
-```bash
-cp .env.example .env
-```
+编辑 `config.toml` 文件，填入必要的配置信息（详见配置说明）。
 
 4. **启动开发服务器**
 
 ```bash
+# 同时启动前端（localhost:3000）和后端（localhost:3001）
 pnpm dev
-```
 
-访问 [http://localhost:3000](http://localhost:3000) 查看应用。
+# 或单独启动前端/后端
+pnpm frontend:dev  # 启动前端，访问 http://localhost:3000
+pnpm backend:dev   # 启动后端，API 地址 http://localhost:3001
+```
 
 ### 构建与部署
 
 ```bash
-# 构建生产版本
+# 构建生产版本（前端 + 后端）
 pnpm build
 
-# 启动生产服务器
+# 单独构建
+pnpm frontend:build   # 构建前端
+pnpm backend:build    # 构建后端
+
+# 启动生产服务器（仅前端）
 pnpm start
+
+# Docker 部署
+pnpm build:docker         # 构建前端和后端镜像
+pnpm compose:up           # 启动容器
+pnpm compose:logs         # 查看日志
 ```
 
 ## ⚙️ 配置说明
 
-主要配置文件位于 `src/config.ts`，包含以下核心配置项：
+主要配置文件位于 `config.toml`，包含以下核心配置项：
 
-- **system_models**: 系统核心模型配置（验证器、搜索服务）。
-- **grading_models**: 评分模型列表，可配置多个模型供用户选择（如 ChatGPT, Gemini 等），支持设置是否为会员专享 (`premium`)。
-- **mongodb**: MongoDB 数据库连接配置。
-- **afdian**: 爱发电 API 配置，用于处理赞助回调和会员权益验证。
-- **email**: SMTP 邮件服务配置，用于发送通知。
-- **jwt**: JWT 签名密钥。
-- **app**: 应用基础配置（名称、URL、公告等）。
+- **system_models**: 系统核心模型配置（验证器、搜索服务）
+- **grading_models**: 评分模型列表，可配置多个模型供用户选择（如 ChatGPT, Gemini 等），支持设置是否为会员专享 (`premium`)
+- **mongodb**: MongoDB 数据库连接配置
+- **afdian**: 爱发电 API 配置，用于处理赞助回调和会员权益验证
+- **email**: SMTP 邮件服务配置，用于发送通知
+- **jwt**: JWT 签名密钥
+- **app**: 应用基础配置（名称、URL、公告等）
+- **oauth**: OAuth 认证配置（QQ、Google 等第三方登录）
+- **external_status**: 外部服务状态监控配置
 
 ## 📊 项目结构
 
+Monorepo 架构 (pnpm workspaces)：
+
 ```
-src/
-├── app/                 # Next.js App Router (页面路由)
-│   ├── actions/         # Server Actions (服务端操作)
-│   ├── api/             # API Routes (后端接口)
-│   ├── dashboard/       # 用户仪表盘页面
-│   └── ...
-├── components/          # React 组件
-│   ├── common/          # 通用组件
-│   ├── layouts/         # 布局与核心业务组件 (WriterPage)
-│   ├── ui/              # 基础 UI 组件 (shadcn/ui)
-│   └── ...
-├── lib/                 # 工具函数与库
-├── store/               # Zustand 状态管理
-├── types/               # TypeScript 类型定义
-├── utils/               # 业务逻辑工具 (Auth, Billing, Afdian)
-└── config.ts            # 全局配置文件
+ink-battles/
+├── frontend/              # Next.js 16 前端应用 (App Router)
+│   ├── src/
+│   │   ├── app/           # 页面路由与布局
+│   │   │   ├── analysis/  # 分析页面
+│   │   │   ├── dashboard/ # 用户仪表盘
+│   │   │   ├── signin/    # 登录页面
+│   │   │   ├── oauth/     # OAuth 回调处理
+│   │   │   └── api/       # API Routes (服务器端点)
+│   │   ├── components/    # React 组件库
+│   │   │   ├── ui/        # 基础 UI 组件 (shadcn/ui)
+│   │   │   ├── common/    # 通用组件
+│   │   │   ├── layouts/   # 布局组件
+│   │   │   ├── analysis/  # 分析功能组件
+│   │   │   ├── dashboard/ # 仪表盘组件
+│   │   │   └── marketing/ # 营销页面组件
+│   │   ├── lib/           # 核心工具与配置
+│   │   │   ├── db.ts      # 数据库统一接口
+│   │   │   └── config.ts  # 全局配置
+│   │   ├── utils/         # 业务逻辑工具（按功能域组织）
+│   │   │   ├── auth/      # 认证工具 (client/server/common)
+│   │   │   ├── api/       # API 调用工具
+│   │   │   ├── analysis/  # 分析工具
+│   │   │   ├── dashboard/ # 仪表盘工具
+│   │   │   ├── billing/   # 计费相关工具
+│   │   │   └── common/    # 通用工具函数
+│   │   ├── types/         # TypeScript 类型定义
+│   │   │   ├── auth/      # 认证相关类型
+│   │   │   ├── database/  # 数据库模型类型
+│   │   │   ├── ai/        # AI 服务类型
+│   │   │   └── common/    # 通用类型
+│   │   ├── store/         # Zustand 状态管理
+│   │   ├── hooks/         # 自定义 React Hooks
+│   │   └── public/        # 静态资源
+│   ├── package.json
+│   └── tsconfig.json
+├── backend/               # Elysia 后端服务
+│   ├── src/
+│   │   ├── modules/       # 业务模块（核心业务逻辑）
+│   │   │   ├── auth.ts
+│   │   │   ├── analysis.ts
+│   │   │   ├── dashboard.ts
+│   │   │   ├── billing.ts
+│   │   │   └── ...
+│   │   ├── integrations/  # 第三方服务集成
+│   │   │   ├── ai.ts      # OpenAI/AI 服务
+│   │   │   ├── afdian.ts  # 爱发电集成
+│   │   │   ├── mail.ts    # 邮件服务
+│   │   │   └── validator.ts # 数据验证
+│   │   ├── middleware/    # 中间件
+│   │   ├── db/            # 数据库层
+│   │   ├── constants/     # 常量定义
+│   │   │   └── prompts/   # AI 提示词配置
+│   │   └── utils/         # 工具函数
+│   ├── package.json
+│   └── tsconfig.json
+├── shared/                # 共享代码
+│   ├── constants/         # 共享常量
+│   └── package.json
+├── scripts/               # 构建与工具脚本
+├── config.toml            # 应用配置文件
+├── docker-compose.yml     # Docker 编排
+├── package.json           # 工作区根配置
+└── pnpm-workspace.yaml    # pnpm workspace 配置
 ```
+
+**架构特点：**
+- **frontend/src/** 遵循 CLAUDE.md 规范，按功能域组织工具函数和类型
+- **backend/src/** 采用模块化架构，modules 层负责业务逻辑，integrations 层处理外部服务
+- **共享层** 通过 shared 包复用常量和通用类型
+- **类型安全** 跨 monorepo 共享 TypeScript 类型定义
 
 ## 📝 贡献指南
 

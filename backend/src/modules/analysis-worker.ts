@@ -96,7 +96,12 @@ export const createCachedTask = async (input: {
 		uid: input.uid,
 		status: "completed",
 		input: { articleText: input.articleText, mode: input.mode, modelId: input.modelId },
-		metadata: { sha1: input.sha1, fingerprint: input.fingerprint, session: "cached" },
+		metadata: {
+			sha1: input.sha1,
+			fingerprint: input.fingerprint,
+			searchModel: "none",
+			session: "cached",
+		},
 		progress: createProgress("completed", "命中缓存，任务已完成", 100),
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
@@ -105,11 +110,24 @@ export const createCachedTask = async (input: {
 	return taskId.toString();
 };
 
-export const findCachedAnalysis = async (sha1: string, mode: string, modelName: string) =>
+export const findCachedAnalysis = async (
+	sha1: string,
+	mode: string,
+	modelName: string,
+	searchModel: "none" | "gemini" | "gemini-lite",
+) =>
 	findOne(COLLECTIONS.analysisRequests, {
 		"metadata.sha1": sha1,
 		"article.input.mode": mode,
 		"metadata.modelName": cleanModelName(modelName),
+		...(searchModel === "none"
+			? {
+					$or: [
+						{ "metadata.searchModel": "none" },
+						{ "metadata.searchModel": { $exists: false } },
+					],
+				}
+			: { "metadata.searchModel": searchModel }),
 	});
 
 export const runAnalysisTask = (taskId: ObjectId, options: AnalysisTaskOptions) => {

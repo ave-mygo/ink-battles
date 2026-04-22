@@ -5,11 +5,29 @@ import { countAnalysisRecords } from "../db/repositories";
 import { requireUser } from "../middleware/auth";
 import { ok } from "../utils/response";
 
+const HISTORY_SORT_FIELDS = {
+	time: "createdAt",
+	score: "article.output.overallScore",
+} as const;
+
+const normalizeHistorySortField = (sortBy?: string) =>
+	sortBy === "score" ? HISTORY_SORT_FIELDS.score : HISTORY_SORT_FIELDS.time;
+
+const normalizeHistorySortOrder = (sortOrder?: string) =>
+	sortOrder === "asc" ? 1 : -1;
+
+const normalizeHistoryVisibilityFilter = (visibility?: string) =>
+	visibility === "public" || visibility === "private" ? visibility : "all";
+
 const parseRecordResult = (record: Record<string, any>) => ({
 	...record,
 	_id: record._id?.toString(),
 	createdAt: record.createdAt instanceof Date ? record.createdAt.toISOString() : record.createdAt,
 	updatedAt: record.updatedAt instanceof Date ? record.updatedAt.toISOString() : record.updatedAt,
+	settings: {
+		...(record.settings ?? {}),
+		public: record.isPublic === true,
+	},
 });
 
 const viewableRecord = async (headers: Headers, id: string) => {
@@ -29,13 +47,34 @@ export const dashboardModule = new Elysia()
 		const user = await requireUser(request.headers);
 		const page = Math.max(Number(query.page ?? 1), 1);
 		const limit = Math.min(Math.max(Number(query.limit ?? 10), 1), 50);
-		const filter = { uid: user.uid };
+		const sortField = normalizeHistorySortField(query.sortBy);
+		const sortOrder = normalizeHistorySortOrder(query.sortOrder);
+		const visibility = normalizeHistoryVisibilityFilter(query.visibility);
+		const filter: Record<string, unknown> = { uid: user.uid };
+		if (visibility === "public")
+			filter.isPublic = true;
+		else if (visibility === "private")
+			filter.isPublic = { $ne: true };
 		const [records, total] = await Promise.all([
-			findMany(COLLECTIONS.analysisRequests, filter, { sort: { createdAt: -1 }, skip: (page - 1) * limit, limit }),
+			findMany(COLLECTIONS.analysisRequests, filter, {
+				// 次排序固定回退到创建时间，避免同分记录在翻页时顺序抖动。
+				sort: { [sortField]: sortOrder, createdAt: -1 },
+				skip: (page - 1) * limit,
+				limit,
+			}),
 			countAnalysisRecords(filter),
 		]);
 		return ok({ records: records.map(parseRecordResult), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } });
-	}, { detail: { tags: ["REST: Analysis"] } })
+	}, {
+		query: t.Object({
+			page: t.Optional(t.Union([t.String(), t.Number()])),
+			limit: t.Optional(t.Union([t.String(), t.Number()])),
+			sortBy: t.Optional(t.String({ enum: ["time", "score"] })),
+			sortOrder: t.Optional(t.String({ enum: ["asc", "desc"] })),
+			visibility: t.Optional(t.String({ enum: ["all", "public", "private"] })),
+		}),
+		detail: { tags: ["REST: Analysis"] },
+	})
 	.get("/api/v2/analysis/history/:id", async ({ request, params }) => {
 		const record = await viewableRecord(request.headers, params.id);
 		if (!record)

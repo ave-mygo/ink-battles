@@ -50,7 +50,8 @@ export const analysisModule = new Elysia()
 		}
 		const sha1 = sha1Article(body.articleText);
 		const modelName = cleanModelName(model.model);
-		const cached = await findCachedAnalysis(sha1, body.mode, modelName);
+		const normalizedSearchModel = normalizeSearchModel(body.searchModel);
+		const cached = await findCachedAnalysis(sha1, body.mode, modelName, normalizedSearchModel);
 		if (cached?.article?.output?.result && cached.status !== "processing") {
 			const taskId = await createCachedTask({ uid: user?.uid ?? null, articleText: body.articleText, mode: body.mode, modelId: body.modelId, fingerprint: body.fingerprint, sha1, resultId: cached._id.toString() });
 			return { success: true, taskId };
@@ -74,7 +75,13 @@ export const analysisModule = new Elysia()
 						uid: user.uid,
 						status: "pending",
 						input: body,
-						metadata: { sha1, fingerprint: body.fingerprint, modelName, session: "pending" },
+						metadata: {
+							sha1,
+							fingerprint: body.fingerprint,
+							modelName,
+							searchModel: normalizedSearchModel,
+							session: "pending",
+						},
 						billing: {
 							deducted: true,
 							deductedFrom,
@@ -99,7 +106,13 @@ export const analysisModule = new Elysia()
 				uid: user?.uid ?? null,
 				status: "pending",
 				input: body,
-				metadata: { sha1, fingerprint: body.fingerprint, modelName, session: "pending" },
+				metadata: {
+					sha1,
+					fingerprint: body.fingerprint,
+					modelName,
+					searchModel: normalizedSearchModel,
+					session: "pending",
+				},
 				billing: {
 					deducted: false,
 					deductedFrom: null,
@@ -115,7 +128,7 @@ export const analysisModule = new Elysia()
 			articleText: body.articleText,
 			mode: body.mode,
 			fingerprint: body.fingerprint,
-			searchModel: normalizeSearchModel(body.searchModel),
+			searchModel: normalizedSearchModel,
 			isPremium: model.premium === true,
 		});
 		return {

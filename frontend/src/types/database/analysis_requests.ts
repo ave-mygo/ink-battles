@@ -30,6 +30,8 @@ export interface DatabaseAnalysisRecord {
 		fingerprint: string | null;
 		/** 模型名称 */
 		modelName?: string;
+		/** 联网搜索模型 */
+		searchModel?: "none" | "gemini" | "gemini-lite";
 	};
 	/** 记录时间戳 */
 	timestamp: string;
