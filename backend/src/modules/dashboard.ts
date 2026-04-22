@@ -6,7 +6,7 @@ import { requireUser } from "../middleware/auth";
 import { ok } from "../utils/response";
 
 const HISTORY_SORT_FIELDS = {
-	time: "createdAt",
+	time: "timestamp",
 	score: "article.output.overallScore",
 } as const;
 
@@ -15,6 +15,22 @@ const normalizeHistorySortField = (sortBy?: string) =>
 
 const normalizeHistorySortOrder = (sortOrder?: string) =>
 	sortOrder === "asc" ? 1 : -1;
+
+const buildHistorySort = (sortField: string, sortOrder: 1 | -1) => {
+	/**
+	 * analysis_requests 实际落库的是 timestamp，而不是 createdAt。
+	 * 这里统一用 timestamp 排序，并在同值时回退到 _id，避免分页时顺序抖动。
+	 */
+	if (sortField === HISTORY_SORT_FIELDS.time) {
+		return { timestamp: sortOrder, _id: sortOrder } as const;
+	}
+
+	return {
+		[sortField]: sortOrder,
+		timestamp: -1,
+		_id: -1,
+	} as const;
+};
 
 const normalizeHistoryVisibilityFilter = (visibility?: string) =>
 	visibility === "public" || visibility === "private" ? visibility : "all";
@@ -50,6 +66,7 @@ export const dashboardModule = new Elysia()
 		const sortField = normalizeHistorySortField(query.sortBy);
 		const sortOrder = normalizeHistorySortOrder(query.sortOrder);
 		const visibility = normalizeHistoryVisibilityFilter(query.visibility);
+		const sort = buildHistorySort(sortField, sortOrder);
 		const filter: Record<string, unknown> = { uid: user.uid };
 		if (visibility === "public")
 			filter.isPublic = true;
@@ -57,8 +74,7 @@ export const dashboardModule = new Elysia()
 			filter.isPublic = { $ne: true };
 		const [records, total] = await Promise.all([
 			findMany(COLLECTIONS.analysisRequests, filter, {
-				// 次排序固定回退到创建时间，避免同分记录在翻页时顺序抖动。
-				sort: { [sortField]: sortOrder, createdAt: -1 },
+				sort,
 				skip: (page - 1) * limit,
 				limit,
 			}),

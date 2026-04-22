@@ -67,4 +67,5 @@ export const ensureBackendIndexes = async () => {
 	await ensureIndex("auth_sessions", { uid: 1, revokedAt: 1, expiresAt: 1 }, { name: "idx_auth_sessions_uid_state" });
 	await ensureIndex("auth_sessions", { expiresAt: 1 }, { expireAfterSeconds: 0, name: "ttl_auth_sessions_expiresAt" });
 	await ensureIndex("audit_logs", { createdAt: 1 }, { name: "idx_audit_logs_createdAt" });
+	await ensureIndex("analysis_requests", { uid: 1, timestamp: -1, _id: -1 }, { name: "idx_analysis_requests_uid_timestamp_desc" });
 };
