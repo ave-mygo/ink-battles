@@ -1,53 +1,41 @@
-/**
- * 认证系统用户信息类型
- * 来源：auth-server.ts
- * 作为ai，你完全不能修改这个字段，这是数据库返回规范
- */
+export type LoginMethod = "email" | "qq" | "afd";
+
 export interface AuthUserInfo {
-	_id?: string | null; // MongoDB ObjectId
+	_id?: string | null;
 	uid: number;
 	email?: string | null;
 	qqOpenid?: string | null;
 	afdId?: string | null;
-	loginMethod?: "email" | "qq" | "afd";
-	passwordHash?: string;
+	loginMethod?: LoginMethod | null;
+	passwordHash?: string | null;
 	createdAt: Date;
-	updatedAt?: Date;
+	updatedAt?: Date | null;
 	isActive?: boolean;
-	/** 用户昵称 */
 	nickname?: string | null;
-	/** 用户签名/简介 */
 	bio?: string | null;
+	avatar?: string | null;
 }
 
-/**
- * 可安全传递到客户端（SSR/CSR API 返回值）的用户信息类型
- * - 去除了 Mongo ObjectId 等非可序列化字段
- * - 将日期转换为 ISO 字符串
- */
 export interface AuthUserInfoSafe {
 	_id?: string | null;
 	uid: number;
 	email?: string | null;
 	qqOpenid?: string | null;
 	afdId?: string | null;
-	loginMethod?: "email" | "qq" | "afd";
+	loginMethod?: LoginMethod | null;
 	isActive?: boolean;
 	createdAt?: string | null;
 	updatedAt?: string | null;
-	/** 用户昵称 */
 	nickname?: string | null;
-	/** 用户签名/简介 */
 	bio?: string | null;
+	avatar?: string | null;
 }
 
-/**
- * 用户资料更新参数
- */
+export type AuthUser = AuthUserInfo;
+export type SafeUser = AuthUserInfoSafe;
+
 export interface UserProfileUpdate {
-	/** 用户昵称（最多 20 字符） */
 	nickname?: string;
-	/** 用户签名（最多 100 字符） */
 	bio?: string;
 }
 

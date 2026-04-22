@@ -4,6 +4,14 @@
   "version": "0.1.0",
   "private": true,
   "exports": {
-    "./constants/billing": "./constants/billing.ts"
+    "./constants/billing": "./constants/billing.ts",
+    "./types": "./types/index.ts",
+    "./types/*": "./types/*.ts",
+    "./types/ai": "./types/ai/index.ts",
+    "./types/auth": "./types/auth/index.ts",
+    "./types/common": "./types/common/index.ts",
+    "./types/database": "./types/database/index.ts",
+    "./types/users": "./types/users/index.ts",
+    "./types/*/*": "./types/*/*.ts"
   }
 }

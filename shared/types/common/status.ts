@@ -1,12 +1,3 @@
-export interface StatusListProps {
-	logs: UsageLog[];
-	loading?: boolean;
-}
-
-export interface StatusDashboardProps {
-	initialData: StatusApiResponse;
-}
-
 export interface UsageLog {
 	created_at: number;
 	request_id?: string;
@@ -21,13 +12,14 @@ export interface UsageLog {
 	parent_id: number;
 	attempt_count?: number;
 }
+
 export interface Stats {
 	totalRequests: number;
 	averageTime: number;
 	totalTokens: number;
 	successRate: number;
 }
-// 修正后的 ApiResponse 接口
+
 export interface StatusApiResponse {
 	success: boolean;
 	items: UsageLog[];
@@ -36,4 +28,13 @@ export interface StatusApiResponse {
 	total: number;
 	has_more: boolean;
 	stats: Stats;
+}
+
+export interface StatusListProps {
+	logs: UsageLog[];
+	loading?: boolean;
+}
+
+export interface StatusDashboardProps {
+	initialData: StatusApiResponse;
 }

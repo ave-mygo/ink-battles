@@ -1,9 +1,5 @@
-/**
- * 密码强度类型
- * 来源：password-strength.ts
- */
 export interface PasswordStrength {
-	score: number; // 0-100
+	score: number;
 	level: "weak" | "medium" | "strong" | "very-strong";
 	requirements: {
 		length: boolean;
