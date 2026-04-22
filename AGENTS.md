@@ -137,11 +137,13 @@ ink_battles/
 ### 2.1 项目结构
 
 **modules/** - 核心业务模块
+
 - 每个模块对应一个业务功能（auth, analysis, dashboard 等）
 - 模块内包含业务逻辑、数据处理和控制器
 - 模块间通过明确的接口进行调用
 
 **integrations/** - 第三方服务集成
+
 - `ai.ts` - OpenAI API 调用封装
 - `afdian.ts` - 爱发电支付系统集成
 - `mail.ts` - 邮件服务
@@ -149,17 +151,20 @@ ink_battles/
 - `external-status.ts` - 外部服务状态监控
 
 **db/** - 数据库层
+
 - MongoDB 连接和操作封装
 - 统一的 CRUD 接口
 - 数据模型定义
 
 **middleware/** - Elysia 中间件
+
 - 认证中间件（JWT 验证）
 - 错误处理中间件
 - 日志中间件
 - CORS 中间件
 
 **constants/** - 系统常量
+
 - `prompts/` - AI 系统提示词和用户提示词配置
 - `other/` - 其他常量定义
 
@@ -192,7 +197,86 @@ ink_battles/
 
 ## 3. 前端开发规范 (Next.js 16)
 
-### 3.1 App Router 架构
+## 3. 前端开发规范 (Next.js 16)
+
+### 3.1 混合数据流架构（核心）
+
+**组件分为两类：**
+
+1. **首屏必须数据**（SSR 首屏性能关键）
+   - 服务器组件在 `page.tsx` 中 fetch 数据
+   - 通过 Provider Client Component 传递数据
+   - Provider 内部初始化 Zustand store
+   - 子组件通过 store hooks 消费数据
+
+2. **交互驱动数据**（用户交互后获取）
+   - 纯客户端组件
+   - 通过 Eden Treaty 客户端调用 API
+   - 直接更新 Zustand store
+   - 无需 loading 骨架屏（使用乐观更新）
+
+**实现示例：**
+
+```typescript
+// page.tsx (Server Component)
+export default async function DashboardPage() {
+  const initialData = await fetchInitialData();
+  return <DashboardProvider data={initialData} />;
+}
+
+// DashboardProvider.tsx (Client Component)
+'use client';
+export function DashboardProvider({ data }: Props) {
+  const store = useDashboardStore(data); // 初始化 store
+  return (
+    <DashboardStoreProvider value={store}>
+      <DashboardContent />
+    </DashboardStoreProvider>
+  );
+}
+
+// 子组件 (Client Component)
+function DashboardContent() {
+  const { data, loading, refetch } = useDashboardStore();
+  // 直接使用数据，无需重复请求
+}
+```
+
+### 3.2 分页优化（SWR + SSR 混合）
+
+**首屏分页数据处理：**
+
+- 服务器端 fetch 首页数据（page 0）
+- 通过 store 初始化 `fallbackData`
+- SWR 在后台验证数据新鲜度
+- 用户切页时通过 SWR 加载新数据
+
+**实现步骤：**
+
+1. Server Component 获取首页数据：`const page0 = await fetchPage(0)`
+2. 传给 Provider，store 初始化：`pages: { 0: page0 }`
+3. 后续分页通过 SWR 调用 Eden Treaty
+4. 移除客户端 `useEffect` 首屏请求
+5. 移除 loading 骨架屏，用现有数据立即渲染
+
+### 3.3 数据获取与 API 通信 (Eden Treaty)
+
+**架构概述：** 前端通过 **Eden Treaty** 客户端进行类型安全的 API 调用，所有数据交互都通过后端 Elysia API 进行。
+
+- **Eden Treaty 客户端：** 使用 `@/utils/api/eden-client.ts` 提供的 `createClientEden()` 创建 API 实例
+- **类型安全：** Eden Treaty 会自动从后端 API 类型定义生成前端客户端类型
+- **调用方式：** 在客户端组件中直接使用 Eden 客户端调用 API：
+  ```typescript
+  const eden = createClientEden();
+  const response = await eden.api.analysis.submit.post({
+    text: "..."
+  });
+  ```
+- **错误处理：** 统一处理 API 响应和错误，响应格式为 `{ code, message, data }`
+- **数据加载状态：** 使用 React Hooks 管理加载、成功、错误状态
+- **取消请求：** 使用 AbortController 支持请求超时和取消
+
+### 3.2 App Router 架构
 
 - **页面角色明确：** `page.tsx` **仅作为"编排者" (Orchestrator)**
   - 职责：1. 获取数据；2. 定义元数据；3. 导入并组装组件
@@ -201,7 +285,7 @@ ink_battles/
 - **路由组：** 使用 `()` 组织路由，实现逻辑分组而不影响 URL
 - **复杂布局：** 通过并行路由/拦截路由实现模态框等高级 UI
 
-### 3.2 组件分类组织
+### 3.3 组件分类组织
 
 ```
 frontend/src/components/
@@ -220,7 +304,7 @@ frontend/src/components/
 - **组合模式：** 优先使用 `children` 或 Slot 模式组合组件
 - **单一职责：** 当组件逻辑复杂时，立即拆分为子组件或 Hooks
 
-### 3.3 工具函数组织 (`src/utils/`)
+### 3.4 工具函数组织 (`src/utils/`)
 
 **按功能域分类，客户端/服务器分离：**
 
@@ -248,7 +332,7 @@ src/utils/
 - ✅ 优先：`import { functionName } from "@/utils/auth"`
 - ❌ 避免：`import { functionName } from "@/utils/auth/client"`
 
-### 3.4 核心库函数 (`src/lib/`)
+### 3.5 核心库函数 (`src/lib/`)
 
 **仅用于核心基础设施：**
 
@@ -261,7 +345,7 @@ src/utils/
 - `lib/` - 框架基础设施
 - `utils/` - 业务功能域工具
 
-### 3.5 类型定义 (`src/types/`)
+### 3.6 类型定义 (`src/types/`)
 
 ```
 src/types/
@@ -272,7 +356,7 @@ src/types/
 └── ai/             # AI 相关类型
 ```
 
-### 3.6 代码风格与TypeScript
+### 3.8 代码风格与TypeScript
 
 - **TypeScript 强制：** 始终使用 TypeScript，并启用严格模式 (`strict: true`)。明确定义类型，**严禁使用 `any`**，优先使用 `unknown` 或更具体的类型。
 - **组件类型：** 优先使用 React 19 函数式组件、Hooks 和 Next.js 16 服务器组件。避免使用 `React.FC`。
@@ -288,7 +372,7 @@ src/types/
 - **缩进风格：** 强制使用 2 个空格进行缩进，保持全局一致性。
 - **工具链：** 强制使用 ESLint 和 Prettier 进行代码风格和质量检查，并在提交前自动格式化。
 
-### 3.7 注释与代码组织
+### 3.9 注释与代码组织
 
 - **函数注释：** 每个函数都必须有明确的 JSDoc 风格注释，说明其功能、参数和返回值。
 - **逻辑注释：** 复杂或非直观的逻辑部分需要添加适当的行内注释，解释代码意图和实现方式。
@@ -298,7 +382,7 @@ src/types/
 - **简洁性：** 循环和条件语句保持逻辑简洁，避免嵌套过深（建议不超过三层）。
 - **单一职责原则与拆分：** 当组件的逻辑变得复杂或功能过多时，应立即将其拆分为更小、职责单一的子组件或Hooks，以增强可读性和复用性。
 
-### 5. 导入规范
+### 3.10 导入规范
 
 - **导入顺序：**
   1.  Node.js 内置模块 (例如 `path`, `fs`)。
@@ -316,52 +400,34 @@ src/types/
 - **禁止通配符导入：** 严禁使用 `import * as Library from "library"`，除非特殊场景（如导入大型库的所有内容）。
 - **await import：** 尽量避免使用动态导入 (`await import(...)`)，除非用于代码分割或按需加载脚本。
 
-### 6. 服务器组件 (Server Components)
+### 3.11 客户端优先架构
 
-- **角色定位：** **编排者 (Orchestrator)**。所有 `app/` 目录下的组件默认都是服务器组件。
-- **瘦组件原则 (Thin Components)：** **严禁**在服务器组件中编写复杂的逻辑。它们的主要职责是：1. 调用 Server Actions/Utils 获取数据；2. 将数据传递给子组件。
-- **组合模式 (Composition Pattern)：** 优先使用 `children` 属性或 Slot 模式来组合组件，而不是通过深层 Props 传递 (Prop Drilling)。**这能有效解耦布局与具体内容**。
-- **数据传递：** 推荐通过 Server Actions 获取数据，然后将数据作为 props 传递给服务器组件或客户端组件。
-- **限制：** **严禁在服务器组件中使用客户端 Hooks (如 `useState`, `useEffect`) 或浏览器 API (如 `window`, `document`)**。
-- **强制检查：** 结合 `server-only` 包以在编译时强制检查服务器组件不导入客户端专属模块。
-- **流式传输/加载：** 结合 `Suspense` 边界实现流式传输，提供细粒度的加载状态和更快的首屏渲染。
-- **SEO 优化：** 在 `layout.tsx` 或 `page.tsx` 中使用 `generateMetadata` 进行静态或动态的 SEO 元数据配置。
-- **完全动态：** 对于需要完全动态、不缓存的渲染，在 Server Actions 内部使用 `unstable_noStore()`。
+**当前架构特点：** 项目采用客户端优先的设计，通过 Eden Treaty 进行 API 通信。
 
-### 7. 客户端组件 (Client Components)
+- **客户端组件为主：** 页面主要由客户端组件组成，通过 Eden Treaty 调用后端 API
+- **最小化服务器逻辑：** 避免在服务器组件中复杂处理，保持页面简洁
+- **元数据管理：** 使用 `generateMetadata` 在 `layout.tsx` 或 `page.tsx` 中进行 SEO 配置
+- **客户端状态管理：** 使用 Zustand 或 React Hooks 管理应用状态
+- **数据流：** 用户交互 → 客户端组件 → Eden Treaty API 调用 → 后端处理 → 响应更新 UI
+
+### 3.12 客户端组件 (Client Components)
 
 - **明确标记：** 必须在文件顶部明确标记 `"use client"`。
-- **职责：** **交互叶子节点**。仅用于包含用户交互、状态管理和浏览器 API 等客户端专属逻辑。**尽量将客户端组件推向组件树的末端**，保持父组件为服务器组件。
+- **职责：** 处理用户交互、状态管理和浏览器 API 等客户端逻辑。
 - **导航：** 使用 `next/navigation` 提供的 `useRouter`、`usePathname` 等 Hooks，**严禁使用 `next/router`**。
-- **表单状态：** 结合 Server Actions，使用 `useFormStatus` (获取表单提交状态)、`useFormState` (处理表单错误或结果) 和 `useOptimistic` (实现乐观更新) 处理表单状态。
-- **数据交互：** 所有需要数据获取或变更的客户端交互，都必须通过调用 Server Actions 来实现。
-- **限制：** 仅在真正需要交互式、有状态的部分使用客户端组件，避免过度使用，最小化客户端包体积。
+- **数据交互：** 通过 Eden Treaty 客户端调用后端 API（详见 3.3）。
+- **表单处理：** 使用 React Hooks 和 Eden Treaty 处理表单提交，管理加载和错误状态。
+- **状态管理：** 可使用 Zustand 或 React Context 管理复杂状态。
+- **性能优化：** 仅在必要时使用客户端组件，避免过度，最小化客户端包体积。
 
-### 8. 数据获取与服务器 Actions (核心)
-
-- **服务器 Actions 定义：** 必须使用 `"use server"` 指令在函数顶部定义服务器 Actions，或标记整个文件为 `"use server"`。
-- **Server Actions 优先：** **所有数据获取 (reads)、数据变更 (mutations)、表单提交以及任何需要与后端交互的逻辑，都应优先且强制使用服务器 Actions 实现**。这是 Next.js 16 的核心范式，旨在简化数据流和提高安全性。
-- **逻辑解耦 (Service Layer)：** **Server Actions 仅作为网关 (Gateway)**。
-  - **严禁**在 Server Action 函数体内直接编写复杂的数据库查询或业务逻辑。
-  - **必须**调用 `@/lib` 或 `@/services` 中的纯函数来处理实际业务。Server Action 负责处理请求参数、权限校验、调用 Service 层，并返回统一格式的响应。
-- **调用方式：** 服务器 Actions 可从服务器组件和客户端组件直接调用。
-- **客户端 Hooks 配合：** 在客户端组件中，结合 `useFormStatus` 跟踪表单提交状态、`useFormState` 处理表单提交后的结果或错误，以及 `useOptimistic` 实现UI的乐观更新。
-- **禁止旧式表单提交：** **严禁在表单提交后使用 `router.push` 或 `router.refresh` 来触发数据刷新**。应依赖 Server Actions 完成数据变更和自动重渲染。
-- **数据获取与缓存 (通过 Server Actions)：**
-  - Server Actions 内部应利用 `fetch` API 及其 `revalidate` 选项 (`fetch(url, { next: { revalidate: <seconds> } })`) 实现细粒度的缓存控制。
-  - 使用 `Promise.all` 在 Server Actions 内部进行并行数据获取，提高效率。
-  - 利用 `React.cache` 优化 Server Actions 内部相同请求的去重，避免重复数据获取。
-  - 在 Server Actions 内部，可以使用 `React.use` Hook 读取 Promise 或 Context。
-- **Serverless 环境：** 最小化服务器 Actions 中的外部请求，优化冷启动时间。
-
-### 9. 中间件与Edge Runtime
+### 3.13 中间件与 Edge Runtime
 
 - **中间件：** 使用 `middleware.ts` 进行路由拦截、认证、重定向、重写和国际化处理。
 - **Edge Runtime：** 优先选择 Edge Runtime (`export const runtime = 'edge'`) 以获得更快的启动时间和更低的延迟，适用于轻量级、I/O 密集型任务。
 - **处理：** 在中间件中高效处理 cookies、headers 和动态重写。
 - **注意：** 留意 Edge Runtime 的约束，避免使用 Node.js 特有的 API。
 
-### 10. 样式与资产
+### 3.14 样式与资产
 
 - **主要样式方案：** **优先且主要使用 Tailwind CSS 工具类** 进行一致性样式设计。
 - **自定义 CSS：** 仅在特殊、复杂或 Tailwind 无法直接实现的场景下，才使用自定义 CSS（例如 CSS Modules）。
@@ -376,7 +442,7 @@ src/types/
   - 其样式完全依赖 Tailwind CSS，确保正确配置并清除未使用的 CSS。
   - 使用 `npx shadcn@latest add <component>` 命令添加组件。
 
-### 11. UI/UX 与 ShadCN UI 风格推荐 (核心)
+### 3.16 UI/UX 与 ShadCN UI 风格推荐 (核心)
 
 - **ShadCN UI 体系：** 严格遵循 `shadcn/ui` 组件体系进行构建。所有新功能界面都应优先复用或组合 `shadcn/ui` 提供的基础组件（如 `Card`, `Button`, `Switch`, `Progress` 等），**避免从零开始造轮子**，以确保整个应用在视觉风格、交互行为和代码结构上保持高度一致性和可维护性。
 - **原子化构建与组合 (Composition)：**
@@ -400,16 +466,16 @@ src/types/
 - **样式表管理：** 控制加载顺序，确保关键样式优先加载，并利用构建工具自动去重。
 - **脚本加载：** 使用 `script async` 后台加载非关键脚本，利用构建工具自动去重，确保关键资源优先加载。
 
-### 12. 性能优化
+### 3.17 性能优化
 
 - **渲染优化：** 使用流式传输 (Streaming) 和 Suspense 加快初始渲染时间。
 - **代码分割：** 在客户端组件中动态导入大型依赖 (`React.lazy` 和 `next/dynamic`)，减少初始加载包体积。
 - **重渲染优化：** 在客户端组件中，谨慎使用 `React.useMemo` 和 `React.useCallback` 避免不必要的重渲染。
-- **数据缓存：** 充分利用 Server Actions 内部的 `fetch` 缓存机制、`revalidate` 选项和 `React.cache` 进行请求去重。
+- **数据缓存：** 在 Eden Treaty 客户端中合理利用请求缓存，避免重复 API 调用。
 - **客户端包体积：** 避免阻塞主线程，利用代码分割或将逻辑迁移到服务器组件。
 - **图像/字体优化：** 使用 Next.js 内置的 `<Image />` 和 `@next/font` 进行优化。
 
-### 13. 工具函数组织架构 (`@/utils/`)
+### 3.18 工具函数组织架构 (`@/utils/`)
 
 - **功能域优先原则：** 所有工具函数按业务功能域组织在 `@/utils/` 目录下，而非按运行环境分离。
 - **标准目录结构：**
@@ -438,14 +504,14 @@ src/types/
   - `@/utils/` - 业务功能域的工具函数
   - `@/lib/` - 框架基础设施（数据库、配置、常量等）
 
-### 14. SEO
+### 3.19 SEO
 
 - **元数据管理：** 统一使用 `generateMetadata` 函数在 `layout.tsx` 或 `page.tsx` 中进行 SEO 元数据管理，包括 `title`、`description`、`og:image` 等。
 - **React 19 Head API：** 结合 React 19 的新特性，更灵活地管理 `<head>` 中的 `link` 和 `meta` 标签。
 - **SSR/SSG 优势：** 充分利用 Next.js 的 SSR/SSG 能力，确保搜索引擎能抓取到完整的页面内容。
 - **语义化 HTML：** 使用语义化 HTML 结构，提高内容可理解性。
 
-### 15. 部署与开发设置
+### 3.20 部署与开发设置
 
 - **部署平台：** 优先考虑 Vercel 进行部署，或自托管 (Node/Docker)。
 - **测试：** 彻底测试 SSR 和静态输出，确保在生产环境下的表现一致。
@@ -454,22 +520,23 @@ src/types/
 - **工具：** 强制使用 TypeScript、ESLint、Prettier。
 - **Monorepo：** 对于大型项目，考虑使用 Pnpm workspaces 或 Turborepo 进行 Monorepo 管理。
 
-### 16. 测试与Linting
+### 3.21 测试与Linting
 
 - **Linting：** 使用 `next lint` (ESLint) 并紧密集成 Prettier，确保代码质量和风格一致性。
 - **测试框架：** 优先选择 Jest 结合 React Testing Library 进行单元和集成测试，或 Cypress 进行端到端测试。
 - **文件位置：** 测试文件应靠近相关组件或模块，遵循 `*.test.tsx` 或 `*.spec.tsx` 命名约定。
 - **覆盖率：** 争取达到高代码覆盖率，特别是核心业务逻辑。
 
-### 17. 最佳实践 (Dos & Don'ts)
+### 3.22 最佳实践 (Dos & Don'ts)
 
 - **Do：**
   - 在 `app` 目录组织路由和组件，遵循共置原则。
-  - 利用服务器组件进行初始渲染，但**仅作为编排者，避免在其中编写复杂逻辑**。
-  - **优先且广泛使用服务器 Actions 进行所有数据获取、数据变更和表单提交。**
-  - **使用组合模式（Composition）来构建页面，将业务逻辑下沉到专门的 Service 层。**
+  - 使用**首屏必须 + 交互驱动**的混合数据流模式（详见 3.1）。
+  - Server Component 中 fetch 首屏必须数据，通过 Provider 模式初始化 Zustand store。
+  - 交互驱动的数据更新通过 Eden Treaty 客户端进行。
+  - **使用组合模式（Composition）来构建页面，组件职责单一且可复用。**
   - 使用 `next/link` 进行内部路由和预取。
-  - 使用 `loading.tsx` 文件实现加载状态和 `Suspense`。
+  - 为首屏数据建立 Provider 模式，避免客户端 useEffect 首屏请求。
   - 仔细分离服务器和客户端逻辑，并使用 `server-only`/`client-only` 包进行强制检查。
   - 按功能域组织工具函数到 `@/utils/` 目录，通过明确的文件命名区分客户端/服务器专用函数。
   - 广泛使用 Tailwind 工具类和 ShadCN UI 组件。
@@ -483,8 +550,8 @@ src/types/
 - **Don't：**
   - 混用 `pages` 和 `app` 目录进行路由。
   - **严禁生成“上帝组件”：即一个组件包含几百行代码并处理多种业务逻辑。**
-  - **在客户端组件或服务器组件中直接使用 `fetch` 进行数据获取；所有数据交互都应通过服务器 Actions。**
-  - **在服务器 Actions 可用时，使用 `router.push` 或 `router.refresh` 进行表单提交或数据刷新。**
+  - **在客户端组件中直接使用 `fetch` 进行数据获取；所有数据交互都应通过 Eden Treaty 客户端进行。**
+  - 混用不同的数据获取方式，保持数据流清晰单一。
   - 在客户端代码中暴露敏感环境变量。
   - 将客户端专属模块导入服务器组件。
   - 在 App Router 项目中使用 `next/router`。

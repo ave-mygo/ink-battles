@@ -32,6 +32,7 @@
 ## 🛠️ 技术栈
 
 **前端 (Frontend)**
+
 - **框架**：Next.js 16.0.1 (React 19.2.0)
 - **语言**：TypeScript
 - **样式**：Tailwind CSS v4 + UnoCSS
@@ -40,11 +41,13 @@
 - **工具库**：Date-fns, Crypto-js, Sonner (Toast)
 
 **后端 (Backend)**
+
 - **框架**：Elysia (Bun 运行时)
 - **语言**：TypeScript
 - **中间件**：Elysia 生态中间件集
 
 **数据库与服务**
+
 - **数据库**：MongoDB
 - **AI 服务**：OpenAI API (支持自定义模型配置)
 - **认证安全**：Jose (JWT), Bcryptjs, FingerprintJS
@@ -200,6 +203,7 @@ ink-battles/
 ```
 
 **架构特点：**
+
 - **frontend/src/** 遵循 CLAUDE.md 规范，按功能域组织工具函数和类型
 - **backend/src/** 采用模块化架构，modules 层负责业务逻辑，integrations 层处理外部服务
 - **共享层** 通过 shared 包复用常量和通用类型
