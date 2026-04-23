@@ -1,8 +1,7 @@
 import { Elysia, t } from "elysia";
 import { ObjectId } from "mongodb";
-import { getGradingModelById } from "../config";
+import { getAnalysisConfig, getGradingModelById } from "../config";
 import { COLLECTIONS, count, findOne, findOneAndUpdate, insertOne, isObjectId, objectId, updateOne, withTransaction } from "../db/mongo";
-import { env } from "../env";
 import { getCurrentUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
@@ -15,7 +14,8 @@ const normalizeSearchModel = (value?: string): "none" | "gemini" | "gemini-lite"
 
 const terminalStatuses = new Set(["completed", "failed", "cancelled"]);
 const activeTaskStatuses = ["pending", "processing"];
-const GUEST_RESULT_TTL_MS = env.analysisGuestResultTtlMinutes * 60 * 1000;
+const analysisConfig = getAnalysisConfig();
+const GUEST_RESULT_TTL_MS = analysisConfig.guest_result_ttl_minutes * 60 * 1000;
 
 const isGuestRecord = (record: Record<string, any> | null) => record?.uid == null;
 
@@ -134,8 +134,8 @@ export const analysisModule = new Elysia()
 		}
 
 		const activeTaskCount = await countActiveTasksForSubmitter(user?.uid ?? null, body.fingerprint);
-		if (activeTaskCount >= env.analysisMaxActiveTasksPerUser)
-			return { success: false, error: `最多只能同时创建 ${env.analysisMaxActiveTasksPerUser} 个进行中的分析任务，请等待已有任务完成` };
+		if (activeTaskCount >= analysisConfig.max_active_tasks_per_user)
+			return { success: false, error: `最多只能同时创建 ${analysisConfig.max_active_tasks_per_user} 个进行中的分析任务，请等待已有任务完成` };
 
 		const taskId = new ObjectId();
 		const createdAt = new Date().toISOString();
@@ -215,10 +215,10 @@ export const analysisModule = new Elysia()
 		};
 	}, {
 		body: t.Object({
-			articleText: t.String({ minLength: 1, maxLength: env.analysisMaxArticleChars }),
-			mode: t.String({ minLength: 1, maxLength: env.analysisMaxModeChars }),
+			articleText: t.String({ minLength: 1, maxLength: analysisConfig.max_article_chars }),
+			mode: t.String({ minLength: 1, maxLength: analysisConfig.max_mode_chars }),
 			modelId: t.String({ minLength: 1, maxLength: 128 }),
-			fingerprint: t.String({ minLength: 1, maxLength: env.analysisMaxFingerprintChars }),
+			fingerprint: t.String({ minLength: 1, maxLength: analysisConfig.max_fingerprint_chars }),
 			searchModel: t.Optional(t.String({ enum: ["none", "gemini", "gemini-lite"] })),
 		}),
 		detail: { tags: ["REST: Analysis"] },

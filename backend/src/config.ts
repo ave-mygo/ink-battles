@@ -7,6 +7,20 @@ import { env } from "./env";
 export interface RuntimeConfig {
 	system_models: Record<string, { api_key: string; base_url: string; model?: string }>;
 	default_model: number;
+	server: {
+		max_json_body_bytes: number;
+		allowed_origins: string[];
+	};
+	analysis: {
+		max_article_chars: number;
+		max_output_chars: number;
+		max_concurrent_tasks: number;
+		max_queued_tasks: number;
+		max_active_tasks_per_user: number;
+		max_mode_chars: number;
+		max_fingerprint_chars: number;
+		guest_result_ttl_minutes: number;
+	};
 	grading_models: Array<{
 		id?: string;
 		name: string;
@@ -45,7 +59,39 @@ const assertRequiredString = (value: unknown, name: string) => {
 	return value.trim();
 };
 
+const applyRuntimeDefaults = (config: RuntimeConfig) => {
+	config.server ??= {
+		max_json_body_bytes: 4 * 1024 * 1024,
+		allowed_origins: ["http://localhost:3001"],
+	};
+	config.server.max_json_body_bytes ??= 4 * 1024 * 1024;
+	config.server.allowed_origins = (config.server.allowed_origins ?? ["http://localhost:3001"])
+		.map(origin => String(origin).trim())
+		.filter(Boolean);
+
+	config.analysis ??= {
+		max_article_chars: 400_000,
+		max_output_chars: 1024 * 1024,
+		max_concurrent_tasks: 2,
+		max_queued_tasks: 20,
+		max_active_tasks_per_user: 5,
+		max_mode_chars: 200,
+		max_fingerprint_chars: 128,
+		guest_result_ttl_minutes: 15,
+	};
+	config.analysis.max_article_chars ??= 400_000;
+	config.analysis.max_output_chars ??= 1024 * 1024;
+	config.analysis.max_concurrent_tasks ??= 2;
+	config.analysis.max_queued_tasks ??= 20;
+	config.analysis.max_active_tasks_per_user ??= 5;
+	config.analysis.max_mode_chars ??= 200;
+	config.analysis.max_fingerprint_chars ??= 128;
+	config.analysis.guest_result_ttl_minutes ??= 15;
+};
+
 const validateRuntimeConfig = (config: RuntimeConfig) => {
+	applyRuntimeDefaults(config);
+
 	const jwtSecret = assertRequiredString(config.jwt?.secret, "jwt.secret");
 	if (FORBIDDEN_JWT_SECRETS.has(jwtSecret) || new TextEncoder().encode(jwtSecret).byteLength < MINIMUM_SECRET_BYTES) {
 		throw new Error("jwt.secret 必须是至少 32 字节的高熵随机值");
@@ -117,3 +163,9 @@ export const getGradingModelById = (id: string) => {
 	const config = getConfig();
 	return config.grading_models.find(model => (model.id ?? model.model) === id && model.enabled) ?? null;
 };
+
+export const getServerConfig = () => getConfig().server;
+
+export const getAnalysisConfig = () => getConfig().analysis;
+
+export const getAppOrigin = () => new URL(getConfig().app.base_url).origin;

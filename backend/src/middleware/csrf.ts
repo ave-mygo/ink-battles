@@ -1,9 +1,11 @@
-import { env } from "../env";
+import { getAppOrigin, getServerConfig } from "../config";
 
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const serverConfig = getServerConfig();
+const appOrigin = getAppOrigin();
 
 const allowedOrigin = (origin: string) =>
-	env.allowedOrigins.includes(origin) || origin === env.appBaseUrl;
+	serverConfig.allowed_origins.includes(origin) || origin === appOrigin;
 
 const originFromReferer = (referer: string | null) => {
 	if (!referer)

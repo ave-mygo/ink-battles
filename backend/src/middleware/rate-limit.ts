@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
+import { getServerConfig } from "../config";
 import { COLLECTIONS, ensureCollectionExists, findOneAndUpdate } from "../db/mongo";
-import { env } from "../env";
 import { getCurrentUser } from "./auth";
 import { normalizeEmail } from "../utils/validators";
 import { getRequestIp } from "../utils/request";
@@ -21,6 +21,7 @@ interface RateLimitRule {
 
 const ONE_MINUTE_MS = 60 * 1000;
 const FIVE_HOURS_MS = 5 * 60 * ONE_MINUTE_MS;
+const serverConfig = getServerConfig();
 
 const hashPart = (value: string) => crypto.createHash("sha256").update(value).digest("hex").slice(0, 32);
 
@@ -30,7 +31,7 @@ const readJsonBody = async (request: Request) => {
 		if (!contentType.includes("application/json"))
 			return {};
 		const contentLength = Number(request.headers.get("content-length") || 0);
-		if (Number.isFinite(contentLength) && contentLength > env.maxJsonBodyBytes)
+		if (Number.isFinite(contentLength) && contentLength > serverConfig.max_json_body_bytes)
 			throw new Error("PAYLOAD_TOO_LARGE");
 		const body = await request.clone().json();
 		return typeof body === "object" && body !== null ? body as Record<string, unknown> : {};

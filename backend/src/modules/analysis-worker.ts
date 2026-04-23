@@ -1,8 +1,7 @@
 import crypto from "crypto-js";
 import { ObjectId } from "mongodb";
-import { getGradingModelById } from "../config";
+import { getAnalysisConfig, getGradingModelById } from "../config";
 import { COLLECTIONS, deleteOne, findOne, findOneAndUpdate, insertOne, updateMany, updateOne, withTransaction } from "../db/mongo";
-import { env } from "../env";
 import { runAnalysisModel } from "../integrations/ai";
 import { verifyArticleValue } from "../integrations/validator";
 import { writeAuditLog } from "../utils/audit";
@@ -14,7 +13,8 @@ const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
 const MODEL_PREFIX_REGEX = /^(按次|公益)-/;
 const CANCELLED_MESSAGE = "分析任务已取消";
 const abortControllers = new Map<string, AbortController>();
-const STREAM_LIMITS = { maxContentSize: env.analysisMaxOutputChars, maxTimeoutMs: 7 * 60 * 1000, maxChunks: 20000 } as const;
+const analysisConfig = getAnalysisConfig();
+const STREAM_LIMITS = { maxContentSize: analysisConfig.max_output_chars, maxTimeoutMs: 7 * 60 * 1000, maxChunks: 20000 } as const;
 
 interface AnalysisResult {
 	title: string;
@@ -60,12 +60,12 @@ export const cleanModelName = (modelName: string) => modelName.replace(MODEL_PRE
 export const getAnalysisBackpressure = () => ({
 	running: runningAnalysisTaskCount,
 	queued: queuedAnalysisTasks.length,
-	maxRunning: env.analysisMaxConcurrentTasks,
-	maxQueued: env.analysisMaxQueuedTasks,
-	accepting: queuedAnalysisTasks.length < env.analysisMaxQueuedTasks,
+	maxRunning: analysisConfig.max_concurrent_tasks,
+	maxQueued: analysisConfig.max_queued_tasks,
+	accepting: queuedAnalysisTasks.length < analysisConfig.max_queued_tasks,
 });
 
-export const canAcceptAnalysisTask = () => queuedAnalysisTasks.length < env.analysisMaxQueuedTasks;
+export const canAcceptAnalysisTask = () => queuedAnalysisTasks.length < analysisConfig.max_queued_tasks;
 
 export const recoverInterruptedAnalysisTasks = async () => {
 	const now = new Date().toISOString();
@@ -151,7 +151,7 @@ export const runAnalysisTask = (taskId: ObjectId, options: AnalysisTaskOptions) 
 };
 
 const drainAnalysisQueue = () => {
-	while (runningAnalysisTaskCount < env.analysisMaxConcurrentTasks && queuedAnalysisTasks.length > 0) {
+	while (runningAnalysisTaskCount < analysisConfig.max_concurrent_tasks && queuedAnalysisTasks.length > 0) {
 		const nextTask = queuedAnalysisTasks.shift();
 		if (!nextTask)
 			return;

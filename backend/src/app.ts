@@ -1,6 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { openapi } from "@elysiajs/openapi";
 import { Elysia } from "elysia";
+import { getAppOrigin, getServerConfig } from "./config";
 import { ensureBackendIndexes } from "./db/indexes";
 import { env } from "./env";
 import { assertOrigin } from "./middleware/csrf";
@@ -19,13 +20,15 @@ import { recoverInterruptedAnalysisTasks } from "./modules/analysis-worker";
 
 const shouldProxy = (path: string) => !path.startsWith("/api/v2");
 const methodsWithBody = new Set(["POST", "PUT", "PATCH"]);
+const serverConfig = getServerConfig();
+const appOrigin = getAppOrigin();
 
 const assertRequestBodySize = (request: Request) => {
 	if (!methodsWithBody.has(request.method))
 		return;
 
 	const contentLength = Number(request.headers.get("content-length") || 0);
-	if (Number.isFinite(contentLength) && contentLength > env.maxJsonBodyBytes)
+	if (Number.isFinite(contentLength) && contentLength > serverConfig.max_json_body_bytes)
 		throw new Error("PAYLOAD_TOO_LARGE");
 };
 
@@ -34,7 +37,7 @@ const createTypedApp = () =>
 		.use(cors({
 			origin: ({ headers }) => {
 				const origin = headers.get("origin");
-				return !origin || env.allowedOrigins.includes(origin) || origin === env.appBaseUrl;
+				return !origin || serverConfig.allowed_origins.includes(origin) || origin === appOrigin;
 			},
 			credentials: true,
 		}))

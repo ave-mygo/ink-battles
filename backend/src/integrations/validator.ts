@@ -2,9 +2,8 @@ import { randomBytes } from "node:crypto";
 import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto-js";
 import OpenAI from "openai";
-import { getConfig } from "../config";
+import { getAnalysisConfig, getConfig } from "../config";
 import { COLLECTIONS, ensureTtlIndex, findOne, insertOne } from "../db/mongo";
-import { env } from "../env";
 import { parseModelOutput } from "../utils/json-parser";
 
 const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
@@ -13,6 +12,7 @@ const DATA_PREFIX_REGEX = /^data:\s*/;
 const MAX_VALIDATION_TEXT_CHARS = 200_000;
 
 type SearchModel = "none" | "gemini" | "gemini-lite";
+const analysisConfig = getAnalysisConfig();
 
 interface ValidationResult {
 	success: boolean;
@@ -184,7 +184,7 @@ const createValidationSession = async (
 ): Promise<ValidationResult> => {
 	const session = randomBytes(8).toString("hex");
 	await ensureTtlIndex(COLLECTIONS.sessions, "createdAt", 30 * 60);
-	const searchSummary = parsed.searchSummary?.slice(0, env.analysisMaxOutputChars);
+	const searchSummary = parsed.searchSummary?.slice(0, analysisConfig.max_output_chars);
 	await insertOne(COLLECTIONS.sessions, {
 		fingerprint,
 		session,
