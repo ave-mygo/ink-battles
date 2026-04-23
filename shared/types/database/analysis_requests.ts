@@ -18,4 +18,10 @@ export interface DatabaseAnalysisRecord {
 	settings?: {
 		public: boolean;
 	};
+	privacy?: {
+		firstViewedAt?: string;
+		expiresAt?: string;
+		hiddenAt?: string;
+		hideReason?: "guest_expired";
+	};
 }

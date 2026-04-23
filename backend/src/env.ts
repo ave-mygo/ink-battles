@@ -12,6 +12,7 @@ export const env = {
 	analysisMaxActiveTasksPerUser: Number(Bun.env.ANALYSIS_MAX_ACTIVE_TASKS_PER_USER || 5),
 	analysisMaxModeChars: Number(Bun.env.ANALYSIS_MAX_MODE_CHARS || 200),
 	analysisMaxFingerprintChars: Number(Bun.env.ANALYSIS_MAX_FINGERPRINT_CHARS || 128),
+	analysisGuestResultTtlMinutes: Number(Bun.env.ANALYSIS_GUEST_RESULT_TTL_MINUTES || 15),
 	allowedOrigins: (Bun.env.ALLOWED_ORIGINS || "http://localhost:3001")
 		.split(",")
 		.map(origin => origin.trim())

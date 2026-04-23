@@ -115,20 +115,31 @@ export const findCachedAnalysis = async (
 	mode: string,
 	modelName: string,
 	searchModel: "none" | "gemini" | "gemini-lite",
-) =>
-	findOne(COLLECTIONS.analysisRequests, {
+) => {
+	const now = new Date().toISOString();
+	return findOne(COLLECTIONS.analysisRequests, {
 		"metadata.sha1": sha1,
 		"article.input.mode": mode,
 		"metadata.modelName": cleanModelName(modelName),
-		...(searchModel === "none"
-			? {
-					$or: [
-						{ "metadata.searchModel": "none" },
-						{ "metadata.searchModel": { $exists: false } },
-					],
-				}
-			: { "metadata.searchModel": searchModel }),
+		"privacy.hiddenAt": { $exists: false },
+		$and: [
+			{
+				$or: [
+					{ "privacy.expiresAt": { $exists: false } },
+					{ "privacy.expiresAt": { $gt: now } },
+				],
+			},
+			searchModel === "none"
+				? {
+						$or: [
+							{ "metadata.searchModel": "none" },
+							{ "metadata.searchModel": { $exists: false } },
+						],
+					}
+				: { "metadata.searchModel": searchModel },
+		],
 	});
+};
 
 export const runAnalysisTask = (taskId: ObjectId, options: AnalysisTaskOptions) => {
 	const key = taskId.toString();
@@ -358,6 +369,7 @@ const saveAnalysisResult = async (input: {
 		},
 		metadata: task.metadata,
 		timestamp: new Date().toISOString(),
+		privacy: {},
 	});
 	await updateOne(COLLECTIONS.analysisTasks, { _id: input.taskId }, {
 		status: "completed",

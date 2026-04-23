@@ -71,16 +71,28 @@ export const verifyArticleValue = async (input: {
 	}
 };
 
-const findCachedAnalysis = async (sha1: string, mode: string, modelId: string, modelName: string) =>
-	await findOne(COLLECTIONS.analysisRequests, {
+const findCachedAnalysis = async (sha1: string, mode: string, modelId: string, modelName: string) => {
+	const now = new Date().toISOString();
+	return await findOne(COLLECTIONS.analysisRequests, {
 		"metadata.sha1": sha1,
 		"article.input.mode": mode,
 		"metadata.modelName": modelName,
+		"privacy.hiddenAt": { $exists: false },
+		$or: [
+			{ "privacy.expiresAt": { $exists: false } },
+			{ "privacy.expiresAt": { $gt: now } },
+		],
 	}) ?? await findOne(COLLECTIONS.analysisRequests, {
 		"metadata.sha1": sha1,
 		"article.input.mode": mode,
 		"metadata.modelId": modelId,
+		"privacy.hiddenAt": { $exists: false },
+		$or: [
+			{ "privacy.expiresAt": { $exists: false } },
+			{ "privacy.expiresAt": { $gt: now } },
+		],
 	});
+};
 
 const selectValidatorModel = (searchModel: SearchModel) => {
 	const config = getConfig();
