@@ -102,30 +102,41 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 	return (
 		<div className="space-y-6">
 			{shouldShowGuestNotice && (
-				<Card className="border-amber-200 rounded-2xl bg-amber-50/90 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/40">
-					<CardHeader className="gap-3">
-						<CardTitle className="flex gap-2 items-center text-amber-900 dark:text-amber-100">
-							<ShieldAlert className="h-5 w-5" />
-							游客记录保护提醒
-						</CardTitle>
-						<CardDescription className="text-amber-800/90 dark:text-amber-200/80">
-							游客模式下，本记录为了保护用户隐私将在
-							{" "}
-							{remainingMinutes ?? 15}
-							{" "}
-							分钟后自动隐藏。注册后可长期保存分析记录并随时回看。
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-						<div className="text-sm text-amber-900/80 dark:text-amber-100/80">
-							{record.privacy?.firstViewedAt
-								? `倒计时已开始，结果页关闭后也会继续生效。`
-								: "首次查看后开始计时。"}
+				<Card className="border-0 rounded-2xl bg-white/80 shadow-md backdrop-blur-sm dark:bg-slate-900/80">
+					<div className="p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div className="flex gap-3 items-start">
+							<ShieldAlert className="text-amber-500 mt-0.5 shrink-0 h-5 w-5" />
+							<div className="text-sm space-y-1">
+								<h3 className="text-slate-900 font-medium dark:text-slate-100">
+									游客隐私保护倒计时
+								</h3>
+								<p className="text-slate-500 dark:text-slate-400">
+									{remainingMinutes === 0
+										? (
+												"当前记录已过期，离开页面立即销毁。"
+											)
+										: (
+												<>
+													当前记录将在
+													{" "}
+													<span className="text-slate-700 font-medium dark:text-slate-300">
+														{remainingMinutes ?? 15}
+														{" "}
+														分钟
+													</span>
+													{" "}
+													后自动销毁。
+													{record.privacy?.firstViewedAt ? "离开页面倒计时仍会继续。" : "倒计时将在首次查看后开始。"}
+												</>
+											)}
+								</p>
+							</div>
 						</div>
-						<Button asChild className="cursor-pointer bg-amber-600 text-white hover:bg-amber-700">
-							<Link href="/signin">注册或登录后保存记录</Link>
+
+						<Button asChild variant="outline" size="sm" className="shrink-0 w-full cursor-pointer sm:w-auto">
+							<Link href="/signin">立即注册保存</Link>
 						</Button>
-					</CardContent>
+					</div>
 				</Card>
 			)}
 
