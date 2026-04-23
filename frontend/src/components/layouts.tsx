@@ -2,7 +2,6 @@
 
 import type { AnalysisResult, ScorePercentileResult } from "@ink-battles/shared/types/ai";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { AnalysisResults } from "@/components/common/analysis/AnalysisResults";
@@ -12,9 +11,7 @@ import WriterAnalysisModes from "@/components/layouts/WriterPage/WriterAnalysisM
 import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/WriterAnalysisResultPlaceholder";
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getFingerprintId } from "@/lib/fingerprint";
-import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
 import { useAvailableGradingModels } from "@/store/writer-config";
 import { submitAnalysis } from "@/utils/analysis";
 import { notifyBillingBalanceUpdated } from "@/utils/billing/client";
@@ -129,9 +126,6 @@ const evaluationModes = [
 
 export default function WriterAnalysisSystem() {
 	const availableGradingModels = useAvailableGradingModels();
-	const isLoggedIn = useIsAuthenticated();
-	const authLoading = useAuthLoading();
-	useAuthHydration();
 	const [articleText, setArticleText] = useState("");
 	const [selectedMode, setSelectedMode] = useState<string[]>([]);
 	const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -370,25 +364,6 @@ export default function WriterAnalysisSystem() {
 		<div className="min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">
 			<div className="mx-auto px-4 py-6 container max-w-7xl sm:py-8">
 				<WriterAnalysisHeader />
-
-				{!authLoading && !isLoggedIn && (
-					<Card className="mb-6 border-blue-200 rounded-2xl bg-linear-to-r from-blue-50 to-cyan-50 shadow-sm dark:border-blue-900/60 dark:from-slate-900 dark:to-slate-900/90">
-						<CardHeader className="gap-2">
-							<CardTitle className="text-slate-900 dark:text-slate-100">游客模式仅临时保存分析结果</CardTitle>
-							<CardDescription className="text-slate-700 dark:text-slate-300">
-								游客分析记录会在你第一次打开结果页后的 15 分钟自动隐藏，用来保护你的文本隐私。登录或注册后，历史记录会长期保存在账号里。
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-							<div className="text-sm text-slate-600 dark:text-slate-300">
-								登录后还可以在历史记录页继续查看、管理和分享分析结果。
-							</div>
-							<Button asChild className="cursor-pointer">
-								<Link href="/signin">注册或登录</Link>
-							</Button>
-						</CardContent>
-					</Card>
-				)}
 
 				<div className="mb-6 gap-6 grid lg:gap-8 lg:grid-cols-8">
 					<div className="lg:col-span-5">
