@@ -39,3 +39,14 @@ export interface SharedHistoryRecordPayload {
 }
 
 export type SharedHistoryRecordResult = ApiResult<SharedHistoryRecordPayload>;
+
+export interface SharedHistorySitemapEntry {
+	id: string;
+	lastModified: string;
+}
+
+export interface SharedHistorySitemapPayload {
+	records: SharedHistorySitemapEntry[];
+}
+
+export type SharedHistorySitemapResult = ApiResult<SharedHistorySitemapPayload>;
