@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { ObjectId } from "mongodb";
 import { getGradingModelById } from "../config";
-import { COLLECTIONS, count, findOne, insertOne, isObjectId, objectId, withTransaction } from "../db/mongo";
+import { COLLECTIONS, count, findOne, findOneAndUpdate, insertOne, isObjectId, objectId, updateOne, withTransaction } from "../db/mongo";
 import { env } from "../env";
 import { getCurrentUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
@@ -15,6 +15,68 @@ const normalizeSearchModel = (value?: string): "none" | "gemini" | "gemini-lite"
 
 const terminalStatuses = new Set(["completed", "failed", "cancelled"]);
 const activeTaskStatuses = ["pending", "processing"];
+const GUEST_RESULT_TTL_MS = env.analysisGuestResultTtlMinutes * 60 * 1000;
+
+const isGuestRecord = (record: Record<string, any> | null) => record?.uid == null;
+
+const isRecordHidden = (record: Record<string, any> | null) => typeof record?.privacy?.hiddenAt === "string";
+
+const isGuestRecordExpired = (record: Record<string, any> | null, now = Date.now()) => {
+	if (!record || !isGuestRecord(record))
+		return false;
+
+	const expiresAt = record.privacy?.expiresAt;
+	if (typeof expiresAt !== "string")
+		return false;
+
+	return new Date(expiresAt).getTime() <= now;
+};
+
+/**
+ * 游客记录只在首次真正查看结果时开始倒计时。
+ * 到期后改为逻辑删除，避免继续出现在读取和缓存链路里。
+ */
+const activateOrHideGuestRecord = async (record: Record<string, any>) => {
+	if (!record)
+		return null;
+	if (!isGuestRecord(record))
+		return record;
+	if (isRecordHidden(record))
+		return null;
+
+	const now = new Date();
+	if (isGuestRecordExpired(record, now.getTime())) {
+		await updateOne(COLLECTIONS.analysisRequests, { _id: record._id }, {
+			"privacy.hiddenAt": now.toISOString(),
+			"privacy.hideReason": "guest_expired",
+		});
+		return null;
+	}
+
+	if (typeof record.privacy?.expiresAt === "string")
+		return record;
+
+	const firstViewedAt = now.toISOString();
+	const expiresAt = new Date(now.getTime() + GUEST_RESULT_TTL_MS).toISOString();
+	return await findOneAndUpdate(COLLECTIONS.analysisRequests, {
+		_id: record._id,
+		uid: null,
+		"privacy.hiddenAt": { $exists: false },
+		"privacy.expiresAt": { $exists: false },
+	}, {
+		$set: {
+			"privacy.firstViewedAt": firstViewedAt,
+			"privacy.expiresAt": expiresAt,
+		},
+	}) ?? {
+		...record,
+		privacy: {
+			...(record.privacy ?? {}),
+			firstViewedAt,
+			expiresAt,
+		},
+	};
+};
 
 const createTaskSnapshot = (task: Record<string, any>) => ({
 	success: true,
@@ -25,6 +87,20 @@ const createTaskSnapshot = (task: Record<string, any>) => ({
 	validation: task.validation,
 	createdAt: task.createdAt,
 	updatedAt: task.updatedAt,
+});
+
+const createTaskResultRecord = (record: Record<string, any>) => ({
+	...record,
+	_id: record._id?.toString(),
+	createdAt: record.createdAt instanceof Date ? record.createdAt.toISOString() : record.createdAt,
+	updatedAt: record.updatedAt instanceof Date ? record.updatedAt.toISOString() : record.updatedAt,
+	settings: {
+		...(record.settings ?? {}),
+		public: record.settings?.public === true,
+	},
+	privacy: {
+		...(record.privacy ?? {}),
+	},
 });
 
 const countActiveTasksForSubmitter = (uid: number | null, fingerprint: string) =>
@@ -154,6 +230,21 @@ export const analysisModule = new Elysia()
 		if (!task)
 			return { success: false, error: "Task not found", status: "not_found" };
 		return createTaskSnapshot(task as Record<string, any>);
+	}, { detail: { tags: ["REST: Analysis"] } })
+	.get("/api/v2/analysis/tasks/:taskId/result", async ({ params }) => {
+		if (!isObjectId(params.taskId))
+			return { success: false, message: "任务不存在" };
+		const task = await findOne(COLLECTIONS.analysisTasks, { _id: objectId(params.taskId) });
+		if (!task)
+			return { success: false, message: "任务不存在" };
+		if (!task.resultId || !isObjectId(task.resultId))
+			return { success: false, message: "任务结果尚未生成" };
+		const record = await activateOrHideGuestRecord(
+			await findOne(COLLECTIONS.analysisRequests, { _id: objectId(task.resultId) }) as Record<string, any>,
+		);
+		if (!record)
+			return { success: false, message: "任务结果不存在或已过期" };
+		return { success: true, data: { record: createTaskResultRecord(record as Record<string, any>) } };
 	}, { detail: { tags: ["REST: Analysis"] } })
 	.get("/api/v2/analysis/tasks/:taskId/events", async ({ params, request }) => {
 		if (!isObjectId(params.taskId)) {

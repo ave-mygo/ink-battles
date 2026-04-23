@@ -5,6 +5,17 @@ import { countAnalysisRecords } from "../db/repositories";
 import { requireUser } from "../middleware/auth";
 import { ok } from "../utils/response";
 
+const buildVisibleRecordFilter = () => {
+	const now = new Date().toISOString();
+	return {
+		"privacy.hiddenAt": { $exists: false },
+		$or: [
+			{ "privacy.expiresAt": { $exists: false } },
+			{ "privacy.expiresAt": { $gt: now } },
+		],
+	};
+};
+
 const HISTORY_SORT_FIELDS = {
 	time: "timestamp",
 	score: "article.output.overallScore",
@@ -39,20 +50,22 @@ const parseRecordResult = (record: Record<string, any>) => ({
 	...record,
 	_id: record._id?.toString(),
 	createdAt: record.createdAt instanceof Date ? record.createdAt.toISOString() : record.createdAt,
-	updatedAt: record.updatedAt instanceof Date ? record.updatedAt.toISOString() : record.updatedAt,
 	settings: {
 		...(record.settings ?? {}),
-		public: record.isPublic === true,
+		public: record.settings?.public === true,
+	},
+	privacy: {
+		...(record.privacy ?? {}),
 	},
 });
 
 const viewableRecord = async (headers: Headers, id: string) => {
 	if (!isObjectId(id))
 		return null;
-	const record = await findOne(COLLECTIONS.analysisRequests, { _id: objectId(id) });
+	const record = await findOne(COLLECTIONS.analysisRequests, { _id: objectId(id), ...buildVisibleRecordFilter() });
 	if (!record)
 		return null;
-	if (record.isPublic)
+	if (record.settings?.public === true)
 		return record;
 	const user = await requireUser(headers);
 	return record.uid === user.uid ? record : null;
@@ -67,11 +80,11 @@ export const dashboardModule = new Elysia()
 		const sortOrder = normalizeHistorySortOrder(query.sortOrder);
 		const visibility = normalizeHistoryVisibilityFilter(query.visibility);
 		const sort = buildHistorySort(sortField, sortOrder);
-		const filter: Record<string, unknown> = { uid: user.uid };
+		const filter: Record<string, unknown> = { uid: user.uid, ...buildVisibleRecordFilter() };
 		if (visibility === "public")
-			filter.isPublic = true;
+			filter["settings.public"] = true;
 		else if (visibility === "private")
-			filter.isPublic = { $ne: true };
+			filter["settings.public"] = { $ne: true };
 		const [records, total] = await Promise.all([
 			findMany(COLLECTIONS.analysisRequests, filter, {
 				sort,
@@ -97,10 +110,43 @@ export const dashboardModule = new Elysia()
 			return { success: false, message: "记录不存在或无权访问" };
 		return ok({ record: parseRecordResult(record) });
 	}, { detail: { tags: ["REST: Analysis"] } })
+	.get("/api/v2/analysis/public-share-sitemap", async () => {
+		const records = await findMany(COLLECTIONS.analysisRequests, {
+			"settings.public": true,
+			...buildVisibleRecordFilter(),
+		}, {
+			projection: {
+				_id: 1,
+				timestamp: 1,
+			},
+			sort: {
+				timestamp: -1,
+				_id: -1,
+			},
+		});
+
+		return ok({
+			records: records.map((record) => {
+				const normalizedRecord = record as Record<string, unknown>;
+				const lastModified = normalizedRecord.timestamp instanceof Date
+					? normalizedRecord.timestamp.toISOString()
+					: String(normalizedRecord.timestamp ?? new Date().toISOString());
+
+				return {
+					id: String(normalizedRecord._id),
+					lastModified,
+				};
+			}),
+			});
+	}, { detail: { tags: ["REST: Analysis"] } })
 	.get("/api/v2/analysis/share/:id", async ({ params }) => {
 		if (!isObjectId(params.id))
 			return { success: false, message: "记录不存在" };
-		const record = await findOne(COLLECTIONS.analysisRequests, { _id: objectId(params.id), isPublic: true });
+		const record = await findOne(COLLECTIONS.analysisRequests, {
+			_id: objectId(params.id),
+			"settings.public": true,
+			...buildVisibleRecordFilter(),
+		});
 		if (!record)
 			return { success: false, message: "记录不存在或未公开" };
 		return ok({ record: parseRecordResult(record) });
@@ -112,9 +158,9 @@ export const dashboardModule = new Elysia()
 		const record = await findOne(COLLECTIONS.analysisRequests, { _id: objectId(params.id), uid: user.uid });
 		if (!record)
 			return { success: false, message: "记录不存在或无权访问" };
-		await updateOne(COLLECTIONS.analysisRequests, { _id: objectId(params.id) }, { isPublic: body.isPublic, updatedAt: new Date() });
-		return { success: true, message: body.isPublic ? "已公开分享" : "已取消公开" };
-	}, { body: t.Object({ isPublic: t.Boolean() }), detail: { tags: ["REST: Analysis"] } })
+		await updateOne(COLLECTIONS.analysisRequests, { _id: objectId(params.id) }, { "settings.public": body.public });
+		return { success: true, message: body.public ? "已公开分享" : "已取消公开" };
+	}, { body: t.Object({ public: t.Boolean() }), detail: { tags: ["REST: Analysis"] } })
 	.delete("/api/v2/analysis/history/:id", async ({ request, params }) => {
 		const user = await requireUser(request.headers);
 		if (!isObjectId(params.id))
