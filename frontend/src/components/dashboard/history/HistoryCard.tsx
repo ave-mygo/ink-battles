@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 
 interface HistoryCardProps {
 	record: DatabaseAnalysisRecord;
-	onTogglePublic?: (recordId: string, isPublic: boolean) => Promise<void>;
+	onTogglePublic?: (recordId: string, publicVisibility: boolean) => Promise<void>;
 	onDelete?: (recordId: string) => Promise<void>;
 }
 
@@ -36,7 +36,7 @@ interface HistoryCardProps {
  * 用于历史记录列表视图
  */
 export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardProps) {
-	const isPublic = record.settings?.public || false;
+	const isShared = record.settings?.public || false;
 	const recordId = record._id || "";
 	const { timestamp, timeAgo } = useMemo(() => {
 		const ts = new Date(record.timestamp);
@@ -71,9 +71,9 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 			return;
 		setIsToggling(true);
 		try {
-			await onTogglePublic(recordId, !isPublic);
-			toast.success(!isPublic ? "已设为公开" : "已设为私密", {
-				description: !isPublic
+			await onTogglePublic(recordId, !isShared);
+			toast.success(!isShared ? "已设为公开" : "已设为私密", {
+				description: !isShared
 					? "该记录现在可以通过分享链接访问"
 					: "该记录现在仅您可见",
 			});
@@ -117,7 +117,7 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 							<Badge variant="outline" className="font-medium bg-slate-50/50 dark:border-slate-700 dark:bg-slate-800/50">
 								{displayModeName}
 							</Badge>
-							{isPublic
+							{isShared
 								? (
 										<Badge variant="secondary" className="text-green-700 px-2 border-green-200 bg-green-50 gap-1 dark:text-green-400 dark:border-green-800 dark:bg-green-950/50 hover:bg-green-100 dark:hover:bg-green-900/50">
 											<Globe className="h-3 w-3" />
@@ -225,7 +225,7 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 									disabled={isToggling}
 									className={cn(
 										"h-8 px-3 text-xs font-medium transition-colors",
-										isPublic
+										isShared
 											? "text-green-600 border-green-200 bg-green-50/80 dark:text-green-400 dark:border-green-800 dark:bg-green-950/50 hover:bg-green-100 dark:hover:bg-green-900/50"
 											: "text-slate-600 border-slate-200 bg-slate-50/80 dark:text-slate-400 dark:border-slate-700 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50",
 									)}
@@ -236,19 +236,19 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 											)
 										: (
 												<>
-													{isPublic ? <Lock className="mr-1.5 h-3.5 w-3.5" /> : <Globe className="mr-1.5 h-3.5 w-3.5" />}
-													{isPublic ? "设为私密" : "设为公开"}
+													{isShared ? <Lock className="mr-1.5 h-3.5 w-3.5" /> : <Globe className="mr-1.5 h-3.5 w-3.5" />}
+													{isShared ? "设为私密" : "设为公开"}
 												</>
 											)}
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent>
-								<p>{isPublic ? "点击将此记录设为仅自己可见" : "点击生成公开链接分享给他人"}</p>
+								<p>{isShared ? "点击将此记录设为仅自己可见" : "点击生成公开链接分享给他人"}</p>
 							</TooltipContent>
 						</Tooltip>
 					</TooltipProvider>
 
-					{isPublic && (
+					{isShared && (
 						<TooltipProvider>
 							<Tooltip>
 								<TooltipTrigger asChild>

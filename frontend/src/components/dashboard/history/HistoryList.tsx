@@ -191,8 +191,8 @@ export function HistoryList({
 	}, [data, pageInput, sort, updateQuery, visibility]);
 
 	/** 切换记录公开状态 */
-	const handleTogglePublic = useCallback(async (recordId: string, isPublic: boolean) => {
-		const result = await toggleRecordPublic(recordId, isPublic);
+	const handleTogglePublic = useCallback(async (recordId: string, publicVisibility: boolean) => {
+		const result = await toggleRecordPublic(recordId, publicVisibility);
 		if (!result.success) {
 			throw new Error(result.message || "操作失败");
 		}
@@ -204,7 +204,7 @@ export function HistoryList({
 				...prev,
 				records: prev.records.map((record) =>
 					record._id === recordId
-						? { ...record, settings: { ...record.settings, public: isPublic } }
+						? { ...record, settings: { ...record.settings, public: publicVisibility } }
 						: record,
 				),
 			};

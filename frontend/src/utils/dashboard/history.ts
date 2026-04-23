@@ -94,8 +94,8 @@ export async function getViewableAnalysisRecord(taskId: string) {
 	return getAnalysisRecordById(taskId);
 }
 
-export async function toggleRecordPublic(recordId: string, isPublic: boolean) {
-	const response = await createClientEden().api.v2.analysis.history({ id: recordId }).patch({ isPublic });
+export async function toggleRecordPublic(recordId: string, publicVisibility: boolean) {
+	const response = await createClientEden().api.v2.analysis.history({ id: recordId }).patch({ public: publicVisibility });
 	return normalizeEdenResult<{ success: boolean; message?: string }>(response.data, response.error, "更新公开状态失败");
 }
 

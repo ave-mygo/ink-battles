@@ -28,10 +28,10 @@ export default async function AnalysisDetailPage({ params }: AnalysisDetailPageP
 	const result = task.success && task.resultId
 		? await normalizeEdenResult<any>(
 				...(await (async () => {
-					const response = await api.api.v2.analysis.history({ id: task.resultId }).get();
+					const response = await api.api.v2.analysis.tasks({ taskId: id }).result.get();
 					return [response.data, response.error] as const;
 				})()),
-				"记录不存在",
+				"任务结果不存在",
 			)
 		: await normalizeEdenResult<any>(
 				...(await (async () => {
