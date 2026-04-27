@@ -43,6 +43,11 @@ const buildHistorySort = (sortField: string, sortOrder: 1 | -1) => {
 	} as const;
 };
 
+const HISTORY_LIST_PROJECTION = {
+	"article.input.articleText": 0,
+	"article.input.search.searchResults": 0,
+} as const;
+
 const normalizeHistoryVisibilityFilter = (visibility?: string) =>
 	visibility === "public" || visibility === "private" ? visibility : "all";
 
@@ -87,6 +92,7 @@ export const dashboardModule = new Elysia()
 			filter["settings.public"] = { $ne: true };
 		const [records, total] = await Promise.all([
 			findMany(COLLECTIONS.analysisRequests, filter, {
+				projection: HISTORY_LIST_PROJECTION,
 				sort,
 				skip: (page - 1) * limit,
 				limit,

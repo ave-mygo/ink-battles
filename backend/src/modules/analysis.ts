@@ -6,7 +6,7 @@ import { getCurrentUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { createProgress } from "./analysis-progress";
-import { canAcceptAnalysisTask, cancelRunningTask, cleanModelName, createCachedTask, deleteTask, findCachedAnalysis, getAnalysisBackpressure, runAnalysisTask, sha1Article } from "./analysis-worker";
+import { canAcceptAnalysisTask, cancelRunningTask, cleanModelName, createCachedTask, deleteTask, findCachedAnalysis, getAnalysisBackpressure, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot, runAnalysisTask, sha1Article } from "./analysis-worker";
 import { deductCallBalanceInTransaction } from "./billing";
 
 const normalizeSearchModel = (value?: string): "none" | "gemini" | "gemini-lite" =>
@@ -136,77 +136,96 @@ export const analysisModule = new Elysia()
 		const activeTaskCount = await countActiveTasksForSubmitter(user?.uid ?? null, body.fingerprint);
 		if (activeTaskCount >= analysisConfig.max_active_tasks_per_user)
 			return { success: false, error: `最多只能同时创建 ${analysisConfig.max_active_tasks_per_user} 个进行中的分析任务，请等待已有任务完成` };
+		if (!reserveAnalysisTaskSlot()) {
+			console.warn("[analysis:submit] rejected by reserved backpressure", getAnalysisBackpressure());
+			throw new Error("SERVICE_BUSY");
+		}
 
 		const taskId = new ObjectId();
 		const createdAt = new Date().toISOString();
 		let deductedFrom: "grant" | "paid" | null = null;
-		if (model.premium && user) {
-			try {
-				await withTransaction(async (session) => {
-					deductedFrom = await deductCallBalanceInTransaction(user.uid, session);
-					if (!deductedFrom)
-						throw new Error("INSUFFICIENT_BALANCE");
-					await insertOne(COLLECTIONS.analysisTasks, {
-						_id: taskId,
-						uid: user.uid,
-						status: "pending",
-						input: body,
-						metadata: {
-							sha1,
-							fingerprint: body.fingerprint,
-							modelName,
-							searchModel: normalizedSearchModel,
-							session: "pending",
-						},
-						billing: {
-							deducted: true,
-							deductedFrom,
-							deductedAt: createdAt,
-							refunded: false,
-							refundBalanceApplied: false,
-						},
-						progress: createProgress("queued", "任务已创建，等待后台处理", 5),
-						createdAt,
-						updatedAt: createdAt,
-					}, session);
+		try {
+			if (model.premium && user) {
+				try {
+					await withTransaction(async (session) => {
+						deductedFrom = await deductCallBalanceInTransaction(user.uid, session);
+						if (!deductedFrom)
+							throw new Error("INSUFFICIENT_BALANCE");
+						await insertOne(COLLECTIONS.analysisTasks, {
+							_id: taskId,
+							uid: user.uid,
+							status: "pending",
+							input: body,
+							metadata: {
+								sha1,
+								fingerprint: body.fingerprint,
+								modelName,
+								searchModel: normalizedSearchModel,
+								session: "pending",
+							},
+							billing: {
+								deducted: true,
+								deductedFrom,
+								deductedAt: createdAt,
+								refunded: false,
+								refundBalanceApplied: false,
+							},
+							progress: createProgress("queued", "任务已创建，等待后台处理", 5),
+							createdAt,
+							updatedAt: createdAt,
+						}, session);
+					});
+				} catch (error) {
+					if ((error as Error).message === "INSUFFICIENT_BALANCE") {
+						releaseAnalysisTaskSlot();
+						return { success: false, error: "调用次数不足，请前往计费管理页面充值或兑换订单" };
+					}
+					throw error;
+				}
+				writeAuditLog({ event: "billing_deducted", uid: user.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { taskId: taskId.toString(), deductedFrom } });
+			} else {
+				await insertOne(COLLECTIONS.analysisTasks, {
+					_id: taskId,
+					uid: user?.uid ?? null,
+					status: "pending",
+					input: body,
+					metadata: {
+						sha1,
+						fingerprint: body.fingerprint,
+						modelName,
+						searchModel: normalizedSearchModel,
+						session: "pending",
+					},
+					billing: {
+						deducted: false,
+						deductedFrom: null,
+					},
+					progress: createProgress("queued", "任务已创建，等待后台处理", 5),
+					createdAt,
+					updatedAt: createdAt,
 				});
-			} catch (error) {
-				if ((error as Error).message === "INSUFFICIENT_BALANCE")
-					return { success: false, error: "调用次数不足，请前往计费管理页面充值或兑换订单" };
-				throw error;
 			}
-			writeAuditLog({ event: "billing_deducted", uid: user.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { taskId: taskId.toString(), deductedFrom } });
-		} else {
-			await insertOne(COLLECTIONS.analysisTasks, {
-				_id: taskId,
+			if (!runAnalysisTask(taskId, {
 				uid: user?.uid ?? null,
-				status: "pending",
-				input: body,
-				metadata: {
-					sha1,
-					fingerprint: body.fingerprint,
-					modelName,
-					searchModel: normalizedSearchModel,
-					session: "pending",
-				},
-				billing: {
-					deducted: false,
-					deductedFrom: null,
-				},
-				progress: createProgress("queued", "任务已创建，等待后台处理", 5),
-				createdAt,
-				updatedAt: createdAt,
-			});
+				modelId: body.modelId,
+				articleText: body.articleText,
+				mode: body.mode,
+				fingerprint: body.fingerprint,
+				searchModel: normalizedSearchModel,
+				isPremium: model.premium === true,
+			})) {
+				await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
+					status: "failed",
+					error: "分析服务繁忙，请稍后重试",
+					progress: createProgress("failed", "分析服务繁忙，请稍后重试", 100),
+					updatedAt: new Date().toISOString(),
+				});
+				throw new Error("SERVICE_BUSY");
+			}
+		} catch (error) {
+			releaseAnalysisTaskSlot();
+			throw error;
 		}
-		runAnalysisTask(taskId, {
-			uid: user?.uid ?? null,
-			modelId: body.modelId,
-			articleText: body.articleText,
-			mode: body.mode,
-			fingerprint: body.fingerprint,
-			searchModel: normalizedSearchModel,
-			isPremium: model.premium === true,
-		});
 		return {
 			success: true,
 			taskId: taskId.toString(),

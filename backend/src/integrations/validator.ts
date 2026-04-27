@@ -33,6 +33,7 @@ export const verifyArticleValue = async (input: {
 	modelName: string;
 	fingerprint: string;
 	searchModel?: SearchModel;
+	signal?: AbortSignal;
 }): Promise<ValidationResult> => {
 	const searchModel = input.searchModel ?? "none";
 	const normalizedText = input.articleText.replace(NORMALIZE_TEXT_REGEX, "");
@@ -53,6 +54,7 @@ export const verifyArticleValue = async (input: {
 				modelConfig,
 				modelName: validatorModelName,
 				sha1,
+				signal: input.signal,
 				systemInstruction,
 			});
 		}
@@ -63,6 +65,7 @@ export const verifyArticleValue = async (input: {
 			modelConfig,
 			modelName: validatorModelName,
 			sha1,
+			signal: input.signal,
 			systemInstruction,
 		});
 	} catch (error) {
@@ -117,6 +120,7 @@ const validateWithGemini = async (input: {
 	modelConfig: ReturnType<typeof selectValidatorModel>;
 	modelName: string;
 	sha1: string;
+	signal?: AbortSignal;
 	systemInstruction: string;
 }) => {
 	const client = new GoogleGenAI({
@@ -127,6 +131,7 @@ const validateWithGemini = async (input: {
 		model: input.modelName,
 		contents: [{ role: "user", parts: [{ text: input.articleText }] }],
 		config: {
+			abortSignal: input.signal,
 			systemInstruction: input.systemInstruction,
 			tools: [{ googleSearch: {} }],
 		},
@@ -148,6 +153,7 @@ const validateWithOpenAI = async (input: {
 	modelConfig: ReturnType<typeof selectValidatorModel>;
 	modelName: string;
 	sha1: string;
+	signal?: AbortSignal;
 	systemInstruction: string;
 }) => {
 	const client = new OpenAI({ apiKey: input.modelConfig.apiKey, baseURL: input.modelConfig.baseUrl });
@@ -158,7 +164,7 @@ const validateWithOpenAI = async (input: {
 			{ role: "user", content: input.articleText },
 		],
 		response_format: { type: "json_object" },
-	});
+	}, { signal: input.signal });
 	const rawText = response.choices[0]?.message?.content || "";
 	if (rawText.length > MAX_VALIDATION_TEXT_CHARS)
 		throw new Error("AI验证服务返回内容过大");

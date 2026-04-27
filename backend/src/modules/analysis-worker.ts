@@ -12,6 +12,7 @@ import { refundCallBalance } from "./billing";
 const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
 const MODEL_PREFIX_REGEX = /^(按次|公益)-/;
 const CANCELLED_MESSAGE = "分析任务已取消";
+const TASK_TIMEOUT_MESSAGE = "分析任务超时，请稍后重试";
 const abortControllers = new Map<string, AbortController>();
 const analysisConfig = getAnalysisConfig();
 const STREAM_LIMITS = { maxContentSize: analysisConfig.max_output_chars, maxTimeoutMs: 7 * 60 * 1000, maxChunks: 20000 } as const;
@@ -53,6 +54,7 @@ interface QueuedAnalysisTask {
 
 const queuedAnalysisTasks: QueuedAnalysisTask[] = [];
 let runningAnalysisTaskCount = 0;
+let reservedAnalysisTaskSlotCount = 0;
 
 export const sha1Article = (articleText: string) => crypto.SHA1(articleText.replace(NORMALIZE_TEXT_REGEX, "")).toString();
 export const cleanModelName = (modelName: string) => modelName.replace(MODEL_PREFIX_REGEX, "");
@@ -60,12 +62,24 @@ export const cleanModelName = (modelName: string) => modelName.replace(MODEL_PRE
 export const getAnalysisBackpressure = () => ({
 	running: runningAnalysisTaskCount,
 	queued: queuedAnalysisTasks.length,
+	reserved: reservedAnalysisTaskSlotCount,
 	maxRunning: analysisConfig.max_concurrent_tasks,
 	maxQueued: analysisConfig.max_queued_tasks,
-	accepting: queuedAnalysisTasks.length < analysisConfig.max_queued_tasks,
+	accepting: queuedAnalysisTasks.length + reservedAnalysisTaskSlotCount < analysisConfig.max_queued_tasks,
 });
 
-export const canAcceptAnalysisTask = () => queuedAnalysisTasks.length < analysisConfig.max_queued_tasks;
+export const canAcceptAnalysisTask = () => queuedAnalysisTasks.length + reservedAnalysisTaskSlotCount < analysisConfig.max_queued_tasks;
+
+export const reserveAnalysisTaskSlot = () => {
+	if (!canAcceptAnalysisTask())
+		return false;
+	reservedAnalysisTaskSlotCount++;
+	return true;
+};
+
+export const releaseAnalysisTaskSlot = () => {
+	reservedAnalysisTaskSlotCount = Math.max(0, reservedAnalysisTaskSlotCount - 1);
+};
 
 export const recoverInterruptedAnalysisTasks = async () => {
 	const now = new Date().toISOString();
@@ -142,6 +156,9 @@ export const findCachedAnalysis = async (
 };
 
 export const runAnalysisTask = (taskId: ObjectId, options: AnalysisTaskOptions) => {
+	if (queuedAnalysisTasks.length >= analysisConfig.max_queued_tasks)
+		return false;
+	releaseAnalysisTaskSlot();
 	const key = taskId.toString();
 	const abortController = new AbortController();
 	abortControllers.set(key, abortController);
@@ -170,6 +187,11 @@ const drainAnalysisQueue = () => {
 
 const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOptions, abortController: AbortController) => {
 	const key = taskId.toString();
+	let timedOut = false;
+	const timeoutTimer = setTimeout(() => {
+		timedOut = true;
+		abortController.abort(TASK_TIMEOUT_MESSAGE);
+	}, STREAM_LIMITS.maxTimeoutMs);
 	try {
 		const model = getGradingModelById(options.modelId);
 		if (!model)
@@ -180,7 +202,7 @@ const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOption
 		await logTaskProgress(taskId, options.searchModel === "none"
 			? createProgress("validating", "正在校验文本内容", 12)
 			: createProgress("searching", "正在联网搜索并校验文本内容", 12));
-		const verification = await verifyArticleValue({ ...options, modelName });
+		const verification = await verifyArticleValue({ ...options, modelName, signal: abortController.signal });
 		if (!verification.success)
 			throw new Error(`校验失败: ${verification.error || "文章内容不符合分析标准"}`);
 
@@ -213,7 +235,8 @@ const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOption
 			await deleteOne(COLLECTIONS.sessions, { session: verification.session });
 		}
 	} catch (error) {
-		if (await shouldTreatAsCancelled(taskId, error)) {
+		const normalizedError = timedOut && isAbortLikeError(error) ? new Error(TASK_TIMEOUT_MESSAGE) : error;
+		if (await shouldTreatAsCancelled(taskId, normalizedError)) {
 			await logTaskProgress(taskId, createProgress("cancelled", CANCELLED_MESSAGE, 100), "cancelled");
 			if (options.uid)
 				await refundTaskCallBalance(taskId, options.uid, "cancelled");
@@ -221,16 +244,17 @@ const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOption
 		}
 		if (options.uid)
 			await refundTaskCallBalance(taskId, options.uid, "failed");
-		await logTaskProgress(taskId, createProgress("failed", formatAnalysisError(error), 100), "failed");
+		await logTaskProgress(taskId, createProgress("failed", formatAnalysisError(normalizedError), 100), "failed");
 		await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
-			error: formatAnalysisError(error),
+			error: formatAnalysisError(normalizedError),
 			validation: {
 				success: false,
-				message: formatAnalysisError(error),
+				message: formatAnalysisError(normalizedError),
 				checkedAt: new Date().toISOString(),
 			},
 		});
 	} finally {
+		clearTimeout(timeoutTimer);
 		abortControllers.delete(key);
 	}
 };
@@ -399,6 +423,12 @@ const shouldTreatAsCancelled = async (taskId: ObjectId, error: unknown) => {
 		return task?.status === "cancelled" || message === CANCELLED_MESSAGE;
 	}
 	return false;
+};
+
+const isAbortLikeError = (error: unknown) => {
+	const message = (error as Error).message || "";
+	const name = (error as { name?: string }).name || "";
+	return name === "AbortError" || name === "APIUserAbortError" || message.includes("abort");
 };
 
 const formatAnalysisError = (error: unknown) => {

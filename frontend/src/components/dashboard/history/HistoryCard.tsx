@@ -65,6 +65,8 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 			: record.metadata?.searchModel === "none"
 				? "关闭搜索"
 				: "未知搜索方案";
+	const searchWebPageCount = record.article.input.search?.searchWebPages?.length ?? 0;
+	const hasSearchContext = !!record.article.input.search?.searchResults || searchWebPageCount > 0;
 
 	const handleTogglePublic = async () => {
 		if (!onTogglePublic)
@@ -131,14 +133,14 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 										</Badge>
 									)}
 							{/* 搜索凭据指示 */}
-							{record.article.input.search?.searchResults && (
+							{hasSearchContext && (
 								<Badge variant="secondary" className="text-blue-700 px-2 border-blue-200 bg-blue-50 gap-1 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50">
 									<Search className="h-3 w-3" />
 									已搜索
-									{record.article.input.search.searchWebPages && record.article.input.search.searchWebPages.length > 0 && (
+									{searchWebPageCount > 0 && (
 										<span className="ml-1">
 											(
-											{record.article.input.search.searchWebPages.length}
+											{searchWebPageCount}
 											)
 										</span>
 									)}
