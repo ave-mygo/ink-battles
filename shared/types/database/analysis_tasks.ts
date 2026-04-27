@@ -18,7 +18,7 @@ export interface DatabaseAnalysisTask {
 		ip: string | null;
 		fingerprint: string | null;
 		modelName?: string;
-		searchModel?: "none" | "gemini" | "gemini-lite";
+		searchModel?: "none" | "gemini" | "gemini-lite" | "ds-search";
 		session: string;
 	};
 	createdAt: string;

@@ -62,9 +62,11 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
 		? "Gemini 搜索"
 		: record.metadata?.searchModel === "gemini-lite"
 			? "Gemini Lite 搜索"
-			: record.metadata?.searchModel === "none"
-				? "关闭搜索"
-				: "未知搜索方案";
+			: record.metadata?.searchModel === "ds-search"
+				? "DeepSeek V4 Flash 搜索"
+				: record.metadata?.searchModel === "none"
+					? "关闭搜索"
+					: "未知搜索方案";
 	const searchWebPageCount = record.article.input.search?.searchWebPages?.length ?? 0;
 	const hasSearchContext = !!record.article.input.search?.searchResults || searchWebPageCount > 0;
 

@@ -24,7 +24,7 @@ export interface SubmitAnalysisInput {
 	mode: string;
 	modelId: string;
 	fingerprint: string;
-	searchModel?: "none" | "gemini" | "gemini-lite";
+	searchModel?: "none" | "gemini" | "gemini-lite" | "ds-search";
 }
 
 export async function submitAnalysis(input: SubmitAnalysisInput) {

@@ -24,6 +24,13 @@ base_url = "https://api.openai.com/v1"
 model = "gemini-2.5-flash"
 
 # -------------------------------------------------------------
+# 带搜索的校验模型 (DeepSeek, OpenAI 兼容 SDK 普通调用)
+[system_models.validator_deepseek_search]
+api_key = "YOUR_VALIDATOR_API_KEY"
+base_url = "https://api.openai.com/v1"
+model = "deepseek-v4-flash-search"
+
+# -------------------------------------------------------------
 # 关闭搜索的校验模型 (GLM, OpenAI 兼容 SDK)
 [system_models.validator_nosearch]
 api_key = "YOUR_VALIDATOR_API_KEY"

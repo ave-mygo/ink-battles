@@ -9,8 +9,12 @@ import { createProgress } from "./analysis-progress";
 import { canAcceptAnalysisTask, cancelRunningTask, cleanModelName, createCachedTask, deleteTask, findCachedAnalysis, getAnalysisBackpressure, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot, runAnalysisTask, sha1Article } from "./analysis-worker";
 import { deductCallBalanceInTransaction } from "./billing";
 
-const normalizeSearchModel = (value?: string): "none" | "gemini" | "gemini-lite" =>
-	value === "gemini" || value === "gemini-lite" ? value : "none";
+type SearchModel = "none" | "gemini" | "gemini-lite" | "ds-search";
+
+const validSearchModels = new Set<SearchModel>(["none", "gemini", "gemini-lite", "ds-search"]);
+
+const normalizeSearchModel = (value?: string): SearchModel =>
+	value && validSearchModels.has(value as SearchModel) ? value as SearchModel : "none";
 
 const terminalStatuses = new Set(["completed", "failed", "cancelled"]);
 const activeTaskStatuses = ["pending", "processing"];
@@ -129,7 +133,16 @@ export const analysisModule = new Elysia()
 		const normalizedSearchModel = normalizeSearchModel(body.searchModel);
 		const cached = await findCachedAnalysis(sha1, body.mode, modelName, normalizedSearchModel);
 		if (cached?.article?.output?.result && cached.status !== "processing") {
-			const taskId = await createCachedTask({ uid: user?.uid ?? null, articleText: body.articleText, mode: body.mode, modelId: body.modelId, fingerprint: body.fingerprint, sha1, resultId: cached._id.toString() });
+			const taskId = await createCachedTask({
+				uid: user?.uid ?? null,
+				articleText: body.articleText,
+				mode: body.mode,
+				modelId: body.modelId,
+				fingerprint: body.fingerprint,
+				sha1,
+				searchModel: normalizedSearchModel,
+				resultId: cached._id.toString(),
+			});
 			return { success: true, taskId };
 		}
 
@@ -238,7 +251,7 @@ export const analysisModule = new Elysia()
 			mode: t.String({ minLength: 1, maxLength: analysisConfig.max_mode_chars }),
 			modelId: t.String({ minLength: 1, maxLength: 128 }),
 			fingerprint: t.String({ minLength: 1, maxLength: analysisConfig.max_fingerprint_chars }),
-			searchModel: t.Optional(t.String({ enum: ["none", "gemini", "gemini-lite"] })),
+			searchModel: t.Optional(t.String({ enum: ["none", "gemini", "gemini-lite", "ds-search"] })),
 		}),
 		detail: { tags: ["REST: Analysis"] },
 	})

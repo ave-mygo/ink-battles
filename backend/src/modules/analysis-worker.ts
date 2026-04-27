@@ -42,7 +42,7 @@ interface AnalysisTaskOptions {
 	articleText: string;
 	mode: string;
 	fingerprint: string;
-	searchModel: "none" | "gemini" | "gemini-lite";
+	searchModel: "none" | "gemini" | "gemini-lite" | "ds-search";
 	isPremium: boolean;
 }
 
@@ -102,6 +102,7 @@ export const createCachedTask = async (input: {
 	modelId: string;
 	fingerprint: string;
 	sha1: string;
+	searchModel: "none" | "gemini" | "gemini-lite" | "ds-search";
 	resultId: string;
 }) => {
 	const taskId = new ObjectId();
@@ -113,7 +114,7 @@ export const createCachedTask = async (input: {
 		metadata: {
 			sha1: input.sha1,
 			fingerprint: input.fingerprint,
-			searchModel: "none",
+			searchModel: input.searchModel,
 			session: "cached",
 		},
 		progress: createProgress("completed", "命中缓存，任务已完成", 100),
@@ -128,7 +129,7 @@ export const findCachedAnalysis = async (
 	sha1: string,
 	mode: string,
 	modelName: string,
-	searchModel: "none" | "gemini" | "gemini-lite",
+	searchModel: "none" | "gemini" | "gemini-lite" | "ds-search",
 ) => {
 	const now = new Date().toISOString();
 	return findOne(COLLECTIONS.analysisRequests, {

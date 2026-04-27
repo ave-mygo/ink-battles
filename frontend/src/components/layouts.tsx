@@ -23,13 +23,19 @@ const DEFAULT_MODE_NAME = "标准模式";
 /**
  * 获取搜索校验模型的展示名称。
  */
-const getSearchModelDisplayName = (searchModel: "none" | "gemini" | "gemini-lite") => {
+type SearchModel = "none" | "gemini" | "gemini-lite" | "ds-search";
+
+const getSearchModelDisplayName = (searchModel: SearchModel) => {
 	if (searchModel === "gemini") {
 		return "Gemini 搜索";
 	}
 
 	if (searchModel === "gemini-lite") {
 		return "Gemini Lite 搜索";
+	}
+
+	if (searchModel === "ds-search") {
+		return "DeepSeek V4 Flash 搜索";
 	}
 
 	return "关闭搜索";
@@ -141,7 +147,7 @@ export default function WriterAnalysisSystem() {
 	const [percentileData, setPercentileData] = useState<ScorePercentileResult | null>(null);
 	const SEARCH_STORAGE_KEY = "writer.searchModel";
 	const SEARCH_MODEL_DEFAULT = "none" as const;
-	const validSearchModels = new Set(["none", "gemini", "gemini-lite"]);
+	const validSearchModels = new Set<SearchModel>(["none", "gemini", "gemini-lite", "ds-search"]);
 
 	const searchModelSubscribe = (callback: () => void) => {
 		if (typeof window === "undefined")
@@ -162,8 +168,8 @@ export default function WriterAnalysisSystem() {
 		try {
 			if (typeof window !== "undefined") {
 				const saved = window.localStorage.getItem(SEARCH_STORAGE_KEY);
-				if (saved && validSearchModels.has(saved))
-					return saved as "none" | "gemini" | "gemini-lite";
+				if (saved && validSearchModels.has(saved as SearchModel))
+					return saved as SearchModel;
 			}
 		} catch {}
 		return SEARCH_MODEL_DEFAULT;
@@ -171,7 +177,7 @@ export default function WriterAnalysisSystem() {
 	const searchModelServerSnapshot = () => SEARCH_MODEL_DEFAULT;
 	const searchModel = useSyncExternalStore(searchModelSubscribe, searchModelSnapshot, searchModelServerSnapshot);
 
-	const setSearchModel = (model: "none" | "gemini" | "gemini-lite") => {
+	const setSearchModel = (model: SearchModel) => {
 		try {
 			if (typeof window !== "undefined") {
 				window.localStorage.setItem(SEARCH_STORAGE_KEY, model);
@@ -197,7 +203,10 @@ export default function WriterAnalysisSystem() {
 		// 设置新的防抖 timer（500ms 延迟）
 		searchDebounceRef.current = setTimeout(() => {
 			const TEXT_LIMIT = 30000;
-			if (articleText.length > TEXT_LIMIT && searchModel !== "none") {
+			const storedSearchModel = typeof window !== "undefined"
+				? window.localStorage.getItem(SEARCH_STORAGE_KEY)
+				: SEARCH_MODEL_DEFAULT;
+			if (articleText.length > TEXT_LIMIT && storedSearchModel !== "none") {
 				setSearchModel("none");
 				toast.info("文本长度超过3万字，已自动关闭联网搜索校验");
 			}

@@ -12,7 +12,7 @@ export interface DatabaseAnalysisRecord {
 		ip: string | null;
 		fingerprint: string | null;
 		modelName?: string;
-		searchModel?: "none" | "gemini" | "gemini-lite";
+		searchModel?: "none" | "gemini" | "gemini-lite" | "ds-search";
 	};
 	timestamp: string;
 	settings?: {

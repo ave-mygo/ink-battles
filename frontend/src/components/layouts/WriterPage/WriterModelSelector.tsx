@@ -11,8 +11,8 @@ interface WriterModelSelectorProps {
 	selectedModelId: string;
 	onModelChange: (modelId: string) => void;
 	disabled?: boolean;
-	searchModel?: "none" | "gemini" | "gemini-lite";
-	onSearchModelChange?: (model: "none" | "gemini" | "gemini-lite") => void;
+	searchModel?: "none" | "gemini" | "gemini-lite" | "ds-search";
+	onSearchModelChange?: (model: "none" | "gemini" | "gemini-lite" | "ds-search") => void;
 }
 
 // 特性图标映射
@@ -206,7 +206,7 @@ export default function WriterModelSelector({
 						</div>
 						<Select
 							value={searchModel}
-							onValueChange={(value: "none" | "gemini" | "gemini-lite") => onSearchModelChange?.(value)}
+							onValueChange={(value: "none" | "gemini" | "gemini-lite" | "ds-search") => onSearchModelChange?.(value)}
 							disabled={disabled}
 						>
 							<SelectTrigger className="bg-slate-50/50 w-full">
@@ -215,6 +215,7 @@ export default function WriterModelSelector({
 							<SelectContent>
 								<SelectItem value="gemini">Gemini 搜索</SelectItem>
 								<SelectItem value="gemini-lite">Gemini Lite 搜索</SelectItem>
+								<SelectItem value="ds-search">DeepSeek V4 Flash 搜索</SelectItem>
 								<SelectItem value="none">关闭搜索</SelectItem>
 							</SelectContent>
 						</Select>

@@ -11,7 +11,7 @@ const JSON_MATCH_REGEX = /data:\s*(\{[\s\S]*\})/;
 const DATA_PREFIX_REGEX = /^data:\s*/;
 const MAX_VALIDATION_TEXT_CHARS = 200_000;
 
-type SearchModel = "none" | "gemini" | "gemini-lite";
+type SearchModel = "none" | "gemini" | "gemini-lite" | "ds-search";
 const analysisConfig = getAnalysisConfig();
 
 interface ValidationResult {
@@ -99,18 +99,19 @@ const findCachedAnalysis = async (sha1: string, mode: string, modelId: string, m
 
 const selectValidatorModel = (searchModel: SearchModel) => {
 	const config = getConfig();
-	const key = searchModel === "gemini-lite"
-		? "validator_gemini_lite"
-		: searchModel === "gemini"
-			? "validator_gemini"
-			: "validator_nosearch";
+	const key = {
+		"ds-search": "validator_deepseek_search",
+		"gemini": "validator_gemini",
+		"gemini-lite": "validator_gemini_lite",
+		"none": "validator_nosearch",
+	}[searchModel];
 	const model = config.system_models[key];
 	if (!model)
 		throw new Error(`缺少系统校验模型配置: ${key}`);
 	return {
 		apiKey: model.api_key,
 		baseUrl: model.base_url,
-		modelName: model.model ?? (searchModel === "none" ? "glm-4.7" : "gemini-2.5-flash"),
+		modelName: model.model ?? (searchModel === "none" ? "glm-4.7" : searchModel),
 	};
 };
 
