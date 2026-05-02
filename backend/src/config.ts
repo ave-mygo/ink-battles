@@ -104,6 +104,9 @@ const validateRuntimeConfig = (config: RuntimeConfig) => {
 		throw new Error("生产环境 app.base_url 不能使用 localhost，请设置为公网域名");
 	}
 	config.app.base_url = parsedAppBaseUrl.origin + parsedAppBaseUrl.pathname.replace(/\/$/, "");
+
+	const afdianRedirectUri = assertRequiredString(config.afdian?.redirect_uri, "afdian.redirect_uri");
+	config.afdian.redirect_uri = new URL(afdianRedirectUri).toString();
 };
 
 /**

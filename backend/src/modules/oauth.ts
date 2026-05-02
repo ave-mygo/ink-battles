@@ -31,6 +31,8 @@ const getRequestPublicBaseUrl = (request: Request) => {
 const createPublicUrl = (request: Request, path: string) =>
 	new URL(path, getRequestPublicBaseUrl(request)).toString();
 
+const getAfdianRedirectUri = () => getConfig().afdian.redirect_uri;
+
 const normalizeOAuthMethod = (value: unknown): OAuthState["method"] =>
 	value === "signup" || value === "bind" ? value : "signin";
 
@@ -109,6 +111,49 @@ const redirectAfterAuth = async (request: Request, uid: number, path = "/dashboa
 	});
 };
 
+const handleAfdianCallback = async (request: Request) => {
+	const url = new URL(request.url);
+	const code = url.searchParams.get("code");
+	const state = parseState(url.searchParams.get("state"));
+	if (!code || !state)
+		return redirectWithMessage("/signin", "afdian_error", "缺少必要参数", getRequestPublicBaseUrl(request));
+
+	try {
+		const data = await exchangeAfdianCode(code, getAfdianRedirectUri());
+		if (data.ec !== 200 || !data.data?.user_id)
+			throw new Error(data.em || "获取爱发电用户信息失败");
+		const { user_id: afdId, name, avatar } = data.data;
+		if (state.method === "bind") {
+			const currentUser = await getCurrentUser(request.headers);
+			if (!currentUser)
+				return redirectWithMessage("/signin", "afdian_bind_need_login", "请先登录后再绑定爱发电", getRequestPublicBaseUrl(request));
+			const existing = await getUserByAfdian(afdId);
+			if (existing && existing.uid !== currentUser.uid)
+				return redirectWithMessage("/dashboard/accounts", "afdian_bind_error", "该爱发电账号已被其他账号绑定", getRequestPublicBaseUrl(request));
+			await updateOne<AuthUser>(COLLECTIONS.users, { uid: currentUser.uid }, { afdId, updatedAt: new Date() });
+			await upsertAfdUser(currentUser.uid, afdId, name, avatar);
+			writeAuditLog({ event: "oauth_bind", uid: currentUser.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "afdian" } });
+			return redirectWithMessage("/dashboard/accounts", "afdian_bind_success", "绑定成功", getRequestPublicBaseUrl(request));
+		}
+
+		let user = await getUserByAfdian(afdId);
+		if (!user) {
+			const uid = await generateNextUID();
+			const invite = await consumeInviteIfNeeded(state.inviteCode, uid);
+			if (!invite.success)
+				return redirectWithMessage("/signup", "need_invite_code", invite.message!, getRequestPublicBaseUrl(request));
+			await createUser({ uid, afdId, loginMethod: "afd", isActive: true, createdAt: new Date(), updatedAt: new Date() });
+			await initializeUserBilling(uid);
+			await upsertAfdUser(uid, afdId, name, avatar);
+			user = await getUserByAfdian(afdId);
+		}
+		writeAuditLog({ event: "oauth_login", uid: user!.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "afdian" } });
+		return redirectAfterAuth(request, user!.uid);
+	} catch (error) {
+		return redirectWithMessage("/signin", "afdian_error", error instanceof Error ? error.message : "爱发电登录失败", getRequestPublicBaseUrl(request));
+	}
+};
+
 export const oauthModule = new Elysia()
 	.get("/api/v2/rpc/oauth.qqStart", ({ request, query }) => {
 		const state = createState({
@@ -131,7 +176,7 @@ export const oauthModule = new Elysia()
 		authUrl.searchParams.set("response_type", "code");
 		authUrl.searchParams.set("scope", "basic");
 		authUrl.searchParams.set("client_id", afdian.client_id);
-		authUrl.searchParams.set("redirect_uri", createPublicUrl(request, "/api/v2/rpc/oauth.afdianCallback"));
+		authUrl.searchParams.set("redirect_uri", getAfdianRedirectUri());
 		authUrl.searchParams.set("state", state);
 		return Response.redirect(authUrl, 302);
 	}, { detail: { tags: ["RPC: OAuth"] } })
@@ -172,45 +217,5 @@ export const oauthModule = new Elysia()
 			return redirectWithMessage("/signin", "qq_error", error instanceof Error ? error.message : "QQ 登录失败", getRequestPublicBaseUrl(request));
 		}
 	}, { detail: { tags: ["RPC: OAuth"] } })
-	.get("/api/v2/rpc/oauth.afdianCallback", async ({ request }) => {
-		const url = new URL(request.url);
-		const code = url.searchParams.get("code");
-		const state = parseState(url.searchParams.get("state"));
-		if (!code || !state)
-			return redirectWithMessage("/signin", "afdian_error", "缺少必要参数", getRequestPublicBaseUrl(request));
-
-		try {
-			const data = await exchangeAfdianCode(code, createPublicUrl(request, "/api/v2/rpc/oauth.afdianCallback"));
-			if (data.ec !== 200 || !data.data?.user_id)
-				throw new Error(data.em || "获取爱发电用户信息失败");
-			const { user_id: afdId, name, avatar } = data.data;
-			if (state.method === "bind") {
-				const currentUser = await getCurrentUser(request.headers);
-				if (!currentUser)
-					return redirectWithMessage("/signin", "afdian_bind_need_login", "请先登录后再绑定爱发电", getRequestPublicBaseUrl(request));
-				const existing = await getUserByAfdian(afdId);
-				if (existing && existing.uid !== currentUser.uid)
-					return redirectWithMessage("/dashboard/accounts", "afdian_bind_error", "该爱发电账号已被其他账号绑定", getRequestPublicBaseUrl(request));
-				await updateOne<AuthUser>(COLLECTIONS.users, { uid: currentUser.uid }, { afdId, updatedAt: new Date() });
-				await upsertAfdUser(currentUser.uid, afdId, name, avatar);
-				writeAuditLog({ event: "oauth_bind", uid: currentUser.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "afdian" } });
-				return redirectWithMessage("/dashboard/accounts", "afdian_bind_success", "绑定成功", getRequestPublicBaseUrl(request));
-			}
-
-			let user = await getUserByAfdian(afdId);
-			if (!user) {
-				const uid = await generateNextUID();
-				const invite = await consumeInviteIfNeeded(state.inviteCode, uid);
-				if (!invite.success)
-					return redirectWithMessage("/signup", "need_invite_code", invite.message!, getRequestPublicBaseUrl(request));
-				await createUser({ uid, afdId, loginMethod: "afd", isActive: true, createdAt: new Date(), updatedAt: new Date() });
-				await initializeUserBilling(uid);
-				await upsertAfdUser(uid, afdId, name, avatar);
-				user = await getUserByAfdian(afdId);
-			}
-			writeAuditLog({ event: "oauth_login", uid: user!.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "afdian" } });
-			return redirectAfterAuth(request, user!.uid);
-		} catch (error) {
-			return redirectWithMessage("/signin", "afdian_error", error instanceof Error ? error.message : "爱发电登录失败", getRequestPublicBaseUrl(request));
-		}
-	}, { detail: { tags: ["RPC: OAuth"] } });
+	.get("/api/v2/rpc/oauth.afdianCallback", ({ request }) => handleAfdianCallback(request), { detail: { tags: ["RPC: OAuth"] } })
+	.get("/oauth/afdian/callback", ({ request }) => handleAfdianCallback(request), { detail: { tags: ["RPC: OAuth"] } });
