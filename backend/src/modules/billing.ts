@@ -169,99 +169,76 @@ export const billingModule = new Elysia()
 		const billing = await ensureUserBilling(user.uid);
 		if (!billing)
 			return { success: false, message: "用户计费信息不存在" };
+		
 		const amount = verification.amount ?? 0;
-		const promotion = getActiveOrderPromotion(billing);
-		const promotionDiscountMultiplier = promotion?.discountMultiplier ?? 1;
-		const calls = calculatePaidCallsFromOrder(amount, billing.totalAmount, promotionDiscountMultiplier);
-		const grant = calculateInitialGrantCalls(billing.totalAmount);
+		const now = new Date();
+		const code = body.promoCode ? normalizePromoCode(body.promoCode) : null;
+		
+		let calls = 0;
+		let grant = 0;
+		let appliedPromoCode: string | null = null;
+
 		try {
 			await withTransaction(async (session) => {
-				await insertOne(COLLECTIONS.afdOrders, { orderNo, uid: user.uid, afdId: user.afdId, amount, redeemedAt: new Date(), grantCallsAdded: grant, paidCallsAdded: calls }, session);
-				await updateOne<UserBilling>(COLLECTIONS.userBilling, { uid: user.uid }, { $inc: { totalAmount: amount, paidCallsBalance: calls, grantCallsBalance: grant }, $set: { updatedAt: new Date() } } as never, session);
+				let promotionDiscountMultiplier = 1;
+				
+				if (code) {
+					const promoCodeDoc = await (await collection<PromoCode>(COLLECTIONS.promoCodes)).findOne({
+						code,
+						active: true,
+						scope: "order_redemption",
+						startsAt: { $lte: now },
+						endsAt: { $gt: now },
+					}, { session });
+
+					if (!promoCodeDoc)
+						throw new Error("PROMO_NOT_AVAILABLE");
+					if (promoCodeDoc.redeemedCount >= promoCodeDoc.maxRedemptions)
+						throw new Error("PROMO_EXHAUSTED");
+					const perUserMaxRedemptions = promoCodeDoc.perUserMaxRedemptions ?? 1;
+					if (perUserMaxRedemptions <= 0)
+						throw new Error("PROMO_INVALID_USER_LIMIT");
+					const userRedemptionCount = await (await collection<PromoCodeRedemption>(COLLECTIONS.promoCodeRedemptions)).countDocuments({ code, uid: user.uid }, { session });
+					if (userRedemptionCount >= perUserMaxRedemptions)
+						throw new Error("PROMO_USER_EXHAUSTED");
+					if (promoCodeDoc.discountMultiplier <= 0 || promoCodeDoc.discountMultiplier > 1)
+						throw new Error("PROMO_INVALID_DISCOUNT");
+
+					await insertOne<PromoCodeRedemption>(COLLECTIONS.promoCodeRedemptions, {
+						code,
+						uid: user.uid,
+						scope: promoCodeDoc.scope,
+						discountMultiplier: promoCodeDoc.discountMultiplier,
+						redeemedAt: now,
+						expiresAt: promoCodeDoc.endsAt,
+					}, session);
+
+					const increasedUsage = await updateOne<PromoCode>(COLLECTIONS.promoCodes, {
+						code,
+						redeemedCount: promoCodeDoc.redeemedCount,
+					}, {
+						$inc: { redeemedCount: 1 },
+						$set: { updatedAt: now },
+					}, session);
+					
+					if (!increasedUsage)
+						throw new Error("PROMO_EXHAUSTED");
+					
+					promotionDiscountMultiplier = promoCodeDoc.discountMultiplier;
+					appliedPromoCode = code;
+				}
+
+				calls = calculatePaidCallsFromOrder(amount, billing.totalAmount, promotionDiscountMultiplier);
+				grant = calculateInitialGrantCalls(billing.totalAmount);
+
+				await insertOne(COLLECTIONS.afdOrders, { orderNo, uid: user.uid, afdId: user.afdId, amount, redeemedAt: now, grantCallsAdded: grant, paidCallsAdded: calls }, session);
+				await updateOne<UserBilling>(COLLECTIONS.userBilling, { uid: user.uid }, { $inc: { totalAmount: amount, paidCallsBalance: calls, grantCallsBalance: grant }, $set: { updatedAt: now } } as never, session);
 			});
 		} catch (error) {
 			if (isDuplicateKeyError(error))
 				return { success: false, message: "该订单已被兑换，请勿重复使用" };
-			throw error;
-		}
-		writeAuditLog({ event: "order_redeemed", uid: user.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { orderNo, amount, calls, grant, promoCode: promotion?.code } });
-		return { success: true, message: `兑换成功！累计消费：¥${(billing.totalAmount + amount).toFixed(2)}，付费次数+${calls}${promotion ? `（已使用促销码 ${promotion.code}）` : ""}${grant ? `（首次兑换，补发当月赠送次数+${grant}）` : ""}` };
-	}, { body: t.Object({ orderNo: t.String() }), detail: { tags: ["RPC: Billing"] } })
-	.post("/api/v2/rpc/billing.applyPromoCode", async ({ request, body }) => {
-		const user = await requireUser(request.headers);
-		const code = normalizePromoCode(body.promoCode);
-		const now = new Date();
-
-		try {
-			await withTransaction(async (session) => {
-				const billing = await getUserBillingInSession(user.uid, session);
-				const activePromotion = getActiveOrderPromotion(billing, now);
-				if (activePromotion?.code === code)
-					throw new Error("PROMO_ALREADY_ACTIVE");
-				if (activePromotion)
-					throw new Error("PROMO_ACTIVE_EXISTS");
-
-				const promoCode = await (await collection<PromoCode>(COLLECTIONS.promoCodes)).findOne({
-					code,
-					active: true,
-					scope: "order_redemption",
-					startsAt: { $lte: now },
-					endsAt: { $gt: now },
-				}, { session });
-
-				if (!promoCode)
-					throw new Error("PROMO_NOT_AVAILABLE");
-				if (promoCode.redeemedCount >= promoCode.maxRedemptions)
-					throw new Error("PROMO_EXHAUSTED");
-				const perUserMaxRedemptions = promoCode.perUserMaxRedemptions ?? 1;
-				if (perUserMaxRedemptions <= 0)
-					throw new Error("PROMO_INVALID_USER_LIMIT");
-				const userRedemptionCount = await (await collection<PromoCodeRedemption>(COLLECTIONS.promoCodeRedemptions)).countDocuments({ code, uid: user.uid }, { session });
-				if (userRedemptionCount >= perUserMaxRedemptions)
-					throw new Error("PROMO_USER_EXHAUSTED");
-				if (promoCode.discountMultiplier <= 0 || promoCode.discountMultiplier > 1)
-					throw new Error("PROMO_INVALID_DISCOUNT");
-
-				await insertOne<PromoCodeRedemption>(COLLECTIONS.promoCodeRedemptions, {
-					code,
-					uid: user.uid,
-					scope: promoCode.scope,
-					discountMultiplier: promoCode.discountMultiplier,
-					redeemedAt: now,
-					expiresAt: promoCode.endsAt,
-				}, session);
-
-				const increasedUsage = await updateOne<PromoCode>(COLLECTIONS.promoCodes, {
-					code,
-					redeemedCount: promoCode.redeemedCount,
-				}, {
-					$inc: { redeemedCount: 1 },
-					$set: { updatedAt: now },
-				}, session);
-				if (!increasedUsage)
-					throw new Error("PROMO_EXHAUSTED");
-
-				await updateOne<UserBilling>(COLLECTIONS.userBilling, { uid: user.uid }, {
-					$set: {
-						activePromotion: {
-							code,
-							scope: promoCode.scope,
-							discountMultiplier: promoCode.discountMultiplier,
-							startsAt: promoCode.startsAt,
-							endsAt: promoCode.endsAt,
-							redeemedAt: now,
-						},
-						updatedAt: now,
-					},
-				} as never, session);
-			});
-		} catch (error) {
-			if (isDuplicateKeyError(error))
-				return { success: false, message: "该促销码已被当前账户使用" };
 			if (error instanceof Error) {
 				const messages: Record<string, string> = {
-					PROMO_ALREADY_ACTIVE: "该促销码已生效，无需重复使用",
-					PROMO_ACTIVE_EXISTS: "当前已有生效中的促销码，请在现有促销码结束后再使用",
 					PROMO_NOT_AVAILABLE: "促销码不存在、未启用或不在有效期内",
 					PROMO_EXHAUSTED: "促销码使用次数已耗尽",
 					PROMO_USER_EXHAUSTED: "当前账户已达到该促销码的使用次数上限",
@@ -273,7 +250,7 @@ export const billingModule = new Elysia()
 			}
 			throw error;
 		}
-
-		writeAuditLog({ event: "promo_code_redeemed", uid: user.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { promoCode: code } });
-		return { success: true, message: "促销码已生效，将用于订单兑换时计算付费次数" };
-	}, { body: t.Object({ promoCode: t.String({ minLength: 2, maxLength: 64 }) }), detail: { tags: ["RPC: Billing"] } });
+		
+		writeAuditLog({ event: "order_redeemed", uid: user.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { orderNo, amount, calls, grant, promoCode: appliedPromoCode } });
+		return { success: true, message: `兑换成功！累计消费：¥${(billing.totalAmount + amount).toFixed(2)}，付费次数+${calls}${appliedPromoCode ? `（已使用促销码 ${appliedPromoCode}）` : ""}${grant ? `（首次兑换，补发当月赠送次数+${grant}）` : ""}` };
+	}, { body: t.Object({ orderNo: t.String(), promoCode: t.Optional(t.String()) }), detail: { tags: ["RPC: Billing"] } });

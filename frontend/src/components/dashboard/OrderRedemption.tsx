@@ -18,6 +18,7 @@ import { useBillingContext } from "./BillingProvider";
 export default function OrderRedemption() {
 	const { refreshBilling } = useBillingContext();
 	const [orderNo, setOrderNo] = useState("");
+	const [promoCode, setPromoCode] = useState("");
 	const [loading, setLoading] = useState(false);
 
 	const handleRedeem = async () => {
@@ -29,13 +30,14 @@ export default function OrderRedemption() {
 		setLoading(true);
 
 		try {
-			const response = await redeemOrder(orderNo.trim());
+			const response = await redeemOrder(orderNo.trim(), promoCode.trim() || undefined);
 
 			if (response.success) {
 				toast.success("兑换成功！", {
 					description: response.message,
 				});
 				setOrderNo(""); // 清空输入框
+				setPromoCode("");
 				notifyBillingBalanceUpdated();
 				await refreshBilling();
 			} else {
@@ -94,6 +96,30 @@ export default function OrderRedemption() {
 					</div>
 					<p className="text-muted-foreground text-xs ml-1">
 						* 订单号通常以年份开头，可在爱发电“我的订单”中查看
+					</p>
+				</div>
+				
+				<div className="space-y-3">
+					<Label htmlFor="promo-code" className="text-sm font-medium">
+						促销码 (可选)
+					</Label>
+					<div className="relative">
+						<Input
+							id="promo-code"
+							placeholder="请输入促销码"
+							value={promoCode}
+							onChange={e => setPromoCode(e.target.value)}
+							disabled={loading}
+							className="pl-3 h-11 uppercase"
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									handleRedeem();
+								}
+							}}
+						/>
+					</div>
+					<p className="text-muted-foreground text-xs ml-1">
+						* 如果您有促销码，可以在此处输入以享受折扣
 					</p>
 				</div>
 

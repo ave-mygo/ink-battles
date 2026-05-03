@@ -17,14 +17,9 @@ export async function getBillingInfo() {
 	return normalizeEdenResult<BillingSummaryResult>(response.data, response.error, "加载计费信息失败");
 }
 
-export async function redeemOrder(orderNo: string) {
-	const response = await createClientEden().api.v2.rpc["billing.redeemOrder"].post({ orderNo });
+export async function redeemOrder(orderNo: string, promoCode?: string) {
+	const response = await createClientEden().api.v2.rpc["billing.redeemOrder"].post({ orderNo, promoCode });
 	return normalizeEdenResult<{ success: boolean; message: string }>(response.data, response.error, "兑换失败");
-}
-
-export async function applyPromoCode(promoCode: string) {
-	const response = await createClientEden().api.v2.rpc["billing.applyPromoCode"].post({ promoCode });
-	return normalizeEdenResult<{ success: boolean; message: string }>(response.data, response.error, "促销码使用失败");
 }
 
 export async function getAvailableCalls(options: { force?: boolean } = {}) {
