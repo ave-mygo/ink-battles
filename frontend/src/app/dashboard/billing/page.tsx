@@ -4,6 +4,7 @@ import BillingManagement from "@/components/dashboard/BillingManagement";
 import { BillingProvider } from "@/components/dashboard/BillingProvider";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
 import OrderRedemption from "@/components/dashboard/OrderRedemption";
+import PromoCodeRedemption from "@/components/dashboard/PromoCodeRedemption";
 import { normalizeEdenResult } from "@/utils/api/eden-response";
 import { createServerEden } from "@/utils/api/eden-server";
 
@@ -32,7 +33,8 @@ export default async function BillingPage() {
 					<div className="space-y-6">
 						<BillingManagement />
 					</div>
-					<div>
+					<div className="space-y-6">
+						<PromoCodeRedemption />
 						<OrderRedemption />
 					</div>
 				</div>

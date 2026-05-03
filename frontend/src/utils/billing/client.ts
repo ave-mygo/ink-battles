@@ -22,6 +22,11 @@ export async function redeemOrder(orderNo: string) {
 	return normalizeEdenResult<{ success: boolean; message: string }>(response.data, response.error, "兑换失败");
 }
 
+export async function applyPromoCode(promoCode: string) {
+	const response = await createClientEden().api.v2.rpc["billing.applyPromoCode"].post({ promoCode });
+	return normalizeEdenResult<{ success: boolean; message: string }>(response.data, response.error, "促销码使用失败");
+}
+
 export async function getAvailableCalls(options: { force?: boolean } = {}) {
 	if (!options.force && availableCallsCache && availableCallsCache.expiresAt > Date.now()) {
 		return availableCallsCache.value;

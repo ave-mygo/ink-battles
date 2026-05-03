@@ -12,6 +12,8 @@ export const COLLECTIONS = {
 	analysisRequests: "analysis_requests",
 	analysisTasks: "analysis_tasks",
 	userBilling: "user_billing",
+	promoCodes: "promo_codes",
+	promoCodeRedemptions: "promo_code_redemptions",
 	afdOrders: "afd_orders",
 	users: "users",
 	afdUsers: "afd_users",

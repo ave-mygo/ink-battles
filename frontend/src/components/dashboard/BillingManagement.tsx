@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Calendar, Coins, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
+import { AlertCircle, Calendar, Coins, Percent, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +26,7 @@ export default function BillingManagement() {
 	const memberName = billingSummary?.memberName ?? "";
 	const discount = billingSummary?.discount ?? 0;
 	const paidCallPrice = billingSummary?.paidCallPrice ?? 0;
+	const activePromotion = billing?.activePromotion ?? null;
 
 	if (isLoading) {
 		return (
@@ -149,6 +150,29 @@ export default function BillingManagement() {
 							</div>
 						</div>
 					</div>
+					{activePromotion && (
+						<div className="bg-emerald-50 text-emerald-800 p-4 border border-emerald-100 rounded-lg flex gap-3 items-start dark:bg-emerald-950/30 dark:text-emerald-200 dark:border-emerald-900/40">
+							<Percent className="mt-0.5 h-4 w-4 shrink-0" />
+							<div className="space-y-1">
+								<div className="text-sm font-medium">
+									促销码
+									{" "}
+									{activePromotion.code}
+									{" "}
+									已生效
+								</div>
+								<div className="text-xs opacity-80">
+									订单兑换按
+									{" "}
+									{(activePromotion.discountMultiplier * 10).toFixed(1)}
+									{" "}
+									折计算，有效至
+									{" "}
+									{new Date(activePromotion.endsAt).toLocaleDateString("zh-CN")}
+								</div>
+							</div>
+						</div>
+					)}
 				</CardContent>
 			</Card>
 

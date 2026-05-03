@@ -21,6 +21,10 @@ const ensureIndex = async (collectionName: string, key: IndexKey, options: Index
 		if (options.unique && sameKeyIndex.unique !== true) {
 			throw new Error(`索引创建前检查失败：${collectionName}.${options.name} 已存在非唯一同键索引`);
 		}
+		if (!options.unique && sameKeyIndex.unique === true && typeof sameKeyIndex.name === "string") {
+			await target.dropIndex(sameKeyIndex.name);
+			await target.createIndex(key, options);
+		}
 		return;
 	}
 	await target.createIndex(key, options);
@@ -57,6 +61,10 @@ export const ensureBackendIndexes = async () => {
 	await assertNoEmptyEmails();
 
 	await ensureIndex("afd_orders", { orderNo: 1 }, { unique: true, name: "uniq_afd_orders_orderNo" });
+	await ensureIndex("promo_codes", { code: 1 }, { unique: true, name: "uniq_promo_codes_code" });
+	await ensureIndex("promo_codes", { active: 1, startsAt: 1, endsAt: 1, scope: 1 }, { name: "idx_promo_codes_active_window_scope" });
+	await ensureIndex("promo_code_redemptions", { code: 1, uid: 1 }, { name: "idx_promo_code_redemptions_code_uid" });
+	await ensureIndex("promo_code_redemptions", { uid: 1, redeemedAt: -1 }, { name: "idx_promo_code_redemptions_uid_redeemedAt" });
 	await ensureIndex("users", { email: 1 }, { unique: true, partialFilterExpression: { email: { $type: "string" } }, name: "uniq_users_email_string" });
 	await ensureIndex("sessions", { createdAt: 1 }, { expireAfterSeconds: 30 * 60, name: "ttl_sessions_createdAt" });
 	await ensureIndex("email_verification_codes", { expiresAt: 1 }, { expireAfterSeconds: 60 * 60, name: "ttl_email_codes_expiresAt" });

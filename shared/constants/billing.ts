@@ -56,16 +56,16 @@ export function calculateMonthlyGrantCalls(totalAmount: number): number {
 /**
  * 付费单次调用价格会随会员等级折扣下降。
  */
-export function calculatePaidCallPrice(totalAmount: number): number {
+export function calculatePaidCallPrice(totalAmount: number, promotionDiscountMultiplier = 1): number {
 	const tierInfo = getBillingTierInfo(totalAmount);
-	return BILLING_CONSTANTS.ADVANCED_MODEL_BASE_COST * (1 - tierInfo.discount);
+	return BILLING_CONSTANTS.ADVANCED_MODEL_BASE_COST * (1 - tierInfo.discount) * promotionDiscountMultiplier;
 }
 
 /**
  * 订单兑换时，付费次数按照当前累计消费下的单价计算。
  */
-export function calculatePaidCallsFromOrder(orderAmount: number, currentTotalAmount: number): number {
-	return Math.floor(orderAmount / calculatePaidCallPrice(currentTotalAmount));
+export function calculatePaidCallsFromOrder(orderAmount: number, currentTotalAmount: number, promotionDiscountMultiplier = 1): number {
+	return Math.floor(orderAmount / calculatePaidCallPrice(currentTotalAmount, promotionDiscountMultiplier));
 }
 
 /**

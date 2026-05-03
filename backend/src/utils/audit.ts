@@ -7,6 +7,7 @@ type AuditEvent =
 	| "logout"
 	| "password_reset"
 	| "order_redeemed"
+	| "promo_code_redeemed"
 	| "billing_deducted"
 	| "billing_refunded"
 	| "account_bound"
