@@ -38,9 +38,9 @@ export const verifyAuthToken = async (token?: string | null): Promise<number | n
 	(await verifyAuthTokenPayload(token))?.uid ?? null;
 
 export const authCookie = (token: string) =>
-	`auth-token=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${sevenDays}; ${process.env.NODE_ENV === "production" ? "Secure;" : ""}`;
+	`auth-token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sevenDays}; ${process.env.NODE_ENV === "production" ? "Secure;" : ""}`;
 
-export const clearAuthCookie = () => "auth-token=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0";
+export const clearAuthCookie = () => "auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
 
 export const gravatarUrl = (email: string, uid: number) =>
 	email ? `https://www.gravatar.com/avatar/${md5(email.trim().toLowerCase())}?d=mp` : `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
