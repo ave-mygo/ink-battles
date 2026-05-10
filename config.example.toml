@@ -67,6 +67,8 @@ max_output_chars = 1048576
 max_concurrent_tasks = 2
 # 当执行中的任务已满时，最多允许排队等待的任务数量。
 max_queued_tasks = 20
+# 已捐赠账户使用的独立排队任务池容量，避免和免费/游客争占排队名额。
+max_sponsor_queued_tasks = 40
 # 单个用户或游客指纹最多允许同时存在的进行中任务数。
 max_active_tasks_per_user = 5
 # 分析模式字段允许的最大长度，主要用于限制拼接后的模式字符串。

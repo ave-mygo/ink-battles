@@ -1,34 +1,23 @@
 import crypto from "crypto-js";
 import { ObjectId } from "mongodb";
 import { getAnalysisConfig, getGradingModelById } from "../config";
-import { COLLECTIONS, deleteOne, findOne, findOneAndUpdate, insertOne, updateMany, updateOne, withTransaction } from "../db/mongo";
+import { COLLECTIONS, deleteOne, findOne, findOneAndUpdate, updateMany, updateOne, withTransaction } from "../db/mongo";
 import { runAnalysisModel } from "../integrations/ai";
 import { verifyArticleValue } from "../integrations/validator";
 import { writeAuditLog } from "../utils/audit";
-import { parseModelOutput } from "../utils/json-parser";
 import { createProgress, estimateStreamingPercent, updateTaskProgress } from "./analysis-progress";
+import { cleanModelName } from "./analysis/cache";
+import { forgetAnalysisAbortController, runQueuedAnalysisTask } from "./analysis/queue";
+export { canAcceptAnalysisTask, cancelRunningTask, getAnalysisBackpressure, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot } from "./analysis/queue";
+import { loadSearchContext, saveAnalysisResult } from "./analysis/result";
+import type { AnalysisTaskOptions } from "./analysis/types";
 import { refundCallBalance } from "./billing";
 
 const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
-const MODEL_PREFIX_REGEX = /^(按次|公益)-/;
 const CANCELLED_MESSAGE = "分析任务已取消";
 const TASK_TIMEOUT_MESSAGE = "分析任务超时，请稍后重试";
-const abortControllers = new Map<string, AbortController>();
 const analysisConfig = getAnalysisConfig();
 const STREAM_LIMITS = { maxContentSize: analysisConfig.max_output_chars, maxTimeoutMs: 7 * 60 * 1000, maxChunks: 20000 } as const;
-
-interface AnalysisResult {
-	title: string;
-	ratingTag: string;
-	finalTag: string;
-	overallAssessment: string;
-	summary: string;
-	tags: string[];
-	dimensions: Array<{ name: string; score: number; description?: string }>;
-	strengths: unknown[];
-	improvements: unknown[];
-	authorMatches?: Array<{ name: string; styleLabel: string; description: string; confidence: number; reasons: string[] }>;
-}
 
 interface AnalysisTaskBillingSnapshot {
 	billing?: {
@@ -36,51 +25,18 @@ interface AnalysisTaskBillingSnapshot {
 	};
 }
 
-interface AnalysisTaskOptions {
-	uid: number | null;
-	modelId: string;
-	articleText: string;
-	mode: string;
-	fingerprint: string;
-	searchModel: "none" | "gemini" | "gemini-lite" | "ds-search";
-	isPremium: boolean;
-}
-
-interface QueuedAnalysisTask {
-	taskId: ObjectId;
-	options: AnalysisTaskOptions;
-	abortController: AbortController;
-}
-
-const queuedAnalysisTasks: QueuedAnalysisTask[] = [];
-let runningAnalysisTaskCount = 0;
-let reservedAnalysisTaskSlotCount = 0;
-
+/**
+ * 计算文章内容的 SHA1 哈希值
+ * @param articleText - 文章文本内容
+ * @returns SHA1 哈希字符串
+ */
 export const sha1Article = (articleText: string) => crypto.SHA1(articleText.replace(NORMALIZE_TEXT_REGEX, "")).toString();
-export const cleanModelName = (modelName: string) => modelName.replace(MODEL_PREFIX_REGEX, "");
 
-export const getAnalysisBackpressure = () => ({
-	running: runningAnalysisTaskCount,
-	queued: queuedAnalysisTasks.length,
-	reserved: reservedAnalysisTaskSlotCount,
-	maxRunning: analysisConfig.max_concurrent_tasks,
-	maxQueued: analysisConfig.max_queued_tasks,
-	accepting: queuedAnalysisTasks.length + reservedAnalysisTaskSlotCount < analysisConfig.max_queued_tasks,
-});
-
-export const canAcceptAnalysisTask = () => queuedAnalysisTasks.length + reservedAnalysisTaskSlotCount < analysisConfig.max_queued_tasks;
-
-export const reserveAnalysisTaskSlot = () => {
-	if (!canAcceptAnalysisTask())
-		return false;
-	reservedAnalysisTaskSlotCount++;
-	return true;
-};
-
-export const releaseAnalysisTaskSlot = () => {
-	reservedAnalysisTaskSlotCount = Math.max(0, reservedAnalysisTaskSlotCount - 1);
-};
-
+/**
+ * 恢复因服务重启而中断的分析任务
+ * 将所有处于 pending 或 processing 状态的任务标记为 failed
+ * @returns 更新操作的结果
+ */
 export const recoverInterruptedAnalysisTasks = async () => {
 	const now = new Date().toISOString();
 	return updateMany(COLLECTIONS.analysisTasks, {
@@ -95,97 +51,23 @@ export const recoverInterruptedAnalysisTasks = async () => {
 	});
 };
 
-export const createCachedTask = async (input: {
-	uid: number | null;
-	articleText: string;
-	mode: string;
-	modelId: string;
-	fingerprint: string;
-	sha1: string;
-	searchModel: "none" | "gemini" | "gemini-lite" | "ds-search";
-	resultId: string;
-}) => {
-	const taskId = new ObjectId();
-	await insertOne(COLLECTIONS.analysisTasks, {
-		_id: taskId,
-		uid: input.uid,
-		status: "completed",
-		input: { articleText: input.articleText, mode: input.mode, modelId: input.modelId },
-		metadata: {
-			sha1: input.sha1,
-			fingerprint: input.fingerprint,
-			searchModel: input.searchModel,
-			session: "cached",
-		},
-		progress: createProgress("completed", "命中缓存，任务已完成", 100),
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
-		resultId: input.resultId,
-	});
-	return taskId.toString();
-};
-
-export const findCachedAnalysis = async (
-	sha1: string,
-	mode: string,
-	modelName: string,
-	searchModel: "none" | "gemini" | "gemini-lite" | "ds-search",
-) => {
-	const now = new Date().toISOString();
-	return findOne(COLLECTIONS.analysisRequests, {
-		"metadata.sha1": sha1,
-		"article.input.mode": mode,
-		"metadata.modelName": cleanModelName(modelName),
-		"privacy.hiddenAt": { $exists: false },
-		$and: [
-			{
-				$or: [
-					{ "privacy.expiresAt": { $exists: false } },
-					{ "privacy.expiresAt": { $gt: now } },
-				],
-			},
-			searchModel === "none"
-				? {
-						$or: [
-							{ "metadata.searchModel": "none" },
-							{ "metadata.searchModel": { $exists: false } },
-						],
-					}
-				: { "metadata.searchModel": searchModel },
-		],
-	});
-};
-
+/**
+ * 运行分析任务
+ * @param taskId - 任务 ID
+ * @param options - 分析任务选项
+ * @returns 任务是否成功加入队列
+ */
 export const runAnalysisTask = (taskId: ObjectId, options: AnalysisTaskOptions) => {
-	if (queuedAnalysisTasks.length >= analysisConfig.max_queued_tasks)
-		return false;
-	releaseAnalysisTaskSlot();
-	const key = taskId.toString();
-	const abortController = new AbortController();
-	abortControllers.set(key, abortController);
-	queuedAnalysisTasks.push({ taskId, options, abortController });
-	queueMicrotask(drainAnalysisQueue);
-	return true;
+	return runQueuedAnalysisTask(taskId, options, executeAnalysisTask);
 };
 
-const drainAnalysisQueue = () => {
-	while (runningAnalysisTaskCount < analysisConfig.max_concurrent_tasks && queuedAnalysisTasks.length > 0) {
-		const nextTask = queuedAnalysisTasks.shift();
-		if (!nextTask)
-			return;
-
-		runningAnalysisTaskCount++;
-		queueMicrotask(async () => {
-			try {
-				await executeAnalysisTask(nextTask.taskId, nextTask.options, nextTask.abortController);
-			} finally {
-				runningAnalysisTaskCount--;
-				drainAnalysisQueue();
-			}
-		});
-	}
-};
-
+/**
+ * 执行分析任务的核心流程
+ * 包含校验、搜索、流式分析、结果解析与保存等全流程
+ * @param taskId - 任务 ID
+ * @param options - 分析任务选项
+ * @param abortController - 用于取消任务的 AbortController
+ */
 const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOptions, abortController: AbortController) => {
 	const key = taskId.toString();
 	let timedOut = false;
@@ -231,7 +113,7 @@ const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOption
 			}));
 
 		await logTaskProgress(taskId, createProgress("finalizing", "正在解析结果并写入数据库", 95), "processing");
-		await saveAnalysisResult({ taskId, uid: options.uid, accumulatedContent, search });
+		await saveAnalysisResult({ taskId, uid: options.uid, accumulatedContent, search, ensureTaskActive });
 		if (verification.session) {
 			await deleteOne(COLLECTIONS.sessions, { session: verification.session });
 		}
@@ -256,10 +138,17 @@ const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOption
 		});
 	} finally {
 		clearTimeout(timeoutTimer);
-		abortControllers.delete(key);
+		forgetAnalysisAbortController(key);
 	}
 };
 
+/**
+ * 累积流式内容并监控流式处理的限制
+ * @param taskId - 任务 ID
+ * @param fingerprint - 任务指纹
+ * @param runStream - 执行流式处理的函数
+ * @returns 累积的完整内容
+ */
 const accumulateStreamContent = async (
 	taskId: ObjectId,
 	fingerprint: string,
@@ -297,16 +186,14 @@ const accumulateStreamContent = async (
 	});
 };
 
-const loadSearchContext = async (session?: string) => {
-	if (!session)
-		return { searchResults: "", searchWebPages: undefined };
-	const record = await findOne(COLLECTIONS.sessions, { session });
-	return {
-		searchResults: typeof record?.searchResults === "string" ? record.searchResults : "",
-		searchWebPages: record?.searchWebPages,
-	};
-};
-
+/**
+ * 退还任务扣除的调用次数余额
+ * 使用事务保证退款操作的原子性
+ * @param taskId - 任务 ID
+ * @param uid - 用户 ID
+ * @param reason - 退款原因（失败或取消）
+ * @returns 是否成功完成退款
+ */
 const refundTaskCallBalance = async (
 	taskId: ObjectId,
 	uid: number,
@@ -353,69 +240,24 @@ const refundTaskCallBalance = async (
 	return refunded;
 };
 
-const saveAnalysisResult = async (input: {
-	taskId: ObjectId;
-	uid: number | null;
-	accumulatedContent: string;
-	search: { searchResults: string; searchWebPages?: unknown };
-}) => {
-	if (!input.accumulatedContent.trim())
-		throw new Error("AI模型返回空内容");
-	const task = await findOne(COLLECTIONS.analysisTasks, { _id: input.taskId });
-	if (!task)
-		throw new Error("任务记录不存在");
-	await ensureTaskActive(input.taskId);
-
-	const parseResult = parseModelOutput<AnalysisResult>(input.accumulatedContent);
-	if (!parseResult.ok || !parseResult.data)
-		throw new Error(`无效的 JSON 格式: ${parseResult.warnings.join(", ")}`);
-	if (parseResult.removed.length > 0)
-		console.warn(`[${input.taskId}] 已移除 ${parseResult.removed.length} 个无效条目`, parseResult.removed);
-	if (!isValidAnalysisResult(parseResult.data))
-		throw new Error("返回结果格式无效");
-
-	const overallScore = calculateFinalScore(parseResult.data);
-	const resultId = new ObjectId();
-	await insertOne(COLLECTIONS.analysisRequests, {
-		_id: resultId,
-		uid: input.uid,
-		status: "completed",
-		article: {
-			input: {
-				articleText: task.input.articleText,
-				mode: task.input.mode,
-				search: input.search,
-			},
-			output: {
-				result: JSON.stringify(parseResult.data),
-				overallScore,
-				tags: parseResult.data.tags || [],
-			},
-		},
-		metadata: task.metadata,
-		timestamp: new Date().toISOString(),
-		privacy: {},
-	});
-	await updateOne(COLLECTIONS.analysisTasks, { _id: input.taskId }, {
-		status: "completed",
-		resultId: resultId.toString(),
-		input: { ...task.input, search: input.search },
-		progress: createProgress("completed", "分析完成，可以查看结果", 100),
-		updatedAt: new Date().toISOString(),
-	});
-	await updateOne(COLLECTIONS.analysisTasks, { _id: input.taskId }, {
-		$set: {
-			"billing.completedAt": new Date().toISOString(),
-		},
-	});
-};
-
+/**
+ * 确保任务仍处于活动状态
+ * 若任务已被取消则抛出异常
+ * @param taskId - 任务 ID
+ * @throws 任务不存在或已取消时抛出错误
+ */
 const ensureTaskActive = async (taskId: ObjectId) => {
 	const task = await findOne(COLLECTIONS.analysisTasks, { _id: taskId });
 	if (!task || task.status === "cancelled")
 		throw new Error(CANCELLED_MESSAGE);
 };
 
+/**
+ * 判断错误是否应被视为任务取消
+ * @param taskId - 任务 ID
+ * @param error - 错误对象
+ * @returns 是否应视为取消
+ */
 const shouldTreatAsCancelled = async (taskId: ObjectId, error: unknown) => {
 	const message = (error as Error).message || "";
 	const name = (error as { name?: string }).name || "";
@@ -426,71 +268,40 @@ const shouldTreatAsCancelled = async (taskId: ObjectId, error: unknown) => {
 	return false;
 };
 
+/**
+ * 判断错误是否为中止类型的错误
+ * @param error - 错误对象
+ * @returns 是否为中止错误
+ */
 const isAbortLikeError = (error: unknown) => {
 	const message = (error as Error).message || "";
 	const name = (error as { name?: string }).name || "";
 	return name === "AbortError" || name === "APIUserAbortError" || message.includes("abort");
 };
 
+/**
+ * 格式化分析错误消息
+ * @param error - 错误对象
+ * @returns 格式化后的错误消息
+ */
 const formatAnalysisError = (error: unknown) => {
 	const message = (error as Error).message || "分析失败";
 	return message.includes("stream") || message.includes("流式") ? `流式处理失败: ${message}` : message;
 };
 
-const calculateFinalScore = (result: AnalysisResult): number => {
-	const dimensions = Array.isArray(result.dimensions) ? result.dimensions : [];
-	const baseDimensions = dimensions.filter(item => !item.name.includes("经典") && !item.name.includes("新锐"));
-	const countAbove35 = baseDimensions.filter(item => item.score > 3.5).length;
-	const countAbove40 = baseDimensions.filter(item => item.score > 4).length;
-	if (countAbove35 >= 6 || countAbove40 >= 3) {
-		for (const dimension of baseDimensions) {
-			if (dimension.score < 3)
-				dimension.score = 3;
-		}
-	}
-	const baseScore = baseDimensions.reduce((sum, item) => sum + (item.score || 0), 0);
-	const classicityWeight = dimensions.find(item => item.name.includes("经典"))?.score || 1;
-	const noveltyWeight = dimensions.find(item => item.name.includes("新锐"))?.score || 1;
-	const finalScore = baseScore * classicityWeight * noveltyWeight;
-	return Number.isFinite(finalScore) ? Math.round(finalScore * 100) / 100 : 0;
-};
-
-const isValidAnalysisResult = (result: AnalysisResult) =>
-	!!result
-	&& ["title", "ratingTag", "finalTag", "overallAssessment", "summary"].every(field => typeof result[field as keyof AnalysisResult] === "string")
-	&& Array.isArray(result.tags)
-	&& result.tags.length > 0
-	&& Array.isArray(result.dimensions)
-	&& result.dimensions.every(item => typeof item.name === "string" && typeof item.score === "number" && item.score >= 0 && item.score <= 5 && typeof item.description === "string")
-	&& Array.isArray(result.strengths)
-	&& Array.isArray(result.improvements)
-	&& (result.authorMatches === undefined || result.authorMatches.every(item =>
-		typeof item.name === "string"
-		&& typeof item.styleLabel === "string"
-		&& typeof item.description === "string"
-		&& typeof item.confidence === "number"
-		&& Array.isArray(item.reasons)));
-
-export const cancelRunningTask = async (taskId: string) => {
-	abortControllers.get(taskId)?.abort(CANCELLED_MESSAGE);
-	abortControllers.delete(taskId);
-	const queuedIndex = queuedAnalysisTasks.findIndex(task => task.taskId.toString() === taskId);
-	if (queuedIndex >= 0)
-		queuedAnalysisTasks.splice(queuedIndex, 1);
-	const cancelledAt = new Date().toISOString();
-	return updateOne(COLLECTIONS.analysisTasks, { _id: new ObjectId(taskId) }, {
-		$set: {
-			"status": "cancelled",
-			"error": CANCELLED_MESSAGE,
-			"progress": createProgress("cancelled", CANCELLED_MESSAGE, 100),
-			"billing.cancelRequestedAt": cancelledAt,
-			"updatedAt": cancelledAt,
-		},
-	});
-};
-
+/**
+ * 删除指定的分析任务
+ * @param taskId - 任务 ID 字符串
+ * @returns 删除操作的结果
+ */
 export const deleteTask = (taskId: string) => deleteOne(COLLECTIONS.analysisTasks, { _id: new ObjectId(taskId) });
 
+/**
+ * 记录任务进度日志并更新数据库
+ * @param taskId - 任务 ID
+ * @param progress - 进度对象
+ * @param status - 可选的任务状态
+ */
 const logTaskProgress = async (
 	taskId: ObjectId,
 	progress: ReturnType<typeof createProgress>,

@@ -18,11 +18,21 @@ import { publicModule } from "./modules/public";
 import { statusModule } from "./modules/status";
 import { recoverInterruptedAnalysisTasks } from "./modules/analysis-worker";
 
+/**
+ * 判断请求路径是否需要代理到前端
+ * @param path - 请求路径
+ * @returns 是否需要代理（非 /api/v2 开头的路径需要代理）
+ */
 const shouldProxy = (path: string) => !path.startsWith("/api/v2");
 const methodsWithBody = new Set(["POST", "PUT", "PATCH"]);
 const serverConfig = getServerConfig();
 const appOrigin = getAppOrigin();
 
+/**
+ * 断言请求体大小不超过配置的最大值
+ * @param request - HTTP 请求对象
+ * @throws 如果请求体过大则抛出 PAYLOAD_TOO_LARGE 错误
+ */
 const assertRequestBodySize = (request: Request) => {
 	if (!methodsWithBody.has(request.method))
 		return;
@@ -32,6 +42,11 @@ const assertRequestBodySize = (request: Request) => {
 		throw new Error("PAYLOAD_TOO_LARGE");
 };
 
+/**
+ * 创建类型化的 Elysia 应用实例
+ * 配置 CORS、OpenAPI、请求拦截、错误处理及所有业务模块路由
+ * @returns Elysia 应用实例
+ */
 const createTypedApp = () =>
 	new Elysia()
 		.use(cors({
@@ -61,6 +76,11 @@ const createTypedApp = () =>
 
 export type App = ReturnType<typeof createTypedApp>;
 
+/**
+ * 创建并初始化应用实例
+ * 包括确保数据库索引、恢复中断的分析任务等启动流程
+ * @returns 完整配置的 Elysia 应用实例
+ */
 export const createApp = async () => {
 	await ensureBackendIndexes();
 	const recoveredTasks = await recoverInterruptedAnalysisTasks();

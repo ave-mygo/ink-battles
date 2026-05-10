@@ -18,8 +18,19 @@ import { initializeUserBilling } from "./billing";
 const MINIMUM_PASSWORD_MESSAGE = "密码不符合要求。密码必须：至少10位字符、包含任意 3 种字符类型";
 const RESET_SESSION_TTL_MS = 10 * 60 * 1000;
 
+/**
+ * 延迟指定毫秒数
+ * @param milliseconds - 延迟的毫秒数
+ * @returns 延迟结束的 Promise
+ */
 const sleep = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
 
+/**
+ * 创建密码重置会话
+ * 生成一次性会话记录，存储验证码哈希和过期时间
+ * @param email - 用户邮箱
+ * @param code - 邮箱验证码
+ */
 const createPasswordResetSession = async (email: string, code: string) => {
 	const now = new Date();
 	await insertOne(COLLECTIONS.sessions, {
@@ -33,6 +44,13 @@ const createPasswordResetSession = async (email: string, code: string) => {
 	});
 };
 
+/**
+ * 消费密码重置会话
+ * 验证验证码并标记会话为已使用
+ * @param email - 用户邮箱
+ * @param code - 邮箱验证码
+ * @returns 是否成功消费会话
+ */
 const consumePasswordResetSession = async (email: string, code: string) => {
 	const now = new Date();
 	const sessions = await findMany(COLLECTIONS.sessions, {
@@ -59,6 +77,12 @@ const consumePasswordResetSession = async (email: string, code: string) => {
 	return false;
 };
 
+/**
+ * 验证邀请码的有效性
+ * 检查是否需要邀请码、邀请码是否存在且未使用
+ * @param inviteCode - 邀请码字符串
+ * @returns 验证结果，包含成功标志和邀请码记录
+ */
 const validateInvite = async (inviteCode?: string) => {
 	if (!getPublicConfig().registration.invite_code_required)
 		return { success: true };
@@ -70,6 +94,13 @@ const validateInvite = async (inviteCode?: string) => {
 	return { success: true, invite };
 };
 
+/**
+ * 创建邮箱注册的用户
+ * 分配 UID、加密密码、初始化账户与计费记录
+ * @param email - 用户邮箱
+ * @param password - 原始密码
+ * @returns 新用户的 UID
+ */
 export const createEmailUser = async (email: string, password: string) => {
 	const uid = await generateNextUID();
 	const now = new Date();
@@ -79,6 +110,14 @@ export const createEmailUser = async (email: string, password: string) => {
 	return uid;
 };
 
+/**
+ * 签发登录响应
+ * 创建认证会话、生成 JWT 令牌并设置 Cookie
+ * @param uid - 用户 ID
+ * @param data - 附加到响应中的数据
+ * @param request - HTTP 请求对象，用于记录 User-Agent
+ * @returns 包含认证 Cookie 的 HTTP 响应
+ */
 export const issueLoginResponse = async (uid: number, data: Record<string, unknown> = {}, request?: Request) => {
 	const session = await createAuthSession(uid, { userAgent: request ? getRequestUserAgent(request) : null });
 	const token = await signAuthToken(uid, session.sessionId);

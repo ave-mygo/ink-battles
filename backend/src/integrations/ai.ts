@@ -13,6 +13,19 @@ export interface AnalysisStreamInput {
 	onProgress?: (chunk: string, chunkCount: number) => Promise<void> | void;
 }
 
+/**
+ * 运行AI分析模型，对文章进行流式分析
+ * @param input - 分析输入参数
+ * @param input.articleText - 文章文本内容
+ * @param input.mode - 分析模式
+ * @param input.modelId - 模型ID
+ * @param input.fingerprint - 用户指纹
+ * @param input.searchResults - 可选的搜索结果摘要
+ * @param input.signal - 中止信号
+ * @param input.maxOutputChars - 最大输出字符数限制
+ * @param input.onProgress - 进度回调函数
+ * @returns 完整的分析结果文本
+ */
 export const runAnalysisModel = async (input: AnalysisStreamInput) => {
 	const model = getGradingModelById(input.modelId);
 	if (!model)
@@ -56,9 +69,18 @@ export const runAnalysisModel = async (input: AnalysisStreamInput) => {
 	return contentChunks.join("");
 };
 
+/**
+ * 计算分数的百分位数
+ * @param score - 原始分数
+ * @returns 包含百分位数和样本大小的对象
+ */
 export const calculateScorePercentile = (score: number) => ({
 	percentile: Math.max(0, Math.min(100, Math.round(score))),
 	sampleSize: 0,
 });
 
+/**
+ * 获取所有已启用的公开评分模型列表
+ * @returns 已启用的评分模型数组
+ */
 export const publicModels = () => getConfig().grading_models.filter(model => model.enabled);

@@ -9,6 +9,13 @@ const typeLabels: Record<VerificationType, string> = {
 	"reset-password": "重置密码",
 };
 
+/**
+ * 发送验证码邮件
+ * @param email - 收件人邮箱地址
+ * @param code - 验证码
+ * @param type - 验证类型（注册/登录/重置密码）
+ * @returns 发送结果，包含成功状态和提示信息
+ */
 export const sendVerificationEmail = async (email: string, code: string, type: VerificationType) => {
 	const config = getConfig();
 	const transporter = nodemailer.createTransport({

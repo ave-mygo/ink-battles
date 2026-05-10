@@ -71,6 +71,8 @@ export const STANDARD_MODE_INSTRUCTION = `
 
 /**
  * 从常量目录加载系统提示词分片，避免调用层感知文件结构。
+ * @param modeInstruction - 评分模式说明文本，会替换提示词模板中的占位符
+ * @returns 拼接完成的完整系统提示词字符串
  */
 export const buildSystemPrompt = async (modeInstruction: string): Promise<string> => {
 	const chunks = await Promise.all(promptFiles.map(file => Bun.file(new URL(file, import.meta.url)).text()));
@@ -79,6 +81,9 @@ export const buildSystemPrompt = async (modeInstruction: string): Promise<string
 
 /**
  * 将前端传入的模式字符串归一化为提示词说明。
+ * 支持多模式组合（逗号分隔或数组）
+ * @param mode - 模式字符串（逗号分隔）或模式字符串数组
+ * @returns 拼接后的评分模式说明文本
  */
 export const getModeInstructions = async (mode: string | string[]): Promise<string> => {
 	const modes = Array.isArray(mode)

@@ -22,6 +22,12 @@ export interface RemovedEntry {
 	reason: string;
 }
 
+/**
+ * 安全解析 JSON 字符串，支持容错和验证
+ * @param raw - 原始 JSON 字符串
+ * @param options - 解析选项，包含验证器和 Mermaid 验证开关
+ * @returns 解析结果，包含数据、移除项和警告信息
+ */
 export const safeParse = <T = unknown>(
 	raw: string,
 	options: SafeParseOptions = {},
@@ -81,9 +87,19 @@ export const safeParse = <T = unknown>(
 	return { ok: true, data: data as T, removed, warnings };
 };
 
+/**
+ * 解析模型输出的 JSON 字符串，自动启用 Mermaid 验证
+ * @param raw - 原始模型输出字符串
+ * @returns 解析结果
+ */
 export const parseModelOutput = <T = unknown>(raw: string): SafeParseResult<T> =>
 	safeParse<T>(raw, { validateMermaid: true });
 
+/**
+ * 从原始字符串中提取 JSON 内容
+ * @param raw - 原始字符串
+ * @returns 提取的 JSON 字符串，未找到返回 null
+ */
 const extractJson = (raw: string): string | null => {
 	let text = raw.trim();
 	if (text.startsWith("```")) {
@@ -104,6 +120,12 @@ const extractJson = (raw: string): string | null => {
 	return end === -1 ? text.substring(start) : text.substring(start, end + 1);
 };
 
+/**
+ * 查找匹配的闭合括号位置
+ * @param text - 文本字符串
+ * @param start - 起始位置
+ * @returns 闭合括号的位置，未找到返回 -1
+ */
 const findMatchingClose = (text: string, start: number): number => {
 	let depth = 0;
 	let inString = false;
@@ -130,9 +152,23 @@ const findMatchingClose = (text: string, start: number): number => {
 	return -1;
 };
 
+/**
+ * 应用 JSON 修复，移除 BOM、注释和尾随逗号
+ * @param json - JSON 字符串
+ * @returns 修复后的 JSON 字符串
+ */
 const applyFixes = (json: string): string =>
 	fixControlCharsInStrings(removeJsonComments(json.replace(RE_BOM, "").replace(RE_TRAILING_COMMA, "$1")));
 
+/**
+ * 验证数组项是否有效
+ * @param item - 待验证的项
+ * @param validator - 验证函数
+ * @param warnings - 警告信息数组
+ * @param path - 项的路径
+ * @param index - 项的索引
+ * @returns 是否有效
+ */
 const isValidItem = (
 	item: unknown,
 	validator: (item: unknown) => boolean,
@@ -148,6 +184,12 @@ const isValidItem = (
 	}
 };
 
+/**
+ * 根据路径获取对象属性值
+ * @param object - 目标对象
+ * @param path - 属性路径，用点分隔
+ * @returns 属性值
+ */
 const getByPath = (object: unknown, path: string): unknown => {
 	if (!path)
 		return object;
@@ -160,6 +202,12 @@ const getByPath = (object: unknown, path: string): unknown => {
 	return current;
 };
 
+/**
+ * 根据路径设置对象属性值
+ * @param object - 目标对象
+ * @param path - 属性路径，用点分隔
+ * @param value - 要设置的值
+ */
 const setByPath = (object: unknown, path: string, value: unknown): void => {
 	if (!path || object === null || typeof object !== "object")
 		return;
@@ -176,6 +224,11 @@ const setByPath = (object: unknown, path: string, value: unknown): void => {
 	}
 };
 
+/**
+ * 生成项的摘要，截断过长的字符串
+ * @param item - 待摘要的项
+ * @returns 摘要对象
+ */
 const summariseItem = (item: unknown): unknown => {
 	if (item === null || typeof item !== "object")
 		return item;

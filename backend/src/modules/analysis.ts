@@ -1,116 +1,51 @@
 import { Elysia, t } from "elysia";
 import { ObjectId } from "mongodb";
 import { getAnalysisConfig, getGradingModelById } from "../config";
-import { COLLECTIONS, count, findOne, findOneAndUpdate, insertOne, isObjectId, objectId, updateOne, withTransaction } from "../db/mongo";
+import { COLLECTIONS, count, findOne, insertOne, isObjectId, objectId, updateOne, withTransaction } from "../db/mongo";
 import { getCurrentUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
+import { cleanModelName, createCachedTask, findCachedAnalysis } from "./analysis/cache";
+import { createAnalysisTaskEventStream } from "./analysis/events";
 import { createProgress } from "./analysis-progress";
-import { canAcceptAnalysisTask, cancelRunningTask, cleanModelName, createCachedTask, deleteTask, findCachedAnalysis, getAnalysisBackpressure, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot, runAnalysisTask, sha1Article } from "./analysis-worker";
-import { deductCallBalanceInTransaction } from "./billing";
-
-type SearchModel = "none" | "gemini" | "gemini-lite" | "ds-search";
+import { createTaskSnapshot, getAnalysisTaskResult } from "./analysis/records";
+import type { AnalysisTaskPool, SearchModel } from "./analysis/types";
+import { canAcceptAnalysisTask, cancelRunningTask, deleteTask, getAnalysisBackpressure, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot, runAnalysisTask, sha1Article } from "./analysis-worker";
+import { deductCallBalanceInTransaction, hasDonatedAccount } from "./billing";
 
 const validSearchModels = new Set<SearchModel>(["none", "gemini", "gemini-lite", "ds-search"]);
 
+/**
+ * 标准化搜索模型参数
+ * @param value - 原始搜索模型字符串
+ * @returns 标准化后的搜索模型类型
+ */
 const normalizeSearchModel = (value?: string): SearchModel =>
 	value && validSearchModels.has(value as SearchModel) ? value as SearchModel : "none";
 
-const terminalStatuses = new Set(["completed", "failed", "cancelled"]);
 const activeTaskStatuses = ["pending", "processing"];
 const analysisConfig = getAnalysisConfig();
-const GUEST_RESULT_TTL_MS = analysisConfig.guest_result_ttl_minutes * 60 * 1000;
-
-const isGuestRecord = (record: Record<string, any> | null) => record?.uid == null;
-
-const isRecordHidden = (record: Record<string, any> | null) => typeof record?.privacy?.hiddenAt === "string";
-
-const isGuestRecordExpired = (record: Record<string, any> | null, now = Date.now()) => {
-	if (!record || !isGuestRecord(record))
-		return false;
-
-	const expiresAt = record.privacy?.expiresAt;
-	if (typeof expiresAt !== "string")
-		return false;
-
-	return new Date(expiresAt).getTime() <= now;
-};
 
 /**
- * 游客记录只在首次真正查看结果时开始倒计时。
- * 到期后改为逻辑删除，避免继续出现在读取和缓存链路里。
+ * 统计提交者当前活跃的任务数量
+ * @param uid - 用户 ID，null 表示游客
+ * @param fingerprint - 游客指纹
+ * @returns 活跃任务数量
  */
-const activateOrHideGuestRecord = async (record: Record<string, any>) => {
-	if (!record)
-		return null;
-	if (!isGuestRecord(record))
-		return record;
-	if (isRecordHidden(record))
-		return null;
-
-	const now = new Date();
-	if (isGuestRecordExpired(record, now.getTime())) {
-		await updateOne(COLLECTIONS.analysisRequests, { _id: record._id }, {
-			"privacy.hiddenAt": now.toISOString(),
-			"privacy.hideReason": "guest_expired",
-		});
-		return null;
-	}
-
-	if (typeof record.privacy?.expiresAt === "string")
-		return record;
-
-	const firstViewedAt = now.toISOString();
-	const expiresAt = new Date(now.getTime() + GUEST_RESULT_TTL_MS).toISOString();
-	return await findOneAndUpdate(COLLECTIONS.analysisRequests, {
-		_id: record._id,
-		uid: null,
-		"privacy.hiddenAt": { $exists: false },
-		"privacy.expiresAt": { $exists: false },
-	}, {
-		$set: {
-			"privacy.firstViewedAt": firstViewedAt,
-			"privacy.expiresAt": expiresAt,
-		},
-	}) ?? {
-		...record,
-		privacy: {
-			...(record.privacy ?? {}),
-			firstViewedAt,
-			expiresAt,
-		},
-	};
-};
-
-const createTaskSnapshot = (task: Record<string, any>) => ({
-	success: true,
-	status: task.status,
-	error: task.error,
-	resultId: task.resultId,
-	progress: task.progress,
-	validation: task.validation,
-	createdAt: task.createdAt,
-	updatedAt: task.updatedAt,
-});
-
-const createTaskResultRecord = (record: Record<string, any>) => ({
-	...record,
-	_id: record._id?.toString(),
-	createdAt: record.createdAt instanceof Date ? record.createdAt.toISOString() : record.createdAt,
-	updatedAt: record.updatedAt instanceof Date ? record.updatedAt.toISOString() : record.updatedAt,
-	settings: {
-		...(record.settings ?? {}),
-		public: record.settings?.public === true,
-	},
-	privacy: {
-		...(record.privacy ?? {}),
-	},
-});
-
 const countActiveTasksForSubmitter = (uid: number | null, fingerprint: string) =>
 	count(COLLECTIONS.analysisTasks, uid
 		? { uid, status: { $in: activeTaskStatuses } }
 		: { uid: null, "metadata.fingerprint": fingerprint, status: { $in: activeTaskStatuses } });
+
+/**
+ * 获取队列已满时的提示消息
+ * @param pool - 任务池类型
+ * @returns 提示消息字符串
+ */
+const getQueueFullMessage = (pool: AnalysisTaskPool) =>
+	pool === "sponsor"
+		? `赞助者分析任务池已满，最多允许 ${analysisConfig.max_sponsor_queued_tasks} 个任务排队，请稍后再试`
+		: `免费/游客分析任务池已满，最多允许 ${analysisConfig.max_queued_tasks} 个任务排队，请稍后再试`;
 
 export const analysisModule = new Elysia()
 	.post("/api/v2/analysis/tasks", async ({ request, body }) => {
@@ -124,10 +59,7 @@ export const analysisModule = new Elysia()
 		const user = await getCurrentUser(request.headers);
 		if (model.premium && !user)
 			return { success: false, error: "高级模型需要登录后使用，请先登录" };
-		if (!canAcceptAnalysisTask()) {
-			console.warn("[analysis:submit] rejected by backpressure", getAnalysisBackpressure());
-			throw new Error("SERVICE_BUSY");
-		}
+		const pool: AnalysisTaskPool = user && await hasDonatedAccount(user.uid) ? "sponsor" : "standard";
 		const sha1 = sha1Article(body.articleText);
 		const modelName = cleanModelName(model.model);
 		const normalizedSearchModel = normalizeSearchModel(body.searchModel);
@@ -149,9 +81,13 @@ export const analysisModule = new Elysia()
 		const activeTaskCount = await countActiveTasksForSubmitter(user?.uid ?? null, body.fingerprint);
 		if (activeTaskCount >= analysisConfig.max_active_tasks_per_user)
 			return { success: false, error: `最多只能同时创建 ${analysisConfig.max_active_tasks_per_user} 个进行中的分析任务，请等待已有任务完成` };
-		if (!reserveAnalysisTaskSlot()) {
+		if (!canAcceptAnalysisTask(pool)) {
+			console.warn("[analysis:submit] rejected by backpressure", { pool, ...getAnalysisBackpressure() });
+			return { success: false, error: getQueueFullMessage(pool) };
+		}
+		if (!reserveAnalysisTaskSlot(pool)) {
 			console.warn("[analysis:submit] rejected by reserved backpressure", getAnalysisBackpressure());
-			throw new Error("SERVICE_BUSY");
+			return { success: false, error: getQueueFullMessage(pool) };
 		}
 
 		const taskId = new ObjectId();
@@ -190,7 +126,7 @@ export const analysisModule = new Elysia()
 					});
 				} catch (error) {
 					if ((error as Error).message === "INSUFFICIENT_BALANCE") {
-						releaseAnalysisTaskSlot();
+						releaseAnalysisTaskSlot(pool);
 						return { success: false, error: "调用次数不足，请前往计费管理页面充值或兑换订单" };
 					}
 					throw error;
@@ -226,6 +162,7 @@ export const analysisModule = new Elysia()
 				fingerprint: body.fingerprint,
 				searchModel: normalizedSearchModel,
 				isPremium: model.premium === true,
+				pool,
 			})) {
 				await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
 					status: "failed",
@@ -236,7 +173,7 @@ export const analysisModule = new Elysia()
 				throw new Error("SERVICE_BUSY");
 			}
 		} catch (error) {
-			releaseAnalysisTaskSlot();
+			releaseAnalysisTaskSlot(pool);
 			throw error;
 		}
 		return {
@@ -264,19 +201,7 @@ export const analysisModule = new Elysia()
 		return createTaskSnapshot(task as Record<string, any>);
 	}, { detail: { tags: ["REST: Analysis"] } })
 	.get("/api/v2/analysis/tasks/:taskId/result", async ({ params }) => {
-		if (!isObjectId(params.taskId))
-			return { success: false, message: "任务不存在" };
-		const task = await findOne(COLLECTIONS.analysisTasks, { _id: objectId(params.taskId) });
-		if (!task)
-			return { success: false, message: "任务不存在" };
-		if (!task.resultId || !isObjectId(task.resultId))
-			return { success: false, message: "任务结果尚未生成" };
-		const record = await activateOrHideGuestRecord(
-			await findOne(COLLECTIONS.analysisRequests, { _id: objectId(task.resultId) }) as Record<string, any>,
-		);
-		if (!record)
-			return { success: false, message: "任务结果不存在或已过期" };
-		return { success: true, data: { record: createTaskResultRecord(record as Record<string, any>) } };
+		return getAnalysisTaskResult(params.taskId);
 	}, { detail: { tags: ["REST: Analysis"] } })
 	.get("/api/v2/analysis/tasks/:taskId/events", async ({ params, request }) => {
 		if (!isObjectId(params.taskId)) {
@@ -291,109 +216,7 @@ export const analysisModule = new Elysia()
 		}
 
 		const taskId = objectId(params.taskId);
-		const encoder = new TextEncoder();
-
-		let cleanupStream = () => {};
-
-		return new Response(new ReadableStream({
-			start(controller) {
-				let closed = false;
-				let lastPayload = "";
-				let heartbeatTimer: Timer | null = null;
-				let pollTimer: Timer | null = null;
-				let snapshotInFlight = false;
-
-				const cleanup = () => {
-					if (closed)
-						return;
-					closed = true;
-					if (heartbeatTimer)
-						clearInterval(heartbeatTimer);
-					if (pollTimer)
-						clearInterval(pollTimer);
-					request.signal.removeEventListener("abort", cleanup);
-				};
-				cleanupStream = cleanup;
-
-				const close = () => {
-					cleanup();
-					try {
-						controller.close();
-					} catch {
-						// 客户端断开时底层 stream 可能已关闭，只需要确保资源已释放。
-					}
-				};
-
-				const send = (event: string, payload: unknown) => {
-					if (closed)
-						return;
-					try {
-						controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
-					} catch {
-						cleanup();
-					}
-				};
-
-				const pushSnapshot = async () => {
-					if (closed || snapshotInFlight)
-						return;
-					snapshotInFlight = true;
-
-					try {
-						const task = await findOne(COLLECTIONS.analysisTasks, { _id: taskId });
-						if (closed)
-							return;
-						if (!task) {
-							send("error", { success: false, error: "Task not found", status: "not_found" });
-							close();
-							return;
-						}
-
-						const payload = JSON.stringify(createTaskSnapshot(task as Record<string, any>));
-						if (payload !== lastPayload) {
-							lastPayload = payload;
-							send("snapshot", JSON.parse(payload));
-						}
-
-						if (terminalStatuses.has(String(task.status))) {
-							send("end", { success: true, status: task.status });
-							close();
-						}
-					} catch (error) {
-						send("error", { success: false, error: (error as Error).message || "Task stream failed", status: "error" });
-						close();
-					} finally {
-						snapshotInFlight = false;
-					}
-				};
-
-				void pushSnapshot();
-				pollTimer = setInterval(() => void pushSnapshot(), 1000);
-				heartbeatTimer = setInterval(() => {
-					if (closed)
-						return;
-					try {
-						controller.enqueue(encoder.encode(": keep-alive\n\n"));
-					} catch {
-						cleanup();
-					}
-				}, 15000);
-				if (request.signal.aborted)
-					cleanup();
-				else
-					request.signal.addEventListener("abort", cleanup, { once: true });
-			},
-			cancel() {
-				cleanupStream();
-			},
-		}), {
-			headers: {
-				"Content-Type": "text/event-stream; charset=utf-8",
-				"Cache-Control": "no-cache, no-transform",
-				"Connection": "keep-alive",
-				"X-Accel-Buffering": "no",
-			},
-		});
+		return createAnalysisTaskEventStream(taskId, request);
 	}, { detail: { tags: ["REST: Analysis"] } })
 	.delete("/api/v2/analysis/tasks/:taskId", async ({ params }) => {
 		if (!isObjectId(params.taskId))

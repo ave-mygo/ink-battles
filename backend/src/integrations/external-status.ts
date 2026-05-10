@@ -9,14 +9,30 @@ type ExternalStatusLog = Record<string, unknown> & {
 	completion_tokens?: number;
 };
 
+/**
+ * 隐藏日志中的敏感字段
+ * @param item - 原始日志对象
+ * @returns 移除敏感字段后的日志副本
+ */
 const hideSensitiveLogFields = (item: Record<string, unknown>) => {
 	const copy = { ...item };
 	["username", "user_id", "other", "ip", "group", "content", "channel", "channel_name", "token_name"].forEach(key => delete copy[key]);
 	return copy;
 };
 
+/**
+ * 将未知类型的值转换为数字
+ * @param value - 待转换的值
+ * @returns 转换后的数字，如果值为空则返回0
+ */
 const toNumber = (value: unknown) => typeof value === "number" ? value : Number(value ?? 0);
 
+/**
+ * 从多条日志中选择最具代表性的一条
+ * 优先选择成功的日志（quota > 0），若无成功日志则选择最新的一条
+ * @param logs - 日志数组
+ * @returns 最具代表性的日志记录
+ */
 const pickRepresentativeLog = (logs: ExternalStatusLog[]) => {
 	const successfulLog = logs
 		.filter(log => toNumber(log.quota) > 0)
@@ -72,6 +88,12 @@ const mergeLogsByRequestId = (logs: ExternalStatusLog[]) => {
 		.sort((left, right) => toNumber(right.created_at) - toNumber(left.created_at));
 };
 
+/**
+ * 获取外部API状态和日志信息
+ * @param page - 页码
+ * @param pageSize - 每页数量
+ * @returns 包含日志列表、统计信息和分页信息的对象
+ */
 export const getExternalStatus = async (page: number, pageSize: number) => {
 	const { api } = getConfig();
 	const end = Math.floor(Date.now() / 1000);

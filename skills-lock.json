@@ -4,7 +4,20 @@
     "elysiajs": {
       "source": "elysiajs/skills",
       "sourceType": "github",
+      "skillPath": "elysia/SKILL.md",
       "computedHash": "55268e69a2c766ed67e56a0db57544f60cc52dba0c7f024a974baf965e525e1b"
+    },
+    "migrate-to-vinext": {
+      "source": "cloudflare/vinext",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/migrate-to-vinext/SKILL.md",
+      "computedHash": "660f2e78a96c76792fd8a74b0ce714c69a67fed95de8698df4b32186b3cec097"
+    },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "80a6226e78f6d1fe464214ae0ef449d49d8ffaa3e7704f011e9b418c678ad4d1"
     }
   }
 }

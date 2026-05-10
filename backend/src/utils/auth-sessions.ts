@@ -13,6 +13,12 @@ export interface AuthSession {
 	ipHash?: string | null;
 }
 
+/**
+ * 创建认证会话
+ * @param uid - 用户ID
+ * @param input - 会话输入参数，包含用户代理等信息
+ * @returns 创建的认证会话对象
+ */
 export const createAuthSession = async (uid: number, input: { userAgent?: string | null } = {}) => {
 	const now = new Date();
 	const session: AuthSession = {
@@ -26,6 +32,12 @@ export const createAuthSession = async (uid: number, input: { userAgent?: string
 	return session;
 };
 
+/**
+ * 检查认证会话是否有效
+ * @param uid - 用户ID
+ * @param sessionId - 会话ID
+ * @returns 会话是否有效
+ */
 export const isAuthSessionValid = async (uid: number, sessionId: string) => {
 	const session = await findOne<AuthSession>(COLLECTIONS.authSessions, {
 		uid,
@@ -36,6 +48,12 @@ export const isAuthSessionValid = async (uid: number, sessionId: string) => {
 	return !!session;
 };
 
+/**
+ * 撤销指定的认证会话
+ * @param uid - 用户ID
+ * @param sessionId - 会话ID
+ * @returns 更新操作的结果
+ */
 export const revokeAuthSession = (uid: number, sessionId: string) =>
 	updateOne<AuthSession>(COLLECTIONS.authSessions, {
 		uid,
@@ -47,6 +65,11 @@ export const revokeAuthSession = (uid: number, sessionId: string) =>
 		},
 	});
 
+/**
+ * 撤销用户的所有认证会话
+ * @param uid - 用户ID
+ * @returns 批量更新操作的结果
+ */
 export const revokeUserSessions = (uid: number) =>
 	updateMany<AuthSession>(COLLECTIONS.authSessions, {
 		uid,

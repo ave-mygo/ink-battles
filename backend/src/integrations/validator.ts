@@ -26,6 +26,19 @@ interface ParsedValidation {
 	searchSummary?: string;
 }
 
+/**
+ * 验证文章内容的有效性
+ * 通过AI模型判断文章是否为有效内容，支持可选的搜索增强
+ * @param input - 验证输入参数
+ * @param input.articleText - 文章文本内容
+ * @param input.mode - 分析模式
+ * @param input.modelId - 模型ID
+ * @param input.modelName - 模型名称
+ * @param input.fingerprint - 用户指纹
+ * @param input.searchModel - 搜索模型类型，默认为"none"
+ * @param input.signal - 中止信号
+ * @returns 验证结果，包含是否成功、错误信息和会话ID
+ */
 export const verifyArticleValue = async (input: {
 	articleText: string;
 	mode: string;
@@ -74,6 +87,14 @@ export const verifyArticleValue = async (input: {
 	}
 };
 
+/**
+ * 查找缓存的分析结果
+ * @param sha1 - 文章内容的SHA1哈希值
+ * @param mode - 分析模式
+ * @param modelId - 模型ID
+ * @param modelName - 模型名称
+ * @returns 缓存的分析记录，如果不存在则返回null
+ */
 const findCachedAnalysis = async (sha1: string, mode: string, modelId: string, modelName: string) => {
 	const now = new Date().toISOString();
 	return await findOne(COLLECTIONS.analysisRequests, {
@@ -97,6 +118,11 @@ const findCachedAnalysis = async (sha1: string, mode: string, modelId: string, m
 	});
 };
 
+/**
+ * 根据搜索模型类型选择对应的验证器模型配置
+ * @param searchModel - 搜索模型类型
+ * @returns 模型配置，包含API密钥、基础URL和模型名称
+ */
 const selectValidatorModel = (searchModel: SearchModel) => {
 	const config = getConfig();
 	const key = {
@@ -115,6 +141,18 @@ const selectValidatorModel = (searchModel: SearchModel) => {
 	};
 };
 
+/**
+ * 使用Gemini模型进行内容验证
+ * @param input - 验证输入参数
+ * @param input.articleText - 文章文本
+ * @param input.fingerprint - 用户指纹
+ * @param input.modelConfig - 模型配置
+ * @param input.modelName - 模型名称
+ * @param input.sha1 - 文章SHA1哈希值
+ * @param input.signal - 中止信号
+ * @param input.systemInstruction - 系统指令
+ * @returns 验证结果
+ */
 const validateWithGemini = async (input: {
 	articleText: string;
 	fingerprint: string;
@@ -148,6 +186,18 @@ const validateWithGemini = async (input: {
 	return createValidationSession(input.fingerprint, input.sha1, parsed, searchWebPages);
 };
 
+/**
+ * 使用OpenAI兼容模型进行内容验证
+ * @param input - 验证输入参数
+ * @param input.articleText - 文章文本
+ * @param input.fingerprint - 用户指纹
+ * @param input.modelConfig - 模型配置
+ * @param input.modelName - 模型名称
+ * @param input.sha1 - 文章SHA1哈希值
+ * @param input.signal - 中止信号
+ * @param input.systemInstruction - 系统指令
+ * @returns 验证结果
+ */
 const validateWithOpenAI = async (input: {
 	articleText: string;
 	fingerprint: string;
@@ -172,6 +222,11 @@ const validateWithOpenAI = async (input: {
 	return createValidationSession(input.fingerprint, input.sha1, parseValidation(rawText), []);
 };
 
+/**
+ * 解析AI模型返回的验证结果
+ * @param rawText - AI模型返回的原始文本
+ * @returns 解析后的验证结果对象
+ */
 const parseValidation = (rawText: string): ParsedValidation => {
 	if (!rawText)
 		throw new Error("AI验证服务无响应");
@@ -183,6 +238,14 @@ const parseValidation = (rawText: string): ParsedValidation => {
 	return parseResult.data;
 };
 
+/**
+ * 创建验证会话并保存到数据库
+ * @param fingerprint - 用户指纹
+ * @param sha1 - 文章SHA1哈希值
+ * @param parsed - 解析后的验证结果
+ * @param searchWebPages - 搜索结果网页列表
+ * @returns 验证结果，包含会话ID
+ */
 const createValidationSession = async (
 	fingerprint: string,
 	sha1: string,
@@ -208,6 +271,11 @@ const createValidationSession = async (
 	};
 };
 
+/**
+ * 从错误对象中提取可读的错误信息
+ * @param error - 错误对象
+ * @returns 格式化后的错误信息字符串
+ */
 const extractValidationError = (error: unknown): string => {
 	let message = (error as Error).message || "验证服务连接失败";
 	if (message.includes("is not valid JSON") && message.includes("data:")) {
@@ -225,6 +293,11 @@ const extractValidationError = (error: unknown): string => {
 	return message;
 };
 
+/**
+ * 构建系统指令提示词
+ * @param enableSearch - 是否启用搜索功能
+ * @returns 完整的系统指令字符串
+ */
 const buildSystemInstruction = (enableSearch: boolean): string => `你是一个严格的内容验证专家。请分析用户输入的文本内容，判断其有效性。${enableSearch ? "运用自带的搜索能力提取相关资料并总结关键信息。" : ""}
 
 ### 1. 内容有效性校验

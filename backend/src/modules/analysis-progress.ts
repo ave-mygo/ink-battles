@@ -20,6 +20,14 @@ export interface AnalysisProgress {
 	updatedAt: string;
 }
 
+/**
+ * 创建分析进度对象
+ * @param stage - 分析阶段
+ * @param message - 进度消息
+ * @param percent - 进度百分比（0-100）
+ * @param extra - 额外的进度信息（如块数量、内容长度）
+ * @returns 分析进度对象
+ */
 export const createProgress = (
 	stage: AnalysisStage,
 	message: string,
@@ -33,6 +41,12 @@ export const createProgress = (
 	...extra,
 });
 
+/**
+ * 更新任务的进度信息
+ * @param taskId - 任务 ID
+ * @param progress - 进度对象
+ * @param status - 可选的任务状态
+ */
 export const updateTaskProgress = async (
 	taskId: ObjectId,
 	progress: AnalysisProgress,
@@ -45,6 +59,12 @@ export const updateTaskProgress = async (
 	});
 };
 
+/**
+ * 根据流式处理的块数和内容长度估算进度百分比
+ * @param chunkCount - 已接收的块数量
+ * @param contentLength - 已接收的内容长度
+ * @returns 估算的进度百分比（45-93）
+ */
 export const estimateStreamingPercent = (chunkCount: number, contentLength: number): number => {
 	const chunkProgress = Math.min(28, Math.floor(chunkCount / 8) * 2);
 	const contentProgress = Math.min(20, Math.floor(contentLength / 2400) * 2);

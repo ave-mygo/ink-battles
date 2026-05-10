@@ -5,6 +5,11 @@ import { countAnalysisRecords } from "../db/repositories";
 import { requireUser } from "../middleware/auth";
 import { ok } from "../utils/response";
 
+/**
+ * 构建可见记录的过滤条件
+ * 过滤掉已隐藏的记录和已过期的记录
+ * @returns 包含隐藏状态和过期时间的 MongoDB 查询过滤器
+ */
 const buildVisibleRecordFilter = () => {
 	const now = new Date().toISOString();
 	return {
@@ -21,12 +26,31 @@ const HISTORY_SORT_FIELDS = {
 	score: "article.output.overallScore",
 } as const;
 
+/**
+ * 标准化历史记录排序字段
+ * 将用户传入的排序字段映射到数据库实际字段
+ * @param sortBy - 排序字段，可选值为 "time" 或 "score"
+ * @returns 数据库中对应的字段名
+ */
 const normalizeHistorySortField = (sortBy?: string) =>
 	sortBy === "score" ? HISTORY_SORT_FIELDS.score : HISTORY_SORT_FIELDS.time;
 
+/**
+ * 标准化历史记录排序顺序
+ * 将用户传入的排序顺序转换为 MongoDB 排序值
+ * @param sortOrder - 排序顺序，可选值为 "asc" 或 "desc"
+ * @returns MongoDB 排序值，1 表示升序，-1 表示降序
+ */
 const normalizeHistorySortOrder = (sortOrder?: string) =>
 	sortOrder === "asc" ? 1 : -1;
 
+/**
+ * 构建历史记录排序对象
+ * 根据排序字段和顺序构建 MongoDB 排序对象，确保分页时顺序稳定
+ * @param sortField - 排序字段名
+ * @param sortOrder - 排序顺序，1 表示升序，-1 表示降序
+ * @returns MongoDB 排序对象
+ */
 const buildHistorySort = (sortField: string, sortOrder: 1 | -1) => {
 	/**
 	 * analysis_requests 实际落库的是 timestamp，而不是 createdAt。
@@ -48,9 +72,21 @@ const HISTORY_LIST_PROJECTION = {
 	"article.input.search.searchResults": 0,
 } as const;
 
+/**
+ * 标准化历史记录可见性过滤条件
+ * 将用户传入的可见性值规范化为合法的枚举值
+ * @param visibility - 可见性值，可选值为 "public"、"private" 或其他
+ * @returns 规范化后的可见性值，非 "public" 或 "private" 时返回 "all"
+ */
 const normalizeHistoryVisibilityFilter = (visibility?: string) =>
 	visibility === "public" || visibility === "private" ? visibility : "all";
 
+/**
+ * 解析并格式化记录结果
+ * 将数据库记录转换为 API 响应格式，处理 ObjectId、日期等特殊类型
+ * @param record - 数据库原始记录对象
+ * @returns 格式化后的记录对象，包含字符串化的 _id 和标准化的日期格式
+ */
 const parseRecordResult = (record: Record<string, any>) => ({
 	...record,
 	_id: record._id?.toString(),
@@ -64,6 +100,13 @@ const parseRecordResult = (record: Record<string, any>) => ({
 	},
 });
 
+/**
+ * 获取用户可查看的记录
+ * 校验记录的可访问性：公开记录任何人可查看，私有记录仅所有者可查看
+ * @param headers - 请求头，用于身份验证
+ * @param id - 记录的 ID
+ * @returns 可查看的记录对象，无权访问或记录不存在时返回 null
+ */
 const viewableRecord = async (headers: Headers, id: string) => {
 	if (!isObjectId(id))
 		return null;

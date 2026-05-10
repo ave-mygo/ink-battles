@@ -9,9 +9,21 @@ type IndexOptions = {
 	partialFilterExpression?: Record<string, unknown>;
 };
 
+/**
+ * 判断两个索引键是否相同
+ * @param left - 第一个索引键对象
+ * @param right - 第二个索引键对象
+ * @returns 两个索引键是否完全相同
+ */
 const sameIndexKey = (left: Record<string, unknown>, right: IndexKey) =>
 	JSON.stringify(left) === JSON.stringify(right);
 
+/**
+ * 确保索引存在，如果不存在则创建；如存在冲突则处理（删除非唯一索引后重建）
+ * @param collectionName - 集合名称
+ * @param key - 索引键定义
+ * @param options - 索引选项
+ */
 const ensureIndex = async (collectionName: string, key: IndexKey, options: IndexOptions) => {
 	await ensureCollectionExists(collectionName);
 	const target = await collection(collectionName);
@@ -30,6 +42,12 @@ const ensureIndex = async (collectionName: string, key: IndexKey, options: Index
 	await target.createIndex(key, options);
 };
 
+/**
+ * 查找指定字段的重复值（最多返回 5 条）
+ * @param collectionName - 集合名称
+ * @param field - 要检查的字段名
+ * @returns 重复值列表
+ */
 const findDuplicateValues = async (collectionName: string, field: string) => {
 	await ensureCollectionExists(collectionName);
 	return (await collection(collectionName)).aggregate([
@@ -40,6 +58,11 @@ const findDuplicateValues = async (collectionName: string, field: string) => {
 	]).toArray();
 };
 
+/**
+ * 断言指定字段不存在重复值，否则抛出错误
+ * @param collectionName - 集合名称
+ * @param field - 要检查的字段名
+ */
 const assertNoDuplicates = async (collectionName: string, field: string) => {
 	const duplicates = await findDuplicateValues(collectionName, field);
 	if (duplicates.length > 0) {
@@ -47,6 +70,9 @@ const assertNoDuplicates = async (collectionName: string, field: string) => {
 	}
 };
 
+/**
+ * 断言用户集合中不存在空字符串邮箱，否则抛出错误
+ */
 const assertNoEmptyEmails = async () => {
 	await ensureCollectionExists("users");
 	const emptyEmailCount = await (await collection("users")).countDocuments({ email: "" });
@@ -55,6 +81,11 @@ const assertNoEmptyEmails = async () => {
 	}
 };
 
+/**
+ * 确保后端所需的所有 MongoDB 索引都已创建
+ * 包含订单、优惠码、用户、会话、邮箱验证码、限流、审计日志、分析请求等集合的索引
+ * 会先进行数据一致性检查，发现重复值或空值则抛出错误
+ */
 export const ensureBackendIndexes = async () => {
 	await assertNoDuplicates("afd_orders", "orderNo");
 	await assertNoDuplicates("users", "email");

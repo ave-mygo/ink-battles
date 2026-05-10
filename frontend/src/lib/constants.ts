@@ -1,5 +1,4 @@
 import type { ComponentType } from "react";
-import { CreditCard, History, Link as LinkIcon, User } from "lucide-react";
 import {
 	BILLING_CONSTANTS,
 	BILLING_MEMBER_TIERS,
@@ -7,6 +6,7 @@ import {
 	calculatePaidCallPrice as calculatePaidCallPriceByBillingPlan,
 	getBillingTierInfo,
 } from "@ink-battles/shared/constants/billing";
+import { CreditCard, History, Link as LinkIcon, User } from "lucide-react";
 
 export const db_name = "ink_battles";
 export const db_table = "analysis_requests";
@@ -15,7 +15,7 @@ export const db_collection_afd_orders = "afd_orders";
 
 // 使用额度与限制（字数）
 export const PER_REQUEST_GUEST = 60000; // 未登录单次上限
-export const PER_REQUEST_LOGGED = 60000; // 登录单次上限
+export const PER_REQUEST_LOGGED = 60000; // 登录（但是没有捐赠）单次上限
 export const DAILY_CAP_GUEST = 100000; // 未登录每日累计上限（按 IP 或 指纹 任一）
 
 // 高级模型调用成本配置

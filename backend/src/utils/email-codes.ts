@@ -7,9 +7,21 @@ export type VerificationType = "register" | "login" | "reset-password";
 
 const VERIFICATION_CODE_TTL_MS = 5 * 60 * 1000;
 
+/**
+ * 规范化验证类型，确保返回有效的验证类型
+ * @param value - 待规范化的验证类型字符串
+ * @returns 规范化后的验证类型，默认为 "register"
+ */
 export const normalizeVerificationType = (value?: string): VerificationType =>
 	value === "login" || value === "reset-password" ? value : "register";
 
+/**
+ * 消费邮箱验证码，验证并标记验证码为已使用
+ * @param email - 邮箱地址
+ * @param code - 验证码
+ * @param type - 验证类型
+ * @returns 包含成功状态和消息的对象
+ */
 export const consumeEmailCode = async (email: string, code: string, type: VerificationType) => {
 	const now = new Date();
 	const record = await findOne(COLLECTIONS.emailCodes, {
@@ -39,6 +51,12 @@ export const consumeEmailCode = async (email: string, code: string, type: Verifi
 	return { success: true, message: "验证码校验通过" };
 };
 
+/**
+ * 发送邮箱验证码
+ * @param email - 邮箱地址
+ * @param type - 验证类型
+ * @returns 发送结果，包含成功状态和消息
+ */
 export const sendEmailCode = async (email: string, type: VerificationType) => {
 	if (!EMAIL_REGEX.test(email))
 		return { success: false, message: "请输入有效的邮箱地址" };

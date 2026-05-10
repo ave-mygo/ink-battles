@@ -1,3 +1,8 @@
+/**
+ * 将错误映射为标准的 HTTP 响应
+ * @param error - 捕获的错误对象
+ * @returns 包含错误信息和对应状态码的 Response 对象
+ */
 export const mapError = (error: unknown) => {
 	const message = error instanceof Error ? error.message : String(error);
 	if (message === "UNAUTHORIZED") {

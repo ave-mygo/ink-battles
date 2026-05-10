@@ -16,6 +16,7 @@ export interface RuntimeConfig {
 		max_output_chars: number;
 		max_concurrent_tasks: number;
 		max_queued_tasks: number;
+		max_sponsor_queued_tasks: number;
 		max_active_tasks_per_user: number;
 		max_mode_chars: number;
 		max_fingerprint_chars: number;
@@ -52,6 +53,12 @@ const MINIMUM_SECRET_BYTES = 32;
 const FORBIDDEN_JWT_SECRETS = new Set(["dev_secret_change_me"]);
 const LOCAL_APP_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
 
+/**
+ * 断言配置值为非空字符串，否则抛出错误
+ * @param value - 待检查的配置值
+ * @param name - 配置项名称（用于错误信息）
+ * @returns 去除首尾空白后的字符串
+ */
 const assertRequiredString = (value: unknown, name: string) => {
 	if (typeof value !== "string" || value.trim().length === 0) {
 		throw new Error(`${name} 配置缺失`);
@@ -59,6 +66,11 @@ const assertRequiredString = (value: unknown, name: string) => {
 	return value.trim();
 };
 
+/**
+ * 应用运行时配置的默认值
+ * 为 server、analysis 等配置项补充缺失的默认值
+ * @param config - 运行时配置对象
+ */
 const applyRuntimeDefaults = (config: RuntimeConfig) => {
 	config.server ??= {
 		max_json_body_bytes: 4 * 1024 * 1024,
@@ -74,6 +86,7 @@ const applyRuntimeDefaults = (config: RuntimeConfig) => {
 		max_output_chars: 1024 * 1024,
 		max_concurrent_tasks: 2,
 		max_queued_tasks: 20,
+		max_sponsor_queued_tasks: 40,
 		max_active_tasks_per_user: 5,
 		max_mode_chars: 200,
 		max_fingerprint_chars: 128,
@@ -83,12 +96,18 @@ const applyRuntimeDefaults = (config: RuntimeConfig) => {
 	config.analysis.max_output_chars ??= 1024 * 1024;
 	config.analysis.max_concurrent_tasks ??= 2;
 	config.analysis.max_queued_tasks ??= 20;
+	config.analysis.max_sponsor_queued_tasks ??= Math.max(config.analysis.max_queued_tasks * 2, config.analysis.max_queued_tasks);
 	config.analysis.max_active_tasks_per_user ??= 5;
 	config.analysis.max_mode_chars ??= 200;
 	config.analysis.max_fingerprint_chars ??= 128;
 	config.analysis.guest_result_ttl_minutes ??= 15;
 };
 
+/**
+ * 校验运行时配置的合法性
+ * 包括 JWT 密钥强度、应用基础 URL 格式、爱发电回调 URI 等检查
+ * @param config - 运行时配置对象
+ */
 const validateRuntimeConfig = (config: RuntimeConfig) => {
 	applyRuntimeDefaults(config);
 
@@ -143,6 +162,11 @@ export const getConfig = (): RuntimeConfig => {
 	return parsed;
 };
 
+/**
+ * 获取对客户端公开的配置信息
+ * 过滤掉敏感数据（如 API 密钥），仅返回前端所需的应用配置、友情链接、注册策略及启用的评分模型列表
+ * @returns 公开配置对象
+ */
 export const getPublicConfig = () => {
 	const config = getConfig();
 	return {
@@ -162,13 +186,30 @@ export const getPublicConfig = () => {
 	};
 };
 
+/**
+ * 根据 ID 查询已启用的评分模型配置
+ * @param id - 模型 ID（优先使用 model.id，否则使用 model.model）
+ * @returns 匹配的评分模型配置，未找到返回 null
+ */
 export const getGradingModelById = (id: string) => {
 	const config = getConfig();
 	return config.grading_models.find(model => (model.id ?? model.model) === id && model.enabled) ?? null;
 };
 
+/**
+ * 获取服务器相关配置
+ * @returns 服务器配置对象（请求体大小限制、允许的来源等）
+ */
 export const getServerConfig = () => getConfig().server;
 
+/**
+ * 获取分析模块相关配置
+ * @returns 分析配置对象（字符数限制、并发任务数等）
+ */
 export const getAnalysisConfig = () => getConfig().analysis;
 
+/**
+ * 获取应用的 Origin（协议 + 域名 + 端口）
+ * @returns 应用的 Origin 字符串
+ */
 export const getAppOrigin = () => new URL(getConfig().app.base_url).origin;

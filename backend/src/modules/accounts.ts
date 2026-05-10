@@ -11,7 +11,17 @@ import { isPasswordValid, normalizeEmail } from "../utils/validators";
 
 const MINIMUM_PASSWORD_MESSAGE = "密码强度不足，至少需要 10 位并包含任意 3 种字符类型";
 
+/**
+ * 账户管理模块
+ * 提供用户账户详情查询、邮箱绑定/解绑、QQ 账号绑定/解绑、爱发电账号绑定/解绑等功能
+ */
 export const accountsModule = new Elysia()
+	/**
+	 * 获取用户账户详情
+	 * 返回用户绑定的邮箱、QQ、爱发电账号信息及登录方式
+	 * @param request - HTTP 请求对象，包含用户认证信息
+	 * @returns 包含邮箱、QQ、爱发电绑定状态及登录方式的对象
+	 */
 	.get("/api/v2/accounts/details", async ({ request }) => {
 		const user = await requireUser(request.headers);
 		return {
@@ -21,6 +31,16 @@ export const accountsModule = new Elysia()
 			loginMethod: user.loginMethod,
 		};
 	}, { detail: { tags: ["REST: Accounts"] } })
+	/**
+	 * 绑定邮箱账号
+	 * 验证邮箱验证码和密码强度，将邮箱绑定到当前用户账户，绑定成功后撤销所有会话
+	 * @param request - HTTP 请求对象，包含用户认证信息
+	 * @param body - 请求体，包含邮箱地址、验证码和密码
+	 * @param body.email - 要绑定的邮箱地址
+	 * @param body.code - 邮箱验证码
+	 * @param body.password - 用户设置的密码
+	 * @returns 操作结果，包含成功状态和提示消息
+	 */
 	.post("/api/v2/rpc/accounts.bindEmail", async ({ request, body }) => {
 		const user = await requireUser(request.headers);
 		const email = normalizeEmail(body.email);
@@ -39,6 +59,12 @@ export const accountsModule = new Elysia()
 		writeAuditLog({ event: "account_bound", uid: user.uid, email, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "email" } });
 		return { success: true, message: "邮箱绑定成功" };
 	}, { body: t.Object({ email: t.String(), code: t.String(), password: t.String() }), detail: { tags: ["RPC: Accounts"] } })
+	/**
+	 * 解绑邮箱账号
+	 * 将邮箱从当前用户账户解绑，需确保至少保留一种登录方式
+	 * @param request - HTTP 请求对象，包含用户认证信息
+	 * @returns 操作结果，包含成功状态和提示消息
+	 */
 	.post("/api/v2/rpc/accounts.unbindEmail", async ({ request }) => {
 		const user = await requireUser(request.headers);
 		if (!user.email)
@@ -49,6 +75,12 @@ export const accountsModule = new Elysia()
 		writeAuditLog({ event: "account_unbound", uid: user.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "email" } });
 		return { success: true, message: "邮箱解绑成功" };
 	}, { detail: { tags: ["RPC: Accounts"] } })
+	/**
+	 * 解绑 QQ 账号
+	 * 将 QQ 账号从当前用户账户解绑，需确保至少保留一种登录方式
+	 * @param request - HTTP 请求对象，包含用户认证信息
+	 * @returns 操作结果，包含成功状态和提示消息
+	 */
 	.post("/api/v2/rpc/accounts.unbindQQ", async ({ request }) => {
 		const user = await requireUser(request.headers);
 		if (!user.qqOpenid)
@@ -59,6 +91,12 @@ export const accountsModule = new Elysia()
 		writeAuditLog({ event: "account_unbound", uid: user.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request), metadata: { provider: "qq" } });
 		return { success: true, message: "QQ 账号解绑成功" };
 	}, { detail: { tags: ["RPC: Accounts"] } })
+	/**
+	 * 解绑爱发电账号
+	 * 将爱发电账号从当前用户账户解绑，需确保至少保留一种登录方式且无兑换订单
+	 * @param request - HTTP 请求对象，包含用户认证信息
+	 * @returns 操作结果，包含成功状态和提示消息
+	 */
 	.post("/api/v2/rpc/accounts.unbindAfdian", async ({ request }) => {
 		const user = await requireUser(request.headers);
 		if (!user.afdId)

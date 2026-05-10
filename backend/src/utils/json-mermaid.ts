@@ -4,6 +4,12 @@ const RE_SUBGRAPH = /^subgraph\b/;
 const RE_END = /^end$/i;
 const RE_LINE_SEP = /[;\n]/;
 
+/**
+ * 自动检测数据中的 Mermaid 图表路径并添加验证器
+ * @param data - 待检测的数据对象
+ * @param validators - 验证器映射对象
+ * @param path - 当前路径，默认为空字符串
+ */
 export const autoDetectMermaidPaths = (
 	data: unknown,
 	validators: Record<string, (item: unknown) => boolean>,
@@ -32,6 +38,11 @@ export const autoDetectMermaidPaths = (
 	}
 };
 
+/**
+ * 验证对象是否为有效的 Mermaid 图表
+ * @param item - 待验证的对象
+ * @returns 是否为有效的 Mermaid 图表
+ */
 const isValidMermaidDiagram = (item: unknown): boolean => {
 	if (item === null || typeof item !== "object")
 		return false;
@@ -39,6 +50,11 @@ const isValidMermaidDiagram = (item: unknown): boolean => {
 	return typeof record.code === "string" && isValidMermaidCode(record.code);
 };
 
+/**
+ * 验证 Mermaid 代码是否有效
+ * @param code - Mermaid 代码字符串
+ * @returns 代码是否有效
+ */
 export const isValidMermaidCode = (code: string): boolean => {
 	let escaped = false;
 	const trimmed = (code ?? "").trim();
@@ -73,6 +89,11 @@ export const isValidMermaidCode = (code: string): boolean => {
 	}
 };
 
+/**
+ * 检查文本中的括号是否平衡
+ * @param text - 待检查的文本
+ * @returns 括号是否平衡
+ */
 const hasBalancedBrackets = (text: string): boolean => {
 	const stack: string[] = [];
 	const pairs: Record<string, string> = { "(": ")", "[": "]", "{": "}" };
@@ -104,6 +125,11 @@ const hasBalancedBrackets = (text: string): boolean => {
 	return stack.length === 0;
 };
 
+/**
+ * 检查 Mermaid 代码中的 subgraph 是否平衡
+ * @param text - Mermaid 代码文本
+ * @returns subgraph 是否平衡
+ */
 const hasBalancedSubgraphs = (text: string): boolean => {
 	const lines = text.split(RE_LINE_SEP).map(line => line.trim()).filter(Boolean);
 	let depth = 0;

@@ -20,6 +20,11 @@ import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { ok } from "../utils/response";
 
+/**
+ * 确保用户计费记录存在，若不存在则初始化
+ * @param uid - 用户 ID
+ * @returns 用户计费记录
+ */
 const ensureUserBilling = async (uid: number) => {
 	let billing = await getUserBilling(uid);
 
@@ -31,14 +36,36 @@ const ensureUserBilling = async (uid: number) => {
 	return billing;
 };
 
+/**
+ * 判断错误是否为 MongoDB 重复键错误
+ * @param error - 错误对象
+ * @returns 是否为重复键错误
+ */
 const isDuplicateKeyError = (error: unknown) =>
 	typeof error === "object" && error !== null && "code" in error && (error as { code?: number }).code === 11000;
 
+/**
+ * 在事务会话中获取用户计费记录
+ * @param uid - 用户 ID
+ * @param session - MongoDB 事务会话
+ * @returns 用户计费记录
+ */
 const getUserBillingInSession = async (uid: number, session: ClientSession) =>
 	(await collection<UserBilling>(COLLECTIONS.userBilling)).findOne({ uid }, { session });
 
+/**
+ * 标准化促销码格式（去除空格并转为大写）
+ * @param code - 原始促销码
+ * @returns 标准化后的促销码
+ */
 const normalizePromoCode = (code: string) => code.trim().toUpperCase();
 
+/**
+ * 获取用户当前有效的订单促销活动
+ * @param billing - 用户计费记录
+ * @param now - 当前时间，默认为当前时刻
+ * @returns 有效的促销活动快照，无有效活动时返回 null
+ */
 const getActiveOrderPromotion = (billing: UserBilling | null, now = new Date()): BillingPromotionSnapshot | null => {
 	const promotion = billing?.activePromotion;
 	if (!promotion || promotion.scope !== "order_redemption")
@@ -52,9 +79,20 @@ const getActiveOrderPromotion = (billing: UserBilling | null, now = new Date()):
 	return promotion;
 };
 
+/**
+ * 获取订单促销折扣倍率
+ * @param billing - 用户计费记录
+ * @returns 折扣倍率，无促销时返回 1
+ */
 const getOrderPromotionDiscountMultiplier = (billing: UserBilling | null) =>
 	getActiveOrderPromotion(billing)?.discountMultiplier ?? 1;
 
+/**
+ * 初始化用户计费记录
+ * 为新用户创建计费记录并赋予新用户奖励次数
+ * @param uid - 用户 ID
+ * @returns 是否成功初始化
+ */
 export const initializeUserBilling = async (uid: number) => {
 	if (await getUserBilling(uid))
 		return true;
@@ -70,6 +108,12 @@ export const initializeUserBilling = async (uid: number) => {
 	});
 };
 
+/**
+ * 按需刷新用户的每月赠送次数
+ * 若距离上次刷新超过一个月，则根据累计消费额重新计算赠送次数
+ * @param uid - 用户 ID
+ * @returns 是否成功刷新
+ */
 export const refreshGrantCallsIfNeeded = async (uid: number) => {
 	const billing = await getUserBilling(uid);
 	if (!billing || !shouldRefreshGrantCalls(billing.lastGrantRefresh))
@@ -81,8 +125,26 @@ export const refreshGrantCallsIfNeeded = async (uid: number) => {
 	});
 };
 
+/**
+ * 检查用户是否为赞助账户（累计消费大于 0）
+ * @param uid - 用户 ID
+ * @returns 是否为赞助账户
+ */
+export const hasDonatedAccount = async (uid: number): Promise<boolean> => {
+	const billing = await getUserBilling(uid);
+	return (billing?.totalAmount ?? 0) > 0;
+};
+
 export type BillingDeductedFrom = "grant" | "paid";
 
+/**
+ * 在事务中扣除用户的调用次数余额
+ * 优先扣除赠送次数，其次扣除付费次数
+ * 若需要刷新每月赠送次数，会先执行刷新
+ * @param uid - 用户 ID
+ * @param session - MongoDB 事务会话
+ * @returns 扣除来源（"grant" 或 "paid"），余额不足时返回 null
+ */
 export const deductCallBalanceInTransaction = async (uid: number, session: ClientSession): Promise<BillingDeductedFrom | null> => {
 	const billing = await getUserBillingInSession(uid, session);
 	if (!billing)
@@ -118,6 +180,12 @@ export const deductCallBalanceInTransaction = async (uid: number, session: Clien
 	return deductedPaid ? "paid" : null;
 };
 
+/**
+ * 扣除用户的调用次数余额（对外接口）
+ * 使用事务包装 deductCallBalanceInTransaction
+ * @param uid - 用户 ID
+ * @returns 是否成功扣除
+ */
 export const deductCallBalance = async (uid: number) => {
 	let deductedFrom: BillingDeductedFrom | null = null;
 	await withTransaction(async (session) => {
@@ -126,6 +194,13 @@ export const deductCallBalance = async (uid: number) => {
 	return !!deductedFrom;
 };
 
+/**
+ * 退还用户的调用次数余额
+ * @param uid - 用户 ID
+ * @param deductedFrom - 扣除来源，决定退还到哪个余额
+ * @param session - 可选的事务会话
+ * @returns 是否成功退款
+ */
 export const refundCallBalance = async (uid: number, deductedFrom: BillingDeductedFrom, session?: ClientSession) => {
 	const field = deductedFrom === "grant" ? "grantCallsBalance" : "paidCallsBalance";
 	return !!await findOneAndUpdate<UserBilling>(COLLECTIONS.userBilling, { uid }, {

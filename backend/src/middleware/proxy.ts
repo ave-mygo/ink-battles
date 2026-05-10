@@ -4,6 +4,11 @@ const hopByHopHeaders = new Set(["connection", "keep-alive", "proxy-authenticate
 const upstreamCompressionHeaders = new Set(["accept-encoding"]);
 const decodedResponseHeaders = new Set(["content-encoding", "content-length"]);
 
+/**
+ * 复制请求头并移除逐跳头（hop-by-hop headers）
+ * @param headers - 原始请求头
+ * @returns 清理后的请求头副本
+ */
 const copyHeaders = (headers: Headers): Headers => {
 	const nextHeaders = new Headers(headers);
 	hopByHopHeaders.forEach(header => nextHeaders.delete(header));
@@ -35,6 +40,14 @@ const createFrontendResponseHeaders = (headers: Headers): Headers => {
 	return nextHeaders;
 };
 
+/**
+ * 将请求转发到 Next.js 前端上游服务
+ *
+ * 根据请求方法决定是否转发请求体，对返回内容的头部进行归一化处理，
+ * 以避免由于 fetch 自动解压缩导致响应编码信息与实际内容不一致。
+ * @param request - 原始请求对象
+ * @returns 转发后得到的响应对象
+ */
 export const proxyToFrontend = async (request: Request): Promise<Response> => {
 	const sourceUrl = new URL(request.url);
 	const targetUrl = new URL(`${sourceUrl.pathname}${sourceUrl.search}`, env.frontendOrigin);

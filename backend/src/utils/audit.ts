@@ -24,6 +24,11 @@ interface AuditLogInput {
 	metadata?: Record<string, unknown>;
 }
 
+/**
+ * 计算字符串的 SHA256 哈希值
+ * @param value - 待哈希的字符串
+ * @returns 十六进制哈希值
+ */
 const sha256 = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
 /**
