@@ -13,6 +13,13 @@ export interface UsageLog {
 	attempt_count?: number;
 }
 
+export interface ConfiguredStatusModel {
+	id: string;
+	name: string;
+	model: string;
+	source: "grading" | "system";
+}
+
 export interface Stats {
 	totalRequests: number;
 	averageTime: number;
@@ -28,6 +35,7 @@ export interface StatusApiResponse {
 	total: number;
 	has_more: boolean;
 	stats: Stats;
+	configured_models: ConfiguredStatusModel[];
 }
 
 export interface StatusListProps {
