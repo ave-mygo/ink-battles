@@ -1,7 +1,7 @@
+import type { SearchModel } from "./types";
 import { ObjectId } from "mongodb";
 import { COLLECTIONS, findOne, insertOne } from "../../db/mongo";
 import { createProgress } from "../analysis-progress";
-import type { SearchModel } from "./types";
 
 const MODEL_PREFIX_REGEX = /^(按次|公益)-/;
 
@@ -25,35 +25,35 @@ export const cleanModelName = (modelName: string) => modelName.replace(MODEL_PRE
  * @param input.resultId - 已有的分析结果 ID
  * @returns 创建的任务 ID 字符串
  */
-export const createCachedTask = async (input: {
-	uid: number | null;
-	articleText: string;
-	mode: string;
-	modelId: string;
-	fingerprint: string;
-	sha1: string;
-	searchModel: SearchModel;
-	resultId: string;
-}) => {
-	const taskId = new ObjectId();
-	await insertOne(COLLECTIONS.analysisTasks, {
-		_id: taskId,
-		uid: input.uid,
-		status: "completed",
-		input: { articleText: input.articleText, mode: input.mode, modelId: input.modelId },
-		metadata: {
-			sha1: input.sha1,
-			fingerprint: input.fingerprint,
-			searchModel: input.searchModel,
-			session: "cached",
-		},
-		progress: createProgress("completed", "命中缓存，任务已完成", 100),
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
-		resultId: input.resultId,
-	});
-	return taskId.toString();
-};
+export async function createCachedTask(input: {
+  uid: number | null;
+  articleText: string;
+  mode: string;
+  modelId: string;
+  fingerprint: string;
+  sha1: string;
+  searchModel: SearchModel;
+  resultId: string;
+}) {
+  const taskId = new ObjectId();
+  await insertOne(COLLECTIONS.analysisTasks, {
+    _id: taskId,
+    uid: input.uid,
+    status: "completed",
+    input: { articleText: input.articleText, mode: input.mode, modelId: input.modelId },
+    metadata: {
+      sha1: input.sha1,
+      fingerprint: input.fingerprint,
+      searchModel: input.searchModel,
+      session: "cached",
+    },
+    progress: createProgress("completed", "命中缓存，任务已完成", 100),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    resultId: input.resultId,
+  });
+  return taskId.toString();
+}
 
 /**
  * 查询是否存在可复用的分析缓存结果
@@ -64,34 +64,28 @@ export const createCachedTask = async (input: {
  * @param searchModel - 搜索模型类型
  * @returns 匹配的分析请求记录，未找到时返回 null
  */
-export const findCachedAnalysis = async (
-	sha1: string,
-	mode: string,
-	modelName: string,
-	searchModel: SearchModel,
-) => {
-	const now = new Date().toISOString();
-	return findOne(COLLECTIONS.analysisRequests, {
-		"metadata.sha1": sha1,
-		"article.input.mode": mode,
-		"metadata.modelName": cleanModelName(modelName),
-		"privacy.hiddenAt": { $exists: false },
-		$and: [
-			{
-				$or: [
-					{ "privacy.expiresAt": { $exists: false } },
-					{ "privacy.expiresAt": { $gt: now } },
-				],
-			},
-			searchModel === "none"
-				? {
-						$or: [
-							{ "metadata.searchModel": "none" },
-							{ "metadata.searchModel": { $exists: false } },
-						],
-					}
-				: { "metadata.searchModel": searchModel },
-		],
-	});
-};
-
+export async function findCachedAnalysis(sha1: string,	mode: string,	modelName: string,	searchModel: SearchModel) {
+  const now = new Date().toISOString();
+  return findOne(COLLECTIONS.analysisRequests, {
+    "metadata.sha1": sha1,
+    "article.input.mode": mode,
+    "metadata.modelName": cleanModelName(modelName),
+    "privacy.hiddenAt": { $exists: false },
+    "$and": [
+      {
+        $or: [
+          { "privacy.expiresAt": { $exists: false } },
+          { "privacy.expiresAt": { $gt: now } },
+        ],
+      },
+      searchModel === "none"
+        ? {
+            $or: [
+              { "metadata.searchModel": "none" },
+              { "metadata.searchModel": { $exists: false } },
+            ],
+          }
+        : { "metadata.searchModel": searchModel },
+    ],
+  });
+}

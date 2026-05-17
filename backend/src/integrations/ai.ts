@@ -3,14 +3,14 @@ import { getConfig, getGradingModelById } from "../config";
 import { buildSystemPrompt, getModeInstructions } from "../constants/other/prompts";
 
 export interface AnalysisStreamInput {
-	articleText: string;
-	mode: string;
-	modelId: string;
-	fingerprint: string;
-	searchResults?: string | null;
-	signal?: AbortSignal;
-	maxOutputChars?: number;
-	onProgress?: (chunk: string, chunkCount: number) => Promise<void> | void;
+  articleText: string;
+  mode: string;
+  modelId: string;
+  fingerprint: string;
+  searchResults?: string | null;
+  signal?: AbortSignal;
+  maxOutputChars?: number;
+  onProgress?: (chunk: string, chunkCount: number) => Promise<void> | void;
 }
 
 /**
@@ -26,58 +26,60 @@ export interface AnalysisStreamInput {
  * @param input.onProgress - 进度回调函数
  * @returns 完整的分析结果文本
  */
-export const runAnalysisModel = async (input: AnalysisStreamInput) => {
-	const model = getGradingModelById(input.modelId);
-	if (!model)
-		throw new Error("无效的评分模型");
+export async function runAnalysisModel(input: AnalysisStreamInput) {
+  const model = getGradingModelById(input.modelId);
+  if (!model)
+    throw new Error("无效的评分模型");
 
-	const client = new OpenAI({ apiKey: model.api_key, baseURL: model.base_url });
-	const modeInstruction = await getModeInstructions(input.mode);
-	const systemPrompt = await buildSystemPrompt(modeInstruction);
-	const messages: Array<{ role: "system" | "user"; content: string }> = [
-		{ role: "system", content: systemPrompt },
-	];
+  const client = new OpenAI({ apiKey: model.api_key, baseURL: model.base_url });
+  const modeInstruction = await getModeInstructions(input.mode);
+  const systemPrompt = await buildSystemPrompt(modeInstruction);
+  const messages: Array<{ role: "system" | "user"; content: string }> = [
+    { role: "system", content: systemPrompt },
+  ];
 
-	if (input.searchResults) {
-		messages.push({ role: "user", content: `以下是通过搜索获得的背景资料总结（供参考）：\n\n${input.searchResults}` });
-	}
-	messages.push({ role: "user", content: input.articleText });
+  if (input.searchResults) {
+    messages.push({ role: "user", content: `以下是通过搜索获得的背景资料总结（供参考）：\n\n${input.searchResults}` });
+  }
+  messages.push({ role: "user", content: input.articleText });
 
-	const stream = await client.chat.completions.create({
-		model: model.model,
-		messages,
-		temperature: model.model.includes("gpt-5-nano") ? 1 : 0.3,
-		...(model.supports_json_mode !== false ? { response_format: { type: "json_object" as const } } : {}),
-		seed: input.fingerprint ? Number.parseInt(input.fingerprint) : undefined,
-		stream: true,
-	}, { signal: input.signal });
+  const stream = await client.chat.completions.create({
+    model: model.model,
+    messages,
+    temperature: model.model.includes("gpt-5-nano") ? 1 : 0.3,
+    ...(model.supports_json_mode !== false ? { response_format: { type: "json_object" as const } } : {}),
+    seed: input.fingerprint ? Number.parseInt(input.fingerprint) : undefined,
+    stream: true,
+  }, { signal: input.signal });
 
-	const contentChunks: string[] = [];
-	let contentLength = 0;
-	let chunkCount = 0;
-	for await (const chunk of stream) {
-		const delta = chunk.choices[0]?.delta?.content ?? "";
-		if (!delta)
-			continue;
-		if (input.maxOutputChars && contentLength + delta.length > input.maxOutputChars)
-			throw new Error(`流式内容大小超过限制 (${Math.round(input.maxOutputChars / 1024)}KB)`);
-		contentChunks.push(delta);
-		contentLength += delta.length;
-		chunkCount++;
-		await input.onProgress?.(delta, chunkCount);
-	}
-	return contentChunks.join("");
-};
+  const contentChunks: string[] = [];
+  let contentLength = 0;
+  let chunkCount = 0;
+  for await (const chunk of stream) {
+    const delta = chunk.choices[0]?.delta?.content ?? "";
+    if (!delta)
+      continue;
+    if (input.maxOutputChars && contentLength + delta.length > input.maxOutputChars)
+      throw new Error(`流式内容大小超过限制 (${Math.round(input.maxOutputChars / 1024)}KB)`);
+    contentChunks.push(delta);
+    contentLength += delta.length;
+    chunkCount++;
+    await input.onProgress?.(delta, chunkCount);
+  }
+  return contentChunks.join("");
+}
 
 /**
  * 计算分数的百分位数
  * @param score - 原始分数
  * @returns 包含百分位数和样本大小的对象
  */
-export const calculateScorePercentile = (score: number) => ({
-	percentile: Math.max(0, Math.min(100, Math.round(score))),
-	sampleSize: 0,
-});
+export function calculateScorePercentile(score: number) {
+  return {
+    percentile: Math.max(0, Math.min(100, Math.round(score))),
+    sampleSize: 0,
+  };
+}
 
 /**
  * 获取所有已启用的公开评分模型列表

@@ -9,9 +9,9 @@ import { createTimeoutFetcher } from "./fetch-timeout";
  * 创建浏览器侧可复用的 Eden Treaty 实例。
  */
 export const createClientEden = () =>
-	treaty<BackendApp>(getClientApiHost(), {
-		fetcher: createTimeoutFetcher(),
-		fetch: {
-			credentials: "include",
-		},
-	});
+  treaty<BackendApp>(getClientApiHost(), {
+    fetcher: createTimeoutFetcher(),
+    fetch: {
+      credentials: "include",
+    },
+  });

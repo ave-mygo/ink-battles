@@ -5,20 +5,20 @@ import { usePathname } from "next/navigation";
 import MermaidDiagrams from "@/components/layouts/WriterPage/MermaidDiagram";
 
 interface MermaidDiagramsSectionProps {
-	diagrams: MermaidDiagram[];
+  diagrams: MermaidDiagram[];
 }
 
 /**
  * Mermaid 图表展示部分
  */
 export function MermaidDiagramsSection({ diagrams }: MermaidDiagramsSectionProps) {
-	const pathname = usePathname();
+  const pathname = usePathname();
 
-	if (diagrams.length === 0) {
-		return null;
-	}
+  if (diagrams.length === 0) {
+    return null;
+  }
 
-	const diagramsSignature = diagrams.map(diagram => `${diagram.type}:${diagram.title}:${diagram.code}`).join("|");
+  const diagramsSignature = diagrams.map(diagram => `${diagram.type}:${diagram.title}:${diagram.code}`).join("|");
 
-	return <MermaidDiagrams key={`${pathname}:${diagramsSignature}`} diagrams={diagrams} />;
+  return <MermaidDiagrams key={`${pathname}:${diagramsSignature}`} diagrams={diagrams} />;
 }

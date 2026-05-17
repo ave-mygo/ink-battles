@@ -42,10 +42,10 @@ export const updateUser = (uid: number, data: Partial<AuthUser> | Record<string,
  * 生成下一个可用的用户 UID
  * @returns 新的用户 UID（从 10001 开始递增）
  */
-export const generateNextUID = async () => {
-	const users = await findMany<AuthUser>(COLLECTIONS.users, {}, { sort: { uid: -1 }, limit: 1 });
-	return (users[0]?.uid ?? 10000) + 1;
-};
+export async function generateNextUID() {
+  const users = await findMany<AuthUser>(COLLECTIONS.users, {}, { sort: { uid: -1 }, limit: 1 });
+  return (users[0]?.uid ?? 10000) + 1;
+}
 
 /**
  * 创建新用户
@@ -75,8 +75,9 @@ export const updateBilling = (uid: number, data: Partial<UserBilling>) => update
  * @param update - 更新操作（支持 MongoDB 更新操作符）
  * @returns 更新后的计费信息或 null
  */
-export const atomicBillingUpdate = (filter: Record<string, unknown>, update: Record<string, unknown>) =>
-	findOneAndUpdate<UserBilling>(COLLECTIONS.userBilling, filter, update as never);
+export function atomicBillingUpdate(filter: Record<string, unknown>, update: Record<string, unknown>) {
+  return findOneAndUpdate<UserBilling>(COLLECTIONS.userBilling, filter, update as never);
+}
 
 /**
  * 统计分析请求记录数量

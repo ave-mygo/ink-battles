@@ -2,12 +2,12 @@ import { buildArticleJsonLd } from "@/lib/seo";
 import JsonLd from "./JsonLd";
 
 interface ArticleJsonLdProps {
-	url: string;
-	headline: string;
-	description: string;
-	images?: string[];
-	datePublished?: string;
-	dateModified?: string;
+  url: string;
+  headline: string;
+  description: string;
+  images?: string[];
+  datePublished?: string;
+  dateModified?: string;
 }
 
 /**
@@ -16,7 +16,7 @@ interface ArticleJsonLdProps {
  * - 仅传入核心字段，内部调用 builder
  */
 export const ArticleJsonLd = (props: ArticleJsonLdProps) => {
-	return <JsonLd schema={buildArticleJsonLd(props)} />;
+  return <JsonLd schema={buildArticleJsonLd(props)} />;
 };
 
 export default ArticleJsonLd;

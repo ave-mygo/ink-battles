@@ -9,11 +9,11 @@ const decodedResponseHeaders = new Set(["content-encoding", "content-length"]);
  * @param headers - 原始请求头
  * @returns 清理后的请求头副本
  */
-const copyHeaders = (headers: Headers): Headers => {
-	const nextHeaders = new Headers(headers);
-	hopByHopHeaders.forEach(header => nextHeaders.delete(header));
-	return nextHeaders;
-};
+function copyHeaders(headers: Headers): Headers {
+  const nextHeaders = new Headers(headers);
+  hopByHopHeaders.forEach(header => nextHeaders.delete(header));
+  return nextHeaders;
+}
 
 /**
  * 构造转发给 Next.js 上游的请求头。
@@ -22,23 +22,23 @@ const copyHeaders = (headers: Headers): Headers => {
  * Accept-Encoding 原样转给上游，否则代理后可能出现已解码 body 配旧
  * Content-Encoding 的响应。
  */
-const createFrontendRequestHeaders = (headers: Headers): Headers => {
-	const nextHeaders = copyHeaders(headers);
-	upstreamCompressionHeaders.forEach(header => nextHeaders.delete(header));
-	nextHeaders.set("accept-encoding", "identity");
-	return nextHeaders;
-};
+function createFrontendRequestHeaders(headers: Headers): Headers {
+  const nextHeaders = copyHeaders(headers);
+  upstreamCompressionHeaders.forEach(header => nextHeaders.delete(header));
+  nextHeaders.set("accept-encoding", "identity");
+  return nextHeaders;
+}
 
 /**
  * 构造代理体归一化后的响应头。
  *
  * fetch 解码或转换 body stream 后，上游编码态 payload 的实体头不再可靠。
  */
-const createFrontendResponseHeaders = (headers: Headers): Headers => {
-	const nextHeaders = copyHeaders(headers);
-	decodedResponseHeaders.forEach(header => nextHeaders.delete(header));
-	return nextHeaders;
-};
+function createFrontendResponseHeaders(headers: Headers): Headers {
+  const nextHeaders = copyHeaders(headers);
+  decodedResponseHeaders.forEach(header => nextHeaders.delete(header));
+  return nextHeaders;
+}
 
 /**
  * 将请求转发到 Next.js 前端上游服务
@@ -48,22 +48,22 @@ const createFrontendResponseHeaders = (headers: Headers): Headers => {
  * @param request - 原始请求对象
  * @returns 转发后得到的响应对象
  */
-export const proxyToFrontend = async (request: Request): Promise<Response> => {
-	const sourceUrl = new URL(request.url);
-	const targetUrl = new URL(`${sourceUrl.pathname}${sourceUrl.search}`, env.frontendOrigin);
-	const method = request.method;
-	const hasBody = !["GET", "HEAD"].includes(method);
+export async function proxyToFrontend(request: Request): Promise<Response> {
+  const sourceUrl = new URL(request.url);
+  const targetUrl = new URL(`${sourceUrl.pathname}${sourceUrl.search}`, env.frontendOrigin);
+  const method = request.method;
+  const hasBody = !["GET", "HEAD"].includes(method);
 
-	const response = await fetch(targetUrl, {
-		method,
-		headers: createFrontendRequestHeaders(request.headers),
-		body: hasBody ? request.body : undefined,
-		redirect: "manual",
-	});
+  const response = await fetch(targetUrl, {
+    method,
+    headers: createFrontendRequestHeaders(request.headers),
+    body: hasBody ? request.body : undefined,
+    redirect: "manual",
+  });
 
-	return new Response(response.body, {
-		status: response.status,
-		statusText: response.statusText,
-		headers: createFrontendResponseHeaders(response.headers),
-	});
-};
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: createFrontendResponseHeaders(response.headers),
+  });
+}

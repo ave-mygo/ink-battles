@@ -1,9 +1,9 @@
 import type { MemberTier } from "@/lib/constants";
 import {
-	calculateMonthlyGrantCalls as calculateMonthlyGrantCallsByBillingPlan,
-	calculatePaidCallPrice as calculatePaidCallPriceByBillingPlan,
-	getBillingTierInfo,
-	shouldRefreshGrantCalls,
+  calculateMonthlyGrantCalls as calculateMonthlyGrantCallsByBillingPlan,
+  calculatePaidCallPrice as calculatePaidCallPriceByBillingPlan,
+  getBillingTierInfo,
+  shouldRefreshGrantCalls,
 } from "@ink-battles/shared/constants/billing";
 
 /**
@@ -12,7 +12,7 @@ import {
  * @returns 每月赠送调用次数
  */
 export function calculateMonthlyGrantCalls(totalAmount: number): number {
-	return calculateMonthlyGrantCallsByBillingPlan(totalAmount);
+  return calculateMonthlyGrantCallsByBillingPlan(totalAmount);
 }
 
 /**
@@ -21,7 +21,7 @@ export function calculateMonthlyGrantCalls(totalAmount: number): number {
  * @returns 单次调用价格（人民币）
  */
 export function calculatePaidCallPrice(totalAmount: number): number {
-	return calculatePaidCallPriceByBillingPlan(totalAmount);
+  return calculatePaidCallPriceByBillingPlan(totalAmount);
 }
 
 /**
@@ -30,16 +30,16 @@ export function calculatePaidCallPrice(totalAmount: number): number {
  * @returns 会员等级和折扣信息
  */
 export function getMemberTierInfo(totalAmount: number): {
-	tier: MemberTier;
-	name: string;
-	discount: number;
+  tier: MemberTier;
+  name: string;
+  discount: number;
 } {
-	const tierInfo = getBillingTierInfo(totalAmount);
-	return {
-		tier: tierInfo.tier as MemberTier,
-		name: tierInfo.name,
-		discount: tierInfo.discount,
-	};
+  const tierInfo = getBillingTierInfo(totalAmount);
+  return {
+    tier: tierInfo.tier as MemberTier,
+    name: tierInfo.name,
+    discount: tierInfo.discount,
+  };
 }
 
 /**
@@ -50,28 +50,28 @@ export function getMemberTierInfo(totalAmount: number): {
  * @returns 本次订单应增加的赠送和付费次数
  */
 export function calculateCallsFromOrder(
-	orderAmount: number,
-	currentTotalAmount: number,
+  orderAmount: number,
+  currentTotalAmount: number,
 ): {
-	grantCallsAdded: number;
-	paidCallsAdded: number;
+  grantCallsAdded: number;
+  paidCallsAdded: number;
 } {
-	// 新的累计金额
-	const newTotalAmount = currentTotalAmount + orderAmount;
+  // 新的累计金额
+  const newTotalAmount = currentTotalAmount + orderAmount;
 
-	// 计算新的每月赠送次数（这个会在下次刷新时生效）
-	const newGrantCalls = calculateMonthlyGrantCalls(newTotalAmount);
-	const oldGrantCalls = calculateMonthlyGrantCalls(currentTotalAmount);
-	const grantCallsAdded = newGrantCalls - oldGrantCalls;
+  // 计算新的每月赠送次数（这个会在下次刷新时生效）
+  const newGrantCalls = calculateMonthlyGrantCalls(newTotalAmount);
+  const oldGrantCalls = calculateMonthlyGrantCalls(currentTotalAmount);
+  const grantCallsAdded = newGrantCalls - oldGrantCalls;
 
-	// 付费次数：订单金额除以当前折扣后的单价
-	const paidCallPrice = calculatePaidCallPrice(currentTotalAmount);
-	const paidCallsAdded = Math.floor(orderAmount / paidCallPrice);
+  // 付费次数：订单金额除以当前折扣后的单价
+  const paidCallPrice = calculatePaidCallPrice(currentTotalAmount);
+  const paidCallsAdded = Math.floor(orderAmount / paidCallPrice);
 
-	return {
-		grantCallsAdded,
-		paidCallsAdded,
-	};
+  return {
+    grantCallsAdded,
+    paidCallsAdded,
+  };
 }
 
 /**

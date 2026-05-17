@@ -14,34 +14,34 @@ export const dynamic = "force-dynamic";
  * 否则问题会被掩盖，最终表现成 sitemap 里只有静态页。
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-	const now = new Date().toISOString();
-	const api = await createServerEden();
+  const now = new Date().toISOString();
+  const api = await createServerEden();
 
-	const staticRoutes: MetadataRoute.Sitemap = [
-		{ url: createCanonical("/"), lastModified: now, changeFrequency: "hourly", priority: 1.0 },
-		{ url: createCanonical("/about"), lastModified: now, changeFrequency: "monthly", priority: 0.8 },
-		{ url: createCanonical("/signin"), lastModified: now, changeFrequency: "monthly", priority: 0.3 },
-		{ url: createCanonical("/signup"), lastModified: now, changeFrequency: "monthly", priority: 0.3 },
-		{ url: createCanonical("/sponsors"), lastModified: now, changeFrequency: "weekly", priority: 0.7 },
-	];
+  const staticRoutes: MetadataRoute.Sitemap = [
+    { url: createCanonical("/"), lastModified: now, changeFrequency: "hourly", priority: 1.0 },
+    { url: createCanonical("/about"), lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: createCanonical("/signin"), lastModified: now, changeFrequency: "monthly", priority: 0.3 },
+    { url: createCanonical("/signup"), lastModified: now, changeFrequency: "monthly", priority: 0.3 },
+    { url: createCanonical("/sponsors"), lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+  ];
 
-	const sharedRecordsResponse = await api.api.v2.analysis["public-share-sitemap"].get();
-	const sharedRecordsResult = await normalizeEdenResult<SharedHistorySitemapResult>(
-		sharedRecordsResponse.data,
-		sharedRecordsResponse.error,
-		"加载公开分享 sitemap 失败",
-	);
+  const sharedRecordsResponse = await api.api.v2.analysis["public-share-sitemap"].get();
+  const sharedRecordsResult = await normalizeEdenResult<SharedHistorySitemapResult>(
+    sharedRecordsResponse.data,
+    sharedRecordsResponse.error,
+    "加载公开分享 sitemap 失败",
+  );
 
-	if (!sharedRecordsResult.success || !sharedRecordsResult.data) {
-		throw new Error(sharedRecordsResult.message || "加载公开分享 sitemap 失败");
-	}
+  if (!sharedRecordsResult.success || !sharedRecordsResult.data) {
+    throw new Error(sharedRecordsResult.message || "加载公开分享 sitemap 失败");
+  }
 
-	const sharedRoutes: MetadataRoute.Sitemap = sharedRecordsResult.data.records.map(record => ({
-		url: createCanonical(`/share/${record.id}`),
-		lastModified: record.lastModified,
-		changeFrequency: "weekly",
-		priority: 0.6,
-	}));
+  const sharedRoutes: MetadataRoute.Sitemap = sharedRecordsResult.data.records.map(record => ({
+    url: createCanonical(`/share/${record.id}`),
+    lastModified: record.lastModified,
+    changeFrequency: "weekly",
+    priority: 0.6,
+  }));
 
-	return [...staticRoutes, ...sharedRoutes];
+  return [...staticRoutes, ...sharedRoutes];
 }

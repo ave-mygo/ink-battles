@@ -28,23 +28,23 @@ export const serializeDate = (value: unknown) => value ? new Date(value as strin
  * @param user - 原始用户记录对象
  * @returns 安全的用户对象，用户为空时返回 null
  */
-export const safeUser = (user: Record<string, unknown> | null): SafeUser | null => {
-	if (!user)
-		return null;
-	return {
-		uid: user.uid as number,
-		email: user.email as string | null | undefined,
-		qqOpenid: user.qqOpenid as string | null | undefined,
-		afdId: user.afdId as string | null | undefined,
-		nickname: user.nickname as string | null | undefined,
-		bio: user.bio as string | null | undefined,
-		avatar: user.avatar as string | null | undefined,
-		loginMethod: user.loginMethod as SafeUser["loginMethod"],
-		isActive: user.isActive as boolean | undefined,
-		createdAt: serializeDate(user.createdAt),
-		updatedAt: serializeDate(user.updatedAt),
-	};
-};
+export function safeUser(user: Record<string, unknown> | null): SafeUser | null {
+  if (!user)
+    return null;
+  return {
+    uid: user.uid as number,
+    email: user.email as string | null | undefined,
+    qqOpenid: user.qqOpenid as string | null | undefined,
+    afdId: user.afdId as string | null | undefined,
+    nickname: user.nickname as string | null | undefined,
+    bio: user.bio as string | null | undefined,
+    avatar: user.avatar as string | null | undefined,
+    loginMethod: user.loginMethod as SafeUser["loginMethod"],
+    isActive: user.isActive as boolean | undefined,
+    createdAt: serializeDate(user.createdAt),
+    updatedAt: serializeDate(user.updatedAt),
+  };
+}
 
 /**
  * 构造带状态和消息的重定向响应
@@ -54,9 +54,9 @@ export const safeUser = (user: Record<string, unknown> | null): SafeUser | null 
  * @param baseUrl - 基础 URL
  * @returns 重定向响应
  */
-export const redirectWithMessage = (path: string, status: string, message: string, baseUrl: string) => {
-	const url = new URL(path, baseUrl);
-	url.searchParams.set("status", status);
-	url.searchParams.set("msg", message);
-	return Response.redirect(url, 302);
-};
+export function redirectWithMessage(path: string, status: string, message: string, baseUrl: string) {
+  const url = new URL(path, baseUrl);
+  url.searchParams.set("status", status);
+  url.searchParams.set("msg", message);
+  return Response.redirect(url, 302);
+}

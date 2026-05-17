@@ -4,7 +4,7 @@ services:
     container_name: ink-battles-frontend
     restart: unless-stopped
     expose:
-      - '3000'
+      - "3000"
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
@@ -21,7 +21,7 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"
 
   backend:
     image: ghcr.io/ave-mygo/ink-battles-backend:latest
@@ -30,9 +30,9 @@ services:
     mem_limit: 2g
     memswap_limit: 2g
     ports:
-      - '${BACKEND_PORT:-3001}:3000'
+      - "${BACKEND_PORT:-3001}:3000"
     extra_hosts:
-      - 'host.docker.internal:host-gateway'
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./config.toml:/app/config.toml:ro
     environment:
@@ -54,4 +54,4 @@ services:
       driver: json-file
       options:
         max-size: 10m
-        max-file: '3'
+        max-file: "3"

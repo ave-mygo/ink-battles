@@ -1,6 +1,6 @@
-import type { Metadata } from "next";
 import type { ApiResult } from "@ink-battles/shared/types/api";
 import type { AuthUserInfoSafe } from "@ink-battles/shared/types/users/user";
+import type { Metadata } from "next";
 import { User } from "lucide-react";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
 import { AccountStatusCard } from "@/components/dashboard/profile/AccountStatusCard";
@@ -10,42 +10,42 @@ import { Card, CardContent } from "@/components/ui/card";
 import { createServerEden } from "@/utils/api/eden-server";
 
 export const metadata: Metadata = {
-	title: "用户信息",
-	description: "查看和管理您的个人资料",
+  title: "用户信息",
+  description: "查看和管理您的个人资料",
 };
 
 export default async function ProfilePage() {
-	const api = await createServerEden();
-	const { data, error } = await api.api.v2.auth.me.get();
-	const response = (data ?? error) as ApiResult<AuthUserInfoSafe | null>;
-	const user = response.success ? response.data ?? null : null;
+  const api = await createServerEden();
+  const { data, error } = await api.api.v2.auth.me.get();
+  const response = (data ?? error) as ApiResult<AuthUserInfoSafe | null>;
+  const user = response.success ? response.data ?? null : null;
 
-	if (!user) {
-		return (
-			<div className="flex h-full items-center justify-center">
-				<Card className="border-0 rounded-2xl bg-white/80 shadow-lg backdrop-blur-lg">
-					<CardContent className="pt-6">
-						<p className="text-slate-600">无法加载用户信息</p>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
+  if (!user) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Card className="border-0 rounded-2xl bg-white/80 shadow-lg backdrop-blur-lg">
+          <CardContent className="pt-6">
+            <p className="text-slate-600">无法加载用户信息</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-	return (
-		<div className="mx-auto max-w-4xl space-y-6">
-			<DashboardPageHeader
-				icon={User}
-				title="用户信息"
-				description="查看和管理您的个人资料"
-			/>
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <DashboardPageHeader
+        icon={User}
+        title="用户信息"
+        description="查看和管理您的个人资料"
+      />
 
-			<ProfileHeader user={user} />
+      <ProfileHeader user={user} />
 
-			<div className="gap-6 grid md:grid-cols-2">
-				<BasicInfoCard user={user} />
-				<AccountStatusCard user={user} />
-			</div>
-		</div>
-	);
+      <div className="gap-6 grid md:grid-cols-2">
+        <BasicInfoCard user={user} />
+        <AccountStatusCard user={user} />
+      </div>
+    </div>
+  );
 }

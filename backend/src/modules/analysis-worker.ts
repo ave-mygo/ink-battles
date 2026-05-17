@@ -1,3 +1,4 @@
+import type { AnalysisTaskOptions } from "./analysis/types";
 import crypto from "crypto-js";
 import { ObjectId } from "mongodb";
 import { getAnalysisConfig, getGradingModelById } from "../config";
@@ -8,10 +9,10 @@ import { writeAuditLog } from "../utils/audit";
 import { createProgress, estimateStreamingPercent, updateTaskProgress } from "./analysis-progress";
 import { cleanModelName } from "./analysis/cache";
 import { forgetAnalysisAbortController, runQueuedAnalysisTask } from "./analysis/queue";
-export { canAcceptAnalysisTask, cancelRunningTask, getAnalysisBackpressure, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot } from "./analysis/queue";
 import { loadSearchContext, saveAnalysisResult } from "./analysis/result";
-import type { AnalysisTaskOptions } from "./analysis/types";
 import { refundCallBalance } from "./billing";
+
+export { canAcceptAnalysisTask, cancelRunningTask, getAnalysisBackpressure, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot } from "./analysis/queue";
 
 const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
 const CANCELLED_MESSAGE = "分析任务已取消";
@@ -20,9 +21,9 @@ const analysisConfig = getAnalysisConfig();
 const STREAM_LIMITS = { maxContentSize: analysisConfig.max_output_chars, maxTimeoutMs: 7 * 60 * 1000, maxChunks: 20000 } as const;
 
 interface AnalysisTaskBillingSnapshot {
-	billing?: {
-		deductedFrom?: "grant" | "paid" | null;
-	};
+  billing?: {
+    deductedFrom?: "grant" | "paid" | null;
+  };
 }
 
 /**
@@ -37,19 +38,19 @@ export const sha1Article = (articleText: string) => crypto.SHA1(articleText.repl
  * 将所有处于 pending 或 processing 状态的任务标记为 failed
  * @returns 更新操作的结果
  */
-export const recoverInterruptedAnalysisTasks = async () => {
-	const now = new Date().toISOString();
-	return updateMany(COLLECTIONS.analysisTasks, {
-		status: { $in: ["pending", "processing"] },
-	}, {
-		$set: {
-			status: "failed",
-			error: "服务重启，未完成的分析任务已中断，请重新提交",
-			progress: createProgress("failed", "服务重启，未完成的分析任务已中断，请重新提交", 100),
-			updatedAt: now,
-		},
-	});
-};
+export async function recoverInterruptedAnalysisTasks() {
+  const now = new Date().toISOString();
+  return updateMany(COLLECTIONS.analysisTasks, {
+    status: { $in: ["pending", "processing"] },
+  }, {
+    $set: {
+      status: "failed",
+      error: "服务重启，未完成的分析任务已中断，请重新提交",
+      progress: createProgress("failed", "服务重启，未完成的分析任务已中断，请重新提交", 100),
+      updatedAt: now,
+    },
+  });
+}
 
 /**
  * 运行分析任务
@@ -57,9 +58,9 @@ export const recoverInterruptedAnalysisTasks = async () => {
  * @param options - 分析任务选项
  * @returns 任务是否成功加入队列
  */
-export const runAnalysisTask = (taskId: ObjectId, options: AnalysisTaskOptions) => {
-	return runQueuedAnalysisTask(taskId, options, executeAnalysisTask);
-};
+export function runAnalysisTask(taskId: ObjectId, options: AnalysisTaskOptions) {
+  return runQueuedAnalysisTask(taskId, options, executeAnalysisTask);
+}
 
 /**
  * 执行分析任务的核心流程
@@ -68,79 +69,79 @@ export const runAnalysisTask = (taskId: ObjectId, options: AnalysisTaskOptions) 
  * @param options - 分析任务选项
  * @param abortController - 用于取消任务的 AbortController
  */
-const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOptions, abortController: AbortController) => {
-	const key = taskId.toString();
-	let timedOut = false;
-	const timeoutTimer = setTimeout(() => {
-		timedOut = true;
-		abortController.abort(TASK_TIMEOUT_MESSAGE);
-	}, STREAM_LIMITS.maxTimeoutMs);
-	try {
-		const model = getGradingModelById(options.modelId);
-		if (!model)
-			throw new Error("无效的评分模型");
-		await ensureTaskActive(taskId);
-		const modelName = cleanModelName(model.model);
-		console.log(`[analysis:${taskId}] worker-start model=${modelName} searchModel=${options.searchModel} articleLength=${options.articleText.length}`);
-		await logTaskProgress(taskId, options.searchModel === "none"
-			? createProgress("validating", "正在校验文本内容", 12)
-			: createProgress("searching", "正在联网搜索并校验文本内容", 12));
-		const verification = await verifyArticleValue({ ...options, modelName, signal: abortController.signal });
-		if (!verification.success)
-			throw new Error(`校验失败: ${verification.error || "文章内容不符合分析标准"}`);
+async function executeAnalysisTask(taskId: ObjectId, options: AnalysisTaskOptions, abortController: AbortController) {
+  const key = taskId.toString();
+  let timedOut = false;
+  const timeoutTimer = setTimeout(() => {
+    timedOut = true;
+    abortController.abort(TASK_TIMEOUT_MESSAGE);
+  }, STREAM_LIMITS.maxTimeoutMs);
+  try {
+    const model = getGradingModelById(options.modelId);
+    if (!model)
+      throw new Error("无效的评分模型");
+    await ensureTaskActive(taskId);
+    const modelName = cleanModelName(model.model);
+    console.log(`[analysis:${taskId}] worker-start model=${modelName} searchModel=${options.searchModel} articleLength=${options.articleText.length}`);
+    await logTaskProgress(taskId, options.searchModel === "none"
+      ? createProgress("validating", "正在校验文本内容", 12)
+      : createProgress("searching", "正在联网搜索并校验文本内容", 12));
+    const verification = await verifyArticleValue({ ...options, modelName, signal: abortController.signal });
+    if (!verification.success)
+      throw new Error(`校验失败: ${verification.error || "文章内容不符合分析标准"}`);
 
-		console.log(`[analysis:${taskId}] validation-passed session=${verification.session || "none"}`);
-		await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, { "metadata.session": verification.session || "" });
-		await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
-			validation: {
-				success: true,
-				message: options.searchModel === "none" ? "文本审核通过" : "联网审核通过",
-				checkedAt: new Date().toISOString(),
-			},
-		});
-		const search = await loadSearchContext(verification.session);
-		await logTaskProgress(taskId, createProgress("analyzing", "文本审核通过，模型已开始流式分析", 45), "processing");
-		const accumulatedContent = await accumulateStreamContent(taskId, options.fingerprint, async progress =>
-			runAnalysisModel({
-				articleText: options.articleText,
-				mode: options.mode,
-				modelId: options.modelId,
-				fingerprint: options.fingerprint,
-				searchResults: search.searchResults,
-				signal: abortController.signal,
-				maxOutputChars: STREAM_LIMITS.maxContentSize,
-				onProgress: progress,
-			}));
+    console.log(`[analysis:${taskId}] validation-passed session=${verification.session || "none"}`);
+    await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, { "metadata.session": verification.session || "" });
+    await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
+      validation: {
+        success: true,
+        message: options.searchModel === "none" ? "文本审核通过" : "联网审核通过",
+        checkedAt: new Date().toISOString(),
+      },
+    });
+    const search = await loadSearchContext(verification.session);
+    await logTaskProgress(taskId, createProgress("analyzing", "文本审核通过，模型已开始流式分析", 45), "processing");
+    const accumulatedContent = await accumulateStreamContent(taskId, options.fingerprint, async progress =>
+      runAnalysisModel({
+        articleText: options.articleText,
+        mode: options.mode,
+        modelId: options.modelId,
+        fingerprint: options.fingerprint,
+        searchResults: search.searchResults,
+        signal: abortController.signal,
+        maxOutputChars: STREAM_LIMITS.maxContentSize,
+        onProgress: progress,
+      }));
 
-		await logTaskProgress(taskId, createProgress("finalizing", "正在解析结果并写入数据库", 95), "processing");
-		await saveAnalysisResult({ taskId, uid: options.uid, accumulatedContent, search, ensureTaskActive });
-		if (verification.session) {
-			await deleteOne(COLLECTIONS.sessions, { session: verification.session });
-		}
-	} catch (error) {
-		const normalizedError = timedOut && isAbortLikeError(error) ? new Error(TASK_TIMEOUT_MESSAGE) : error;
-		if (await shouldTreatAsCancelled(taskId, normalizedError)) {
-			await logTaskProgress(taskId, createProgress("cancelled", CANCELLED_MESSAGE, 100), "cancelled");
-			if (options.uid)
-				await refundTaskCallBalance(taskId, options.uid, "cancelled");
-			return;
-		}
-		if (options.uid)
-			await refundTaskCallBalance(taskId, options.uid, "failed");
-		await logTaskProgress(taskId, createProgress("failed", formatAnalysisError(normalizedError), 100), "failed");
-		await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
-			error: formatAnalysisError(normalizedError),
-			validation: {
-				success: false,
-				message: formatAnalysisError(normalizedError),
-				checkedAt: new Date().toISOString(),
-			},
-		});
-	} finally {
-		clearTimeout(timeoutTimer);
-		forgetAnalysisAbortController(key);
-	}
-};
+    await logTaskProgress(taskId, createProgress("finalizing", "正在解析结果并写入数据库", 95), "processing");
+    await saveAnalysisResult({ taskId, uid: options.uid, accumulatedContent, search, ensureTaskActive });
+    if (verification.session) {
+      await deleteOne(COLLECTIONS.sessions, { session: verification.session });
+    }
+  } catch (error) {
+    const normalizedError = timedOut && isAbortLikeError(error) ? new Error(TASK_TIMEOUT_MESSAGE) : error;
+    if (await shouldTreatAsCancelled(taskId, normalizedError)) {
+      await logTaskProgress(taskId, createProgress("cancelled", CANCELLED_MESSAGE, 100), "cancelled");
+      if (options.uid)
+        await refundTaskCallBalance(taskId, options.uid, "cancelled");
+      return;
+    }
+    if (options.uid)
+      await refundTaskCallBalance(taskId, options.uid, "failed");
+    await logTaskProgress(taskId, createProgress("failed", formatAnalysisError(normalizedError), 100), "failed");
+    await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
+      error: formatAnalysisError(normalizedError),
+      validation: {
+        success: false,
+        message: formatAnalysisError(normalizedError),
+        checkedAt: new Date().toISOString(),
+      },
+    });
+  } finally {
+    clearTimeout(timeoutTimer);
+    forgetAnalysisAbortController(key);
+  }
+}
 
 /**
  * 累积流式内容并监控流式处理的限制
@@ -149,42 +150,38 @@ const executeAnalysisTask = async (taskId: ObjectId, options: AnalysisTaskOption
  * @param runStream - 执行流式处理的函数
  * @returns 累积的完整内容
  */
-const accumulateStreamContent = async (
-	taskId: ObjectId,
-	fingerprint: string,
-	runStream: (onProgress: (chunk: string, chunkCount: number) => Promise<void>) => Promise<string>,
-) => {
-	const startTime = Date.now();
-	const maxTime = startTime + STREAM_LIMITS.maxTimeoutMs;
-	let contentSize = 0;
-	let lastChunkLogTime = startTime;
-	return runStream(async (chunk, chunkCount) => {
-		const now = Date.now();
-		contentSize += chunk.length;
-		if (now > maxTime)
-			throw new Error(`流式处理超时 (${((now - startTime) / 1000).toFixed(1)}s)`);
-		if (chunkCount >= STREAM_LIMITS.maxChunks)
-			throw new Error(`流式块数量超过限制 (${STREAM_LIMITS.maxChunks})`);
-		if (contentSize > STREAM_LIMITS.maxContentSize)
-			throw new Error(`流式内容大小超过限制 (${STREAM_LIMITS.maxContentSize / 1024}KB)`);
-		if (chunkCount % 50 === 0)
-			await ensureTaskActive(taskId);
-		if (chunkCount === 1 || now - lastChunkLogTime >= 5000 || chunkCount % 20 === 0) {
-			const elapsedSeconds = ((now - startTime) / 1000).toFixed(1);
-			console.log(
-				`[analysis:${taskId}] stream-chunk fingerprint=${fingerprint} chunks=${chunkCount} chars=${contentSize} lastChunk=${chunk.length} elapsed=${elapsedSeconds}s`,
-			);
-			lastChunkLogTime = now;
-		}
-		if (chunkCount === 1 || chunkCount % 20 === 0) {
-			const progress = createProgress("analyzing", `正在接收模型流式输出（${chunkCount} 块）`, estimateStreamingPercent(chunkCount, contentSize), {
-				chunkCount,
-				contentLength: contentSize,
-			});
-			await logTaskProgress(taskId, progress, "processing");
-		}
-	});
-};
+async function accumulateStreamContent(taskId: ObjectId,	fingerprint: string,	runStream: (onProgress: (chunk: string, chunkCount: number) => Promise<void>) => Promise<string>) {
+  const startTime = Date.now();
+  const maxTime = startTime + STREAM_LIMITS.maxTimeoutMs;
+  let contentSize = 0;
+  let lastChunkLogTime = startTime;
+  return runStream(async (chunk, chunkCount) => {
+    const now = Date.now();
+    contentSize += chunk.length;
+    if (now > maxTime)
+      throw new Error(`流式处理超时 (${((now - startTime) / 1000).toFixed(1)}s)`);
+    if (chunkCount >= STREAM_LIMITS.maxChunks)
+      throw new Error(`流式块数量超过限制 (${STREAM_LIMITS.maxChunks})`);
+    if (contentSize > STREAM_LIMITS.maxContentSize)
+      throw new Error(`流式内容大小超过限制 (${STREAM_LIMITS.maxContentSize / 1024}KB)`);
+    if (chunkCount % 50 === 0)
+      await ensureTaskActive(taskId);
+    if (chunkCount === 1 || now - lastChunkLogTime >= 5000 || chunkCount % 20 === 0) {
+      const elapsedSeconds = ((now - startTime) / 1000).toFixed(1);
+      console.log(
+        `[analysis:${taskId}] stream-chunk fingerprint=${fingerprint} chunks=${chunkCount} chars=${contentSize} lastChunk=${chunk.length} elapsed=${elapsedSeconds}s`,
+      );
+      lastChunkLogTime = now;
+    }
+    if (chunkCount === 1 || chunkCount % 20 === 0) {
+      const progress = createProgress("analyzing", `正在接收模型流式输出（${chunkCount} 块）`, estimateStreamingPercent(chunkCount, contentSize), {
+        chunkCount,
+        contentLength: contentSize,
+      });
+      await logTaskProgress(taskId, progress, "processing");
+    }
+  });
+}
 
 /**
  * 退还任务扣除的调用次数余额
@@ -194,51 +191,47 @@ const accumulateStreamContent = async (
  * @param reason - 退款原因（失败或取消）
  * @returns 是否成功完成退款
  */
-const refundTaskCallBalance = async (
-	taskId: ObjectId,
-	uid: number,
-	reason: "failed" | "cancelled",
-) => {
-	const refundedAt = new Date().toISOString();
-	let refunded = false;
-	try {
-		await withTransaction(async (session) => {
-			const claimedTask = await findOneAndUpdate<AnalysisTaskBillingSnapshot>(COLLECTIONS.analysisTasks, {
-				"_id": taskId,
-				"billing.deducted": true,
-				"billing.refunded": { $ne: true },
-				"billing.completedAt": { $exists: false },
-			}, {
-				$set: {
-					"billing.refunded": true,
-					"billing.refundedAt": refundedAt,
-					"billing.refundReason": reason,
-					"updatedAt": refundedAt,
-				},
-			}, { returnDocument: "before", session });
+async function refundTaskCallBalance(taskId: ObjectId,	uid: number,	reason: "failed" | "cancelled") {
+  const refundedAt = new Date().toISOString();
+  let refunded = false;
+  try {
+    await withTransaction(async (session) => {
+      const claimedTask = await findOneAndUpdate<AnalysisTaskBillingSnapshot>(COLLECTIONS.analysisTasks, {
+        "_id": taskId,
+        "billing.deducted": true,
+        "billing.refunded": { $ne: true },
+        "billing.completedAt": { $exists: false },
+      }, {
+        $set: {
+          "billing.refunded": true,
+          "billing.refundedAt": refundedAt,
+          "billing.refundReason": reason,
+          "updatedAt": refundedAt,
+        },
+      }, { returnDocument: "before", session });
 
-			const deductedFrom = claimedTask?.billing?.deductedFrom;
-			if (deductedFrom !== "grant" && deductedFrom !== "paid")
-				return;
+      const deductedFrom = claimedTask?.billing?.deductedFrom;
+      if (deductedFrom !== "grant" && deductedFrom !== "paid")
+        return;
 
-			if (!await refundCallBalance(uid, deductedFrom, session))
-				throw new Error("退款余额回写失败");
-			await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
-				$set: {
-					"billing.refundBalanceApplied": true,
-					"updatedAt": refundedAt,
-				},
-			}, session);
-			refunded = true;
-		});
-	} catch (error) {
-		console.error(`[analysis:${taskId}] refund failed`, error);
-		return false;
-	}
-	if (refunded)
-		writeAuditLog({ event: "billing_refunded", uid, metadata: { taskId: taskId.toString(), reason } });
-	return refunded;
-};
+      if (!await refundCallBalance(uid, deductedFrom, session))
+        throw new Error("退款余额回写失败");
+      await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
+        $set: {
+          "billing.refundBalanceApplied": true,
+          "updatedAt": refundedAt,
+        },
+      }, session);
+      refunded = true;
+    });
+  } catch (error) {
+    console.error(`[analysis:${taskId}] refund failed`, error);
+    return false;
+  }
+  if (refunded)
+    writeAuditLog({ event: "billing_refunded", uid, metadata: { taskId: taskId.toString(), reason } });
+  return refunded;
+}
 
 /**
  * 确保任务仍处于活动状态
@@ -246,11 +239,11 @@ const refundTaskCallBalance = async (
  * @param taskId - 任务 ID
  * @throws 任务不存在或已取消时抛出错误
  */
-const ensureTaskActive = async (taskId: ObjectId) => {
-	const task = await findOne(COLLECTIONS.analysisTasks, { _id: taskId });
-	if (!task || task.status === "cancelled")
-		throw new Error(CANCELLED_MESSAGE);
-};
+async function ensureTaskActive(taskId: ObjectId) {
+  const task = await findOne(COLLECTIONS.analysisTasks, { _id: taskId });
+  if (!task || task.status === "cancelled")
+    throw new Error(CANCELLED_MESSAGE);
+}
 
 /**
  * 判断错误是否应被视为任务取消
@@ -258,36 +251,36 @@ const ensureTaskActive = async (taskId: ObjectId) => {
  * @param error - 错误对象
  * @returns 是否应视为取消
  */
-const shouldTreatAsCancelled = async (taskId: ObjectId, error: unknown) => {
-	const message = (error as Error).message || "";
-	const name = (error as { name?: string }).name || "";
-	if (message === CANCELLED_MESSAGE || name === "AbortError" || name === "APIUserAbortError" || message.includes("abort")) {
-		const task = await findOne(COLLECTIONS.analysisTasks, { _id: taskId });
-		return task?.status === "cancelled" || message === CANCELLED_MESSAGE;
-	}
-	return false;
-};
+async function shouldTreatAsCancelled(taskId: ObjectId, error: unknown) {
+  const message = (error as Error).message || "";
+  const name = (error as { name?: string }).name || "";
+  if (message === CANCELLED_MESSAGE || name === "AbortError" || name === "APIUserAbortError" || message.includes("abort")) {
+    const task = await findOne(COLLECTIONS.analysisTasks, { _id: taskId });
+    return task?.status === "cancelled" || message === CANCELLED_MESSAGE;
+  }
+  return false;
+}
 
 /**
  * 判断错误是否为中止类型的错误
  * @param error - 错误对象
  * @returns 是否为中止错误
  */
-const isAbortLikeError = (error: unknown) => {
-	const message = (error as Error).message || "";
-	const name = (error as { name?: string }).name || "";
-	return name === "AbortError" || name === "APIUserAbortError" || message.includes("abort");
-};
+function isAbortLikeError(error: unknown) {
+  const message = (error as Error).message || "";
+  const name = (error as { name?: string }).name || "";
+  return name === "AbortError" || name === "APIUserAbortError" || message.includes("abort");
+}
 
 /**
  * 格式化分析错误消息
  * @param error - 错误对象
  * @returns 格式化后的错误消息
  */
-const formatAnalysisError = (error: unknown) => {
-	const message = (error as Error).message || "分析失败";
-	return message.includes("stream") || message.includes("流式") ? `流式处理失败: ${message}` : message;
-};
+function formatAnalysisError(error: unknown) {
+  const message = (error as Error).message || "分析失败";
+  return message.includes("stream") || message.includes("流式") ? `流式处理失败: ${message}` : message;
+}
 
 /**
  * 删除指定的分析任务
@@ -302,11 +295,7 @@ export const deleteTask = (taskId: string) => deleteOne(COLLECTIONS.analysisTask
  * @param progress - 进度对象
  * @param status - 可选的任务状态
  */
-const logTaskProgress = async (
-	taskId: ObjectId,
-	progress: ReturnType<typeof createProgress>,
-	status?: "pending" | "processing" | "completed" | "failed" | "cancelled",
-) => {
-	console.log(`[analysis:${taskId}] ${progress.stage} ${progress.percent}% ${progress.message}`);
-	await updateTaskProgress(taskId, progress, status);
-};
+async function logTaskProgress(taskId: ObjectId, progress: ReturnType<typeof createProgress>, status?: "pending" | "processing" | "completed" | "failed" | "cancelled") {
+  console.log(`[analysis:${taskId}] ${progress.stage} ${progress.percent}% ${progress.message}`);
+  await updateTaskProgress(taskId, progress, status);
+}
