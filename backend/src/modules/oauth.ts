@@ -242,7 +242,7 @@ export const oauthModule = new Elysia()
     authUrl.searchParams.set("state", state);
     return Response.redirect(authUrl.toString(), 302);
   }, { detail: { tags: ["RPC: OAuth"] } })
-  .get("/api/v2/rpc/oauth.afdianStart", ({ _request, query }) => {
+  .get("/api/v2/rpc/oauth.afdianStart", ({ query }) => {
     const { afdian } = getConfig();
     const state = createState({
       method: normalizeOAuthMethod(query.method),
