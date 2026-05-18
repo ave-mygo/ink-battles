@@ -13,6 +13,13 @@ import { SearchCredentials } from "@/components/common/SearchCredentials";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
+interface ParsedAnalysisResult {
+  data: AnalysisResult | null;
+  displayModelName?: string;
+  overallScore: number;
+  parseError: unknown;
+}
+
 /**
  * 分析结果统一容器组件
  * 组织 SearchCredentials 和各个分析卡片为同级组件
@@ -59,7 +66,7 @@ export function AnalysisResults({
   compactMode?: boolean;
   analysisId?: string;
 }) {
-  const parsedResult = useMemo(() => {
+  const parsedResult = useMemo<ParsedAnalysisResult>(() => {
     if (analysisResult) {
       return {
         data: analysisResult as AnalysisResult,
@@ -79,7 +86,7 @@ export function AnalysisResults({
     }
 
     try {
-      const parsedData = typeof result.result === "string" ? JSON.parse(result.result) : result.result;
+      const parsedData = (typeof result.result === "string" ? JSON.parse(result.result) : result.result) as AnalysisResult | null;
       return {
         data: parsedData || null,
         displayModelName: modelName || result.modelName,
