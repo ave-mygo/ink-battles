@@ -385,7 +385,7 @@ async function main() {
   - 负数表示扣减余额
   - 操作会记录到admin_operations集合中
   - 大批量操作会生成详细的报告文件
-		`);
+`);
     process.exit(0);
   }
 
