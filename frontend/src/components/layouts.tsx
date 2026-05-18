@@ -12,7 +12,7 @@ import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/Wri
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
 import { getFingerprintId } from "@/lib/fingerprint";
-import { useAvailableGradingModels } from "@/store/writer-config";
+import { useAvailableGradingModels } from "@/store/writer-config-context";
 import { submitAnalysis } from "@/utils/analysis";
 import { notifyBillingBalanceUpdated } from "@/utils/billing/client";
 

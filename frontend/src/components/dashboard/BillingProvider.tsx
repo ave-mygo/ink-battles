@@ -1,18 +1,9 @@
 "use client";
 
 import type { BillingSummaryState } from "@ink-battles/shared/types/common/billing";
-import { createContext, useContext, useEffect } from "react";
 import useSWR from "swr";
-import { BILLING_BALANCE_UPDATED_EVENT, getBillingInfo } from "@/utils/billing/client";
-
-interface BillingContextValue {
-  billingSummary: BillingSummaryState | null;
-  isLoading: boolean;
-  errorMessage: string | null;
-  refreshBilling: () => Promise<BillingSummaryState | undefined>;
-}
-
-const BillingContext = createContext<BillingContextValue | null>(null);
+import { BillingContext } from "@/components/dashboard/BillingContext";
+import { getBillingInfo } from "@/utils/billing/client";
 
 interface BillingProviderProps {
   initialState: BillingSummaryState | null;
@@ -52,7 +43,7 @@ export function BillingProvider({
   };
 
   return (
-    <BillingContext.Provider
+    <BillingContext
       value={{
         billingSummary: data ?? initialState,
         isLoading: !initialState && isLoading,
@@ -61,36 +52,6 @@ export function BillingProvider({
       }}
     >
       {children}
-    </BillingContext.Provider>
+    </BillingContext>
   );
 }
-
-export const useBillingContext = () => {
-  const context = useContext(BillingContext);
-  if (!context) {
-    throw new Error("useBillingContext 必须在 BillingProvider 内使用");
-  }
-
-  return context;
-};
-
-/**
- * 供站内其他模块在余额发生变化时触发静默重拉。
- */
-export const useBillingAutoRefresh = (refreshBilling: () => Promise<BillingSummaryState | undefined>) => {
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const handleBillingUpdated = () => {
-      void refreshBilling();
-    };
-
-    window.addEventListener(BILLING_BALANCE_UPDATED_EVENT, handleBillingUpdated);
-
-    return () => {
-      window.removeEventListener(BILLING_BALANCE_UPDATED_EVENT, handleBillingUpdated);
-    };
-  }, [refreshBilling]);
-};
