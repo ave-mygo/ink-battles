@@ -1,5 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const SCORE_ITEM_SKELETON_KEYS = ["score-plot", "score-character", "score-style", "score-originality"];
+
 /**
  * 历史记录详情页面加载骨架屏
  * 在服务器组件渲染期间立即展示，提供流式加载体验
@@ -51,9 +53,9 @@ export default function HistoryDetailLoading() {
           </div>
           {/* 各项得分 */}
           <div className="gap-4 grid md:grid-cols-2">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {SCORE_ITEM_SKELETON_KEYS.map(key => (
               <div
-                key={i}
+                key={key}
                 className="p-4 border border-slate-200/40 rounded-xl space-y-2 dark:border-slate-700/50"
               >
                 <div className="flex justify-between">

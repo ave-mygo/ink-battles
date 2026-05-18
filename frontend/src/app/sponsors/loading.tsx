@@ -1,5 +1,17 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const SPONSOR_CARD_SKELETON_KEYS = [
+  "sponsor-card-1",
+  "sponsor-card-2",
+  "sponsor-card-3",
+  "sponsor-card-4",
+  "sponsor-card-5",
+  "sponsor-card-6",
+  "sponsor-card-7",
+  "sponsor-card-8",
+  "sponsor-card-9",
+];
+
 /**
  * 赞助页面加载骨架屏
  * SponsorHeader（静态标题）+ SponsorList（赞助者卡片网格）
@@ -27,9 +39,9 @@ export default function SponsorsLoading() {
         {/* SponsorList 骨架 */}
         <div className="space-y-8">
           <div className="gap-8 grid lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1">
-            {Array.from({ length: 9 }).map((_, i) => (
+            {SPONSOR_CARD_SKELETON_KEYS.map(key => (
               <div
-                key={i}
+                key={key}
                 className="border-2 border-slate-100 rounded-xl overflow-hidden dark:border-slate-800"
               >
                 <div className="p-6 flex flex-col gap-3 items-center">

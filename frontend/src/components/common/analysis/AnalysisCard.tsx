@@ -63,9 +63,9 @@ export function AnalysisCard({
                 文章标签
               </h4>
               <div className="flex flex-wrap gap-2">
-                {tags.map((tag, index) => (
+                {tags.map(tag => (
                   <span
-                    key={index}
+                    key={tag}
                     className="text-xs text-blue-700 px-2 py-1 border border-blue-200 rounded-md bg-blue-50 cursor-pointer transition-colors dark:text-blue-300 dark:border-blue-900 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40"
                   >
                     {tag}
@@ -86,8 +86,8 @@ export function AnalysisCard({
                 优势亮点
               </h4>
               <ul className="space-y-1">
-                {strengths.map((strength, index) => (
-                  <li key={index} className="text-sm text-slate-600 flex gap-2 items-center dark:text-slate-300">
+                {strengths.map(strength => (
+                  <li key={strength} className="text-sm text-slate-600 flex gap-2 items-center dark:text-slate-300">
                     <span className="text-green-500 shrink-0 dark:text-green-400">•</span>
                     <span>{strength}</span>
                   </li>
@@ -107,8 +107,8 @@ export function AnalysisCard({
                 改进建议
               </h4>
               <ul className="space-y-1">
-                {improvements.map((improvement, index) => (
-                  <li key={index} className="text-sm text-slate-600 flex gap-2 items-center dark:text-slate-300">
+                {improvements.map(improvement => (
+                  <li key={improvement} className="text-sm text-slate-600 flex gap-2 items-center dark:text-slate-300">
                     <span className="text-blue-500 shrink-0 dark:text-blue-400">•</span>
                     <span>{improvement}</span>
                   </li>

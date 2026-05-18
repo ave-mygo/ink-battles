@@ -9,7 +9,6 @@ import { ImageResponse } from "next/og";
  * Fast Refresh 警告可以安全忽略
  */
 
-export const runtime = "edge";
 export const alt = "作家战力分析系统 - 基于AI的专业文本分析工具";
 export const size = {
   width: 1200,

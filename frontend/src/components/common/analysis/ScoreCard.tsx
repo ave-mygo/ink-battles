@@ -3,6 +3,7 @@
 import type { ScorePercentileResult } from "@ink-battles/shared/types/ai";
 import { Copy, Heart, Share, Share2, Star, Trophy } from "lucide-react";
 import Link from "next/link";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import { RadarChart } from "@/components/layouts/WriterPage/RadarChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,6 +110,24 @@ export function ScoreCard({
   onGenerateShareText,
 }: ScoreCardProps) {
   const isMobile = useIsMobile();
+
+  const radarData = useMemo(() => {
+    if (dimensions.length === 0) {
+      return null;
+    }
+
+    const normalize = (name: string, score: number) => {
+      const cleanName = name.replace(CHINESE_ONLY_REGEX, "");
+      const max = cleanName === "经典性" ? 2 : cleanName === "新锐性" ? 1.5 : 5;
+      const mapped = Math.max(0, Math.min(5, (score / max) * 5));
+      return mapped;
+    };
+
+    return {
+      labels: dimensions.map(d => d.name),
+      values: dimensions.map(d => normalize(d.name, d.score)),
+    };
+  }, [dimensions]);
 
   /**
    * 使用系统分享 API 进行分享
@@ -232,22 +251,9 @@ export function ScoreCard({
         </div>
 
         {/* 雷达图：对维度进行 0..5 归一化 */}
-        {dimensions.length > 0 && (
+        {dimensions.length > 0 && radarData && (
           <div className="mb-4 mt-4">
-            {(() => {
-              const normalize = (name: string, score: number) => {
-                const cleanName = name.replace(CHINESE_ONLY_REGEX, "");
-                // 经典性上限 2，新锐性上限 1.5，其余上限 5
-                const max = cleanName === "经典性" ? 2 : cleanName === "新锐性" ? 1.5 : 5;
-                // 映射到 0..5：score/max * 5
-                const mapped = Math.max(0, Math.min(5, (score / max) * 5));
-                return mapped;
-              };
-
-              const labels = dimensions.map(d => d.name);
-              const values = dimensions.map(d => normalize(d.name, d.score));
-              return <RadarChart labels={labels} values={values} />;
-            })()}
+            <RadarChart labels={radarData.labels} values={radarData.values} />
           </div>
         )}
 

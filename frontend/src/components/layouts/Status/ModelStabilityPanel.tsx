@@ -1,5 +1,6 @@
 import type { ConfiguredStatusModel, UsageLog } from "@ink-battles/shared/types/common/status";
 import { Activity, AlertTriangle, CheckCircle2, MinusCircle } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -125,7 +126,11 @@ export default function ModelStabilityPanel({ models, logs, className }: ModelSt
           成功率低于
           {" "}
           {STABLE_SUCCESS_RATE_THRESHOLD}
-          % 标记为 unstable
+          % 标记为 unstable；该结果基于当前
+          <Link href="/status" className="text-emerald-700 font-medium underline underline-offset-2 cursor-pointer dark:text-emerald-300">
+            状态页
+          </Link>
+          已加载的使用记录，手动刷新后才会更新。
         </CardDescription>
       </CardHeader>
       <CardContent className="px-0 pb-0 flex flex-1 flex-col min-h-0">

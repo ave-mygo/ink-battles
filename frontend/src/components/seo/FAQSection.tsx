@@ -33,7 +33,7 @@ export function FAQSection({ items, className = "" }: FAQSectionProps) {
   const renderAnswer = (answer: string | ReactNode) => {
     if (typeof answer === "string") {
       return answer.split("\n").map((line, idx, arr) => (
-        <span key={idx}>
+        <span key={`${line}-${arr.length}`}>
           {line}
           {idx < arr.length - 1 && (
             <>
@@ -53,7 +53,7 @@ export function FAQSection({ items, className = "" }: FAQSectionProps) {
       <div className="mx-auto max-w-3xl space-y-4">
         {items.map((item, index) => (
           <div
-            key={index}
+            key={item.question}
             className="border rounded-lg bg-white shadow-sm overflow-hidden dark:bg-slate-800"
           >
             <button

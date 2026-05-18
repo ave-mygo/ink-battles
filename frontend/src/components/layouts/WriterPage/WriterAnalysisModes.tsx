@@ -87,8 +87,8 @@ export default function WriterAnalysisModes({
                           </HoverCardTrigger>
                           <HoverCardContent className="text-sm max-w-xs dark:text-slate-200 dark:border-slate-700 dark:bg-slate-900">
                             <ul className="pl-6 list-disc space-y-2">
-                              {mode.text.split("-").map((line, index) => (
-                                <li key={index}>{line}</li>
+                              {mode.text.split("-").map(line => (
+                                <li key={line.trim()}>{line}</li>
                               ))}
                             </ul>
                           </HoverCardContent>
@@ -182,8 +182,8 @@ export default function WriterAnalysisModes({
                             </HoverCardTrigger>
                             <HoverCardContent className="text-sm max-w-xs dark:text-slate-200 dark:border-slate-700 dark:bg-slate-900">
                               <ul className="pl-6 list-disc space-y-2">
-                                {mode.text.split("-").map((line, index) => (
-                                  <li key={index}>{line}</li>
+                                {mode.text.split("-").map(line => (
+                                  <li key={line.trim()}>{line}</li>
                                 ))}
                               </ul>
                             </HoverCardContent>

@@ -39,7 +39,7 @@ export function SearchCredentials({ searchResults, searchWebPages }: SearchCrede
             <div className="space-y-2">
               {searchWebPages.map((page, index) => (
                 <a
-                  key={index}
+                  key={page.uri}
                   href={page.uri}
                   target="_blank"
                   rel="noopener noreferrer"

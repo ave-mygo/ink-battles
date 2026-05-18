@@ -1,5 +1,15 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const QUICK_LINK_SKELETON_KEYS = [
+  "quick-link-about",
+  "quick-link-status",
+  "quick-link-token",
+  "quick-link-sponsors",
+  "quick-link-history",
+  "quick-link-billing",
+];
+const MODEL_CARD_SKELETON_KEYS = ["model-card-main", "model-card-fast", "model-card-search"];
+
 /**
  * 首页加载骨架屏
  * force-dynamic SSR 渲染期间展示，与 WriterAnalysisSystem 布局保持一致
@@ -21,8 +31,8 @@ export default function HomeLoading() {
           {/* 快速链接按钮组 */}
           <div className="mx-auto max-w-3xl w-full">
             <div className="flex flex-wrap gap-4 justify-center">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="rounded-lg h-10 w-36" />
+              {QUICK_LINK_SKELETON_KEYS.map(key => (
+                <Skeleton key={key} className="rounded-lg h-10 w-36" />
               ))}
             </div>
           </div>
@@ -68,9 +78,9 @@ export default function HomeLoading() {
                 <Skeleton className="h-4 w-36" />
               </div>
               <div className="px-6 pb-6 space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
+                {MODEL_CARD_SKELETON_KEYS.map(key => (
                   <div
-                    key={i}
+                    key={key}
                     className="p-3 border border-slate-200/60 rounded-xl space-y-1.5 dark:border-slate-700/50"
                   >
                     <div className="flex items-center justify-between">

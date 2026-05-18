@@ -331,8 +331,8 @@ export default function MermaidDiagrams({ diagrams }: MermaidDiagramsProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {diagrams.map((diagram, index) => (
-          <MermaidErrorBoundary key={`${diagram.type}-${diagram.title}-${index}-${diagram.code}`} title={diagram.title}>
+        {diagrams.map(diagram => (
+          <MermaidErrorBoundary key={`${diagram.type}-${diagram.title}-${diagram.code}`} title={diagram.title}>
             <MermaidChart
               code={diagram.code}
               title={diagram.title}

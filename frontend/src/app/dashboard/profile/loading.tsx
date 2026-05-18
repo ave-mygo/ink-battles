@@ -1,5 +1,8 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const BASIC_INFO_SKELETON_KEYS = ["basic-nickname", "basic-email", "basic-created-at"];
+const ACCOUNT_STATUS_SKELETON_KEYS = ["status-account", "status-membership", "status-permission"];
+
 /**
  * 用户信息页面加载骨架屏
  * 在服务器组件渲染期间立即展示，提供流式加载体验
@@ -41,9 +44,9 @@ export default function ProfileLoading() {
             <Skeleton className="h-4 w-28" />
           </div>
           <div className="px-6 pb-6 space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {BASIC_INFO_SKELETON_KEYS.map(key => (
               <div
-                key={i}
+                key={key}
                 className="p-4 border border-slate-200/40 rounded-xl flex items-center justify-between dark:border-slate-700/50"
               >
                 <div className="flex gap-3 items-center">
@@ -69,9 +72,9 @@ export default function ProfileLoading() {
             <Skeleton className="h-4 w-28" />
           </div>
           <div className="px-6 pb-6 space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {ACCOUNT_STATUS_SKELETON_KEYS.map(key => (
               <div
-                key={i}
+                key={key}
                 className="p-4 border border-slate-200/40 rounded-xl flex items-center justify-between dark:border-slate-700/50"
               >
                 <div className="space-y-1.5">

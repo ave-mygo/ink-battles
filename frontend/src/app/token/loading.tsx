@@ -1,5 +1,8 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const TOKEN_CARD_SKELETON_KEYS = ["token-quota-card", "token-usage-card"];
+const TOKEN_LIMIT_SKELETON_KEYS = ["token-limit-primary", "token-limit-secondary"];
+
 /**
  * Token 管理页面加载骨架屏
  * TokenHeader + 两列内容卡片
@@ -26,9 +29,9 @@ export default function TokenLoading() {
 
         {/* 两列内容卡片 */}
         <div className="gap-6 grid md:grid-cols-2">
-          {Array.from({ length: 2 }).map((_, i) => (
+          {TOKEN_CARD_SKELETON_KEYS.map(key => (
             <div
-              key={i}
+              key={key}
               className="border-0 rounded-xl bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-800/60"
             >
               <div className="p-6 pb-3 space-y-1.5">
@@ -37,9 +40,9 @@ export default function TokenLoading() {
               </div>
               <div className="px-6 pb-6 space-y-3">
                 {/* 限额信息块 */}
-                {Array.from({ length: 2 }).map((_, j) => (
+                {TOKEN_LIMIT_SKELETON_KEYS.map(limitKey => (
                   <div
-                    key={j}
+                    key={`${key}-${limitKey}`}
                     className="p-4 rounded-lg bg-slate-50 space-y-2 dark:bg-slate-700/30"
                   >
                     <Skeleton className="h-4 w-20" />

@@ -1,5 +1,17 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const STATUS_CARD_SKELETON_KEYS = ["status-card-total", "status-card-success", "status-card-latency", "status-card-quota"];
+const STATUS_LOG_SKELETON_KEYS = [
+  "status-log-1",
+  "status-log-2",
+  "status-log-3",
+  "status-log-4",
+  "status-log-5",
+  "status-log-6",
+  "status-log-7",
+  "status-log-8",
+];
+
 /**
  * 系统状态页面加载骨架屏
  * StatusHeader + 四列统计卡片 + 日志列表
@@ -19,9 +31,9 @@ export default function StatusLoading() {
 
         {/* 四列统计卡片骨架 */}
         <div className="mb-8 gap-6 grid lg:grid-cols-4 md:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {STATUS_CARD_SKELETON_KEYS.map(key => (
             <div
-              key={i}
+              key={key}
               className="border-0 rounded-xl shadow-lg overflow-hidden dark:bg-slate-800/50"
             >
               <div className="p-6 pb-3">
@@ -44,9 +56,9 @@ export default function StatusLoading() {
             <Skeleton className="h-4 w-48" />
           </div>
           <div className="px-6 pb-6 space-y-3">
-            {Array.from({ length: 8 }).map((_, i) => (
+            {STATUS_LOG_SKELETON_KEYS.map(key => (
               <div
-                key={i}
+                key={key}
                 className="p-4 border border-slate-200/40 rounded-xl flex items-center justify-between dark:border-slate-700/50"
               >
                 <div className="flex gap-3 items-center">

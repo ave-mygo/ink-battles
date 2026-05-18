@@ -1,5 +1,4 @@
 "use client";
-/* eslint unocss/order: off */
 import { env } from "node:process";
 import { Copy } from "lucide-react";
 import * as React from "react";

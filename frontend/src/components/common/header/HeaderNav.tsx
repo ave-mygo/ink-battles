@@ -6,7 +6,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { ThemeToggle } from "@/components/common/theme/toggle";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
 import { loginSetState, logoutSetState } from "@/utils/auth/client";

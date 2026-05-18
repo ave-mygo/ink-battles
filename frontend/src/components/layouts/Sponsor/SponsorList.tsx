@@ -1,29 +1,12 @@
 "use client";
 
 import type { SponsorData } from "@ink-battles/shared/types/common/sponsor";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import useSWRInfinite from "swr/infinite";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { createClientEden } from "@/utils/api/eden-client";
 import { unwrapEdenPayload } from "@/utils/api/eden-response";
-
-function SponsorCardSkeleton() {
-  return (
-    <Card className="border-2 border-slate-100 overflow-hidden dark:border-slate-800">
-      <div className="p-6 flex flex-col gap-3 items-center">
-        <Skeleton className="rounded-full h-20 w-20" />
-        <Skeleton className="h-6 w-32" />
-        <div className="flex gap-2">
-          <Skeleton className="rounded-full h-6 w-20" />
-          <Skeleton className="rounded-full h-6 w-16" />
-        </div>
-        <Skeleton className="h-4 w-24" />
-      </div>
-    </Card>
-  );
-}
 
 interface SponsorListProps {
   initialData: SponsorData;
@@ -76,13 +59,13 @@ export default function SponsorList({ initialData }: SponsorListProps) {
   const totalPages = mergedData.data.total_page;
   const loading = Boolean(data && size > data.length);
 
-  const loadMoreData = async () => {
+  const loadMoreData = useCallback(async () => {
     if (loading || currentPage >= totalPages) {
       return;
     }
 
     await setSize(size + 1);
-  };
+  }, [currentPage, loading, setSize, size, totalPages]);
 
   // 自动加载：滚动至底部哨兵时触发加载更多
   useEffect(() => {
@@ -117,7 +100,7 @@ export default function SponsorList({ initialData }: SponsorListProps) {
         clearTimeout(timer);
       observer.disconnect();
     };
-  }, [currentPage, isLoading, loading, totalPages]);
+  }, [currentPage, isLoading, loadMoreData, loading, totalPages]);
 
   // 如果没有数据，显示空状态
   if (!mergedData.data.list.length) {

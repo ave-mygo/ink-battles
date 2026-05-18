@@ -4,6 +4,7 @@ import type { AnalysisOutput, AnalysisResult, ScorePercentileResult } from "@ink
 import type { Dimension } from "@/components/common/analysis/DimensionsCard";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useMemo } from "react";
 import { AnalysisCard } from "@/components/common/analysis/AnalysisCard";
 import { DimensionsCard } from "@/components/common/analysis/DimensionsCard";
 import { MermaidDiagramsSection } from "@/components/common/analysis/MermaidDiagramsSection";
@@ -58,28 +59,50 @@ export function AnalysisResults({
   compactMode?: boolean;
   analysisId?: string;
 }) {
-  // 解析数据
-  let data: AnalysisResult | null = null;
-  let displayModelName: string | undefined = modelName;
-  let overallScore = 0;
+  const parsedResult = useMemo(() => {
+    if (analysisResult) {
+      return {
+        data: analysisResult as AnalysisResult,
+        displayModelName: modelName,
+        overallScore: analysisResult.overallScore,
+        parseError: null,
+      };
+    }
 
-  if (analysisResult) {
-    data = analysisResult as AnalysisResult;
-    overallScore = analysisResult.overallScore;
-  } else if (result) {
-    overallScore = result.overallScore || 0;
+    if (!result) {
+      return {
+        data: null,
+        displayModelName: modelName,
+        overallScore: 0,
+        parseError: null,
+      };
+    }
+
     try {
       const parsedData = typeof result.result === "string" ? JSON.parse(result.result) : result.result;
-      if (parsedData) {
-        data = parsedData;
-        if (!displayModelName) {
-          displayModelName = result.modelName;
-        }
-      }
+      return {
+        data: parsedData || null,
+        displayModelName: modelName || result.modelName,
+        overallScore: result.overallScore || 0,
+        parseError: null,
+      };
     } catch (error) {
-      console.error("Failed to parse analysis result:", error);
+      return {
+        data: null,
+        displayModelName: modelName,
+        overallScore: result.overallScore || 0,
+        parseError: error,
+      };
     }
-  }
+  }, [analysisResult, modelName, result]);
+
+  useEffect(() => {
+    if (parsedResult.parseError) {
+      console.error("Failed to parse analysis result:", parsedResult.parseError);
+    }
+  }, [parsedResult.parseError]);
+
+  const { data, displayModelName, overallScore } = parsedResult;
 
   if (!data) {
     return (

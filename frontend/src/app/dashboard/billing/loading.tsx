@@ -1,5 +1,8 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const BILLING_STAT_SKELETON_KEYS = ["billing-total", "billing-discount", "billing-price"];
+const BILLING_DETAIL_SKELETON_KEYS = ["billing-grant", "billing-paid", "billing-refresh"];
+
 /**
  * 计费管理页面加载骨架屏
  * 在服务器组件渲染期间立即展示，提供流式加载体验
@@ -31,8 +34,8 @@ export default function BillingLoading() {
             <div className="px-6 pb-6 space-y-5">
               {/* 三列统计数据 */}
               <div className="gap-4 grid grid-cols-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="space-y-2">
+                {BILLING_STAT_SKELETON_KEYS.map(key => (
+                  <div key={key} className="space-y-2">
                     <Skeleton className="h-3.5 w-12" />
                     <Skeleton className="h-7 w-16" />
                   </div>
@@ -48,8 +51,8 @@ export default function BillingLoading() {
               </div>
               {/* 明细列表 */}
               <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between">
+                {BILLING_DETAIL_SKELETON_KEYS.map(key => (
+                  <div key={key} className="flex items-center justify-between">
                     <div className="flex gap-2 items-center">
                       <Skeleton className="h-4 w-4" />
                       <Skeleton className="h-4 w-24" />

@@ -1,5 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const ACCOUNT_BINDING_SKELETON_KEYS = ["github-binding", "google-binding", "afdian-binding"];
+
 /**
  * 账号绑定页面加载骨架屏
  * 在服务器组件渲染期间立即展示，提供流式加载体验
@@ -29,9 +31,9 @@ export default function AccountsLoading() {
 
         {/* CardContent - 三个绑定项 */}
         <div className="px-6 pb-6 space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
+          {ACCOUNT_BINDING_SKELETON_KEYS.map(key => (
             <div
-              key={i}
+              key={key}
               className="p-4 border border-slate-200/40 rounded-xl flex items-center justify-between dark:border-slate-700/50"
             >
               <div className="flex gap-3 items-center">

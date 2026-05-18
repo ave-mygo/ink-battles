@@ -10,6 +10,17 @@ const getStatusRowKey = (log: StatusListProps["logs"][number], index: number) =>
     ? `request:${log.request_id}`
     : `${log.created_at}:${log.token_id}:${log.parent_id}:${log.model_name}:${log.quota}:${index}`;
 
+const TABLE_ROW_SKELETON_KEYS = [
+  "status-row-1",
+  "status-row-2",
+  "status-row-3",
+  "status-row-4",
+  "status-row-5",
+  "status-row-6",
+  "status-row-7",
+  "status-row-8",
+];
+
 function TableSkeleton() {
   return (
     <Card className="border-0 shadow-lg overflow-hidden dark:bg-slate-800/50">
@@ -33,8 +44,8 @@ function TableSkeleton() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: 8 }).map((_, i) => (
-                <TableRow key={i}>
+              {TABLE_ROW_SKELETON_KEYS.map(key => (
+                <TableRow key={key}>
                   <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>

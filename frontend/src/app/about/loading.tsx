@@ -1,5 +1,9 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const PARAGRAPH_SKELETON_KEYS = ["about-paragraph-1", "about-paragraph-2", "about-paragraph-3"];
+const QUOTE_LINE_SKELETON_KEYS = ["quote-line-1", "quote-line-2", "quote-line-3", "quote-line-4"];
+const FAQ_SKELETON_KEYS = ["faq-1", "faq-2", "faq-3", "faq-4", "faq-5"];
+
 /**
  * 关于页面加载骨架屏
  * 标题区 + CTA 卡片 + 内容卡片（段落列表）
@@ -30,8 +34,8 @@ export default function AboutLoading() {
         <div className="p-6 rounded-2xl bg-white/80 shadow-lg md:p-10 dark:bg-slate-900/60">
           <div className="space-y-10">
             {/* 段落块 × 3 */}
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="space-y-3">
+            {PARAGRAPH_SKELETON_KEYS.map(key => (
+              <div key={key} className="space-y-3">
                 <Skeleton className="h-7 w-32" />
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-full" />
@@ -42,8 +46,8 @@ export default function AboutLoading() {
             {/* 创作理念引用块 */}
             <div className="p-6 border-l-4 border-blue-300 rounded-r-lg bg-slate-50/80 space-y-2 dark:border-blue-400/40 dark:bg-slate-800/50">
               <Skeleton className="h-5 w-24" />
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-4 w-full" />
+              {QUOTE_LINE_SKELETON_KEYS.map(key => (
+                <Skeleton key={key} className="h-4 w-full" />
               ))}
             </div>
 
@@ -53,9 +57,9 @@ export default function AboutLoading() {
             {/* FAQ 骨架 */}
             <div className="space-y-3">
               <Skeleton className="h-6 w-24" />
-              {Array.from({ length: 5 }).map((_, i) => (
+              {FAQ_SKELETON_KEYS.map(key => (
                 <div
-                  key={i}
+                  key={key}
                   className="p-4 border border-slate-200/60 rounded-xl space-y-2 dark:border-slate-700/50"
                 >
                   <Skeleton className="h-5 w-3/4" />

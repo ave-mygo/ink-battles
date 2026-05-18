@@ -179,10 +179,12 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
   const [loading, setLoading] = useState(true);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [isParsingFile, setIsParsingFile] = useState(false);
+  const [isFileDragActive, setIsFileDragActive] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const prevArticleTextRef = useRef<string>(articleText);
+  const fileDragDepthRef = useRef(0);
   // 存储 setUploadedFileName 的稳定引用，避免在 useEffect 中直接调用
   const setUploadedFileNameRef = useRef(setUploadedFileName);
   setUploadedFileNameRef.current = setUploadedFileName;
@@ -335,16 +337,14 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
     setArticleText(val);
   }, [getCurrentLimit, setArticleText, uploadedFileName]);
 
-  // 处理文件上传
-  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const hasDraggedFiles = useCallback((event: React.DragEvent<HTMLElement>) => {
+    return Array.from(event.dataTransfer.types).includes("Files");
+  }, []);
+
+  // 处理文件内容导入，文件选择和拖拽上传共用同一条解析链路。
+  const processUploadedFile = useCallback(async (file: File) => {
     if (!file)
       return;
-
-    // 重置 input 以便可以再次选择同一文件
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
 
     setIsParsingFile(true);
 
@@ -377,6 +377,72 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
       setIsParsingFile(false);
     }
   }, [getCurrentLimit, setArticleText]);
+
+  // 处理文件上传
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file)
+      return;
+
+    // 重置 input 以便可以再次选择同一文件
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    await processUploadedFile(file);
+  }, [processUploadedFile]);
+
+  const handleFileDragEnter = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return;
+
+    event.preventDefault();
+    fileDragDepthRef.current += 1;
+    setIsFileDragActive(true);
+  }, [hasDraggedFiles]);
+
+  const handleFileDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return;
+
+    event.preventDefault();
+    event.dataTransfer.dropEffect = isParsingFile ? "none" : "copy";
+  }, [hasDraggedFiles, isParsingFile]);
+
+  const handleFileDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return;
+
+    event.preventDefault();
+    fileDragDepthRef.current = Math.max(0, fileDragDepthRef.current - 1);
+    if (fileDragDepthRef.current === 0) {
+      setIsFileDragActive(false);
+    }
+  }, [hasDraggedFiles]);
+
+  const handleFileDrop = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return;
+
+    event.preventDefault();
+    fileDragDepthRef.current = 0;
+    setIsFileDragActive(false);
+
+    if (isParsingFile) {
+      return;
+    }
+
+    const files = Array.from(event.dataTransfer.files);
+    const file = files[0];
+    if (!file)
+      return;
+
+    if (files.length > 1) {
+      toast.info("一次仅支持导入一个文件，已使用第一个文件");
+    }
+
+    await processUploadedFile(file);
+  }, [hasDraggedFiles, isParsingFile, processUploadedFile]);
 
   // 触发文件选择
   const handleUploadClick = useCallback(() => {
@@ -495,7 +561,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
         </div>
 
         {/* 文件上传区域 */}
-        <div className="mb-3 flex gap-2 items-center">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
             ref={fileInputRef}
             type="file"
@@ -519,10 +585,10 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
             {" "}
             {SUPPORTED_EXTENSIONS.join(", ")}
             {" "}
-            格式
+            格式，可点击上传或拖入下方输入框
           </span>
           {uploadedFileName && (
-            <div className="text-xs text-blue-600 ml-auto px-2 py-1 border border-blue-200 rounded-md bg-blue-50 flex gap-1.5 items-center dark:text-blue-400 dark:border-blue-900 dark:bg-blue-950/30">
+            <div className="text-xs text-blue-600 px-2 py-1 border border-blue-200 rounded-md bg-blue-50 flex gap-1.5 items-center dark:text-blue-400 dark:border-blue-900 dark:bg-blue-950/30 sm:ml-auto">
               <FileText className="h-3 w-3" />
               {uploadedFileName}
               <button
@@ -536,13 +602,38 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
           )}
         </div>
 
-        <Textarea
-          ref={textareaRef}
-          placeholder="请在此处粘贴要分析的作品全文，或上传文件..."
-          value={articleText}
-          onChange={handleTextChange}
-          className="text-base leading-relaxed border-slate-200 flex-1 max-h-100 min-h-50 w-full resize-none overflow-auto dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
-        />
+        <div
+          onDragEnter={handleFileDragEnter}
+          onDragOver={handleFileDragOver}
+          onDragLeave={handleFileDragLeave}
+          onDrop={handleFileDrop}
+          className={`relative flex flex-1 min-h-50 rounded-md transition-colors ${
+            isFileDragActive
+              ? "ring-2 ring-blue-500/70 ring-offset-2 ring-offset-white dark:ring-blue-400/70 dark:ring-offset-slate-900"
+              : ""
+          }`}
+        >
+          <Textarea
+            ref={textareaRef}
+            placeholder="请在此处粘贴要分析的作品全文，或上传文件..."
+            value={articleText}
+            onChange={handleTextChange}
+            className="text-base leading-relaxed border-slate-200 flex-1 max-h-100 min-h-50 w-full resize-none overflow-auto dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500/20 dark:focus:border-blue-400 dark:focus:ring-blue-400/30"
+          />
+          {isFileDragActive && (
+            <div className="text-blue-700 pointer-events-none absolute inset-0 rounded-md border-2 border-blue-400 border-dashed bg-blue-50/85 flex flex-col gap-2 items-center justify-center dark:text-blue-200 dark:border-blue-500/80 dark:bg-blue-950/80">
+              <Upload className="h-6 w-6" />
+              <span className="text-sm font-medium">
+                松开即可导入文件
+              </span>
+              <span className="text-xs text-blue-600 dark:text-blue-300">
+                支持
+                {" "}
+                {SUPPORTED_EXTENSIONS.join(", ")}
+              </span>
+            </div>
+          )}
+        </div>
         <WordCounter
           articleLength={articleText.length}
           currentLimit={getCurrentLimit()}

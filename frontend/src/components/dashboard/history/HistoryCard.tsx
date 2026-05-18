@@ -202,8 +202,8 @@ export function HistoryCard({ record, onTogglePublic, onDelete }: HistoryCardPro
         {/* 标签 */}
         {record.article.output.tags && record.article.output.tags.length > 0 && (
           <div className="pt-1 flex flex-wrap gap-1.5">
-            {record.article.output.tags.slice(0, 3).map((tag, index) => (
-              <Badge key={index} variant="secondary" className="text-xs text-slate-600 font-normal border-0 bg-slate-100 dark:text-slate-300 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700">
+            {record.article.output.tags.slice(0, 3).map(tag => (
+              <Badge key={tag} variant="secondary" className="text-xs text-slate-600 font-normal border-0 bg-slate-100 dark:text-slate-300 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700">
                 {tag}
               </Badge>
             ))}

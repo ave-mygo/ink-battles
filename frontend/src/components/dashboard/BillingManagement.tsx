@@ -1,12 +1,13 @@
 "use client";
 
 import { AlertCircle, Calendar, Coins, Percent, RefreshCw, Sparkles, TrendingUp } from "lucide-react";
+import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useBillingAutoRefresh, useBillingContext } from "./BillingProvider";
+import { useBillingAutoRefresh, useBillingContext } from "./BillingContext";
 
 /**
  * 计费管理组件
@@ -27,6 +28,20 @@ export default function BillingManagement() {
   const discount = billingSummary?.discount ?? 0;
   const paidCallPrice = billingSummary?.paidCallPrice ?? 0;
   const activePromotion = billing?.activePromotion ?? null;
+  const nextRefreshDate = useMemo(() => {
+    if (!billing) {
+      return null;
+    }
+
+    const refreshDate = new Date(billing.lastGrantRefresh);
+    refreshDate.setMonth(refreshDate.getMonth() + 1);
+    refreshDate.setDate(1);
+    return refreshDate;
+  }, [billing]);
+  const activePromotionEndDate = useMemo(
+    () => activePromotion ? new Date(activePromotion.endsAt).toLocaleDateString("zh-CN") : "",
+    [activePromotion],
+  );
 
   if (isLoading) {
     return (
@@ -95,9 +110,6 @@ export default function BillingManagement() {
   }
 
   const totalCalls = billing.grantCallsBalance + billing.paidCallsBalance;
-  const nextRefreshDate = new Date(billing.lastGrantRefresh);
-  nextRefreshDate.setMonth(nextRefreshDate.getMonth() + 1);
-  nextRefreshDate.setDate(1);
 
   return (
     <div className="space-y-4">
@@ -168,7 +180,7 @@ export default function BillingManagement() {
                   {" "}
                   折计算，有效至
                   {" "}
-                  {new Date(activePromotion.endsAt).toLocaleDateString("zh-CN")}
+                  {activePromotionEndDate}
                 </div>
               </div>
             </div>
@@ -201,7 +213,7 @@ export default function BillingManagement() {
                 <Calendar className="h-3 w-3" />
                 下次刷新:
                 {" "}
-                {nextRefreshDate.toLocaleDateString("zh-CN")}
+                {nextRefreshDate?.toLocaleDateString("zh-CN")}
               </div>
             </div>
             <div className="p-4 border rounded-lg space-y-2">

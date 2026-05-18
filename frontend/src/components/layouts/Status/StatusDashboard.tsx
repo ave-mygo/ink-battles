@@ -16,6 +16,7 @@ import StatusHeader from "./StatusHeader";
 import StatusList from "./StatusList";
 
 const STATUS_PAGE_SIZE = 20;
+const STAT_CARD_SKELETON_KEYS = ["stat-total", "stat-success", "stat-latency", "stat-quota"];
 
 /**
  * 为日志生成稳定键值。
@@ -74,8 +75,8 @@ function StatCardSkeleton() {
 function StatCardsSkeleton() {
   return (
     <div className="mb-8 gap-6 grid lg:grid-cols-4 md:grid-cols-2">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <StatCardSkeleton key={i} />
+      {STAT_CARD_SKELETON_KEYS.map(key => (
+        <StatCardSkeleton key={key} />
       ))}
     </div>
   );
@@ -112,7 +113,7 @@ export default function StatusDashboard({ initialData }: StatusDashboardProps) {
     },
   );
 
-  const pages = data?.length ? data : [initialData];
+  const pages = useMemo(() => data?.length ? data : [initialData], [data, initialData]);
   const stats = (pages[0] ?? initialData).stats;
   const logs = useMemo(
     () =>

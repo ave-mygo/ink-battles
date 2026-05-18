@@ -1,5 +1,14 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
+const HISTORY_CARD_SKELETON_KEYS = [
+  "history-card-1",
+  "history-card-2",
+  "history-card-3",
+  "history-card-4",
+  "history-card-5",
+  "history-card-6",
+];
+
 /**
  * 历史记录页面加载骨架屏
  * 在服务器组件渲染期间立即展示，提供流式加载体验
@@ -18,9 +27,9 @@ export default function HistoryLoading() {
 
       {/* 记录卡片骨架 */}
       <div className="gap-6 grid md:grid-cols-2">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {HISTORY_CARD_SKELETON_KEYS.map(key => (
           <div
-            key={i}
+            key={key}
             className="group border-0 rounded-xl bg-white/80 flex flex-col shadow-lg overflow-hidden backdrop-blur-sm dark:bg-slate-900/80"
           >
             {/* CardHeader 骨架 */}

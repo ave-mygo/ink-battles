@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { notifyBillingBalanceUpdated, redeemOrder } from "@/utils/billing/client";
-import { useBillingContext } from "./BillingProvider";
+import { useBillingContext } from "./BillingContext";
 
 /**
  * 订单兑换组件

@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { Check, Copy, Globe, Lock, ShieldAlert } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnalysisResults } from "@/components/common/analysis/AnalysisResults";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,11 @@ interface HistoryDetailViewProps {
   percentileData?: ScorePercentileResult | null;
 }
 
+const getRemainingMinutes = (expiresAt: string) => {
+  const remainingMs = new Date(expiresAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(remainingMs / 60000));
+};
+
 /**
  * 历史记录详情视图组件
  * 用于详细页面和公开分享页面
@@ -32,14 +37,18 @@ interface HistoryDetailViewProps {
 export function HistoryDetailView({ record, showShareControls, showOriginalText = true, percentileData }: HistoryDetailViewProps) {
   const [isShared, setIsShared] = useState(record.settings?.public || false);
   const [copied, setCopied] = useState(false);
-  const [remainingMinutes, setRemainingMinutes] = useState<number | null>(null);
-  const timestamp = new Date(record.timestamp);
-  const timeAgo = formatDistanceToNow(timestamp, { addSuffix: true, locale: zhCN });
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoggedIn = useIsAuthenticated();
   const authLoading = useAuthLoading();
   useAuthHydration();
   const shouldShowGuestNotice = record.uid == null && !authLoading && !isLoggedIn;
+  const timestamp = useMemo(() => new Date(record.timestamp), [record.timestamp]);
+  const timeAgo = useMemo(() => formatDistanceToNow(timestamp, { addSuffix: true, locale: zhCN }), [timestamp]);
+  const [remainingMinutes, setRemainingMinutes] = useState<number | null>(() =>
+    shouldShowGuestNotice && record.privacy?.expiresAt
+      ? getRemainingMinutes(record.privacy.expiresAt)
+      : null,
+  );
 
   const shareUrl = typeof window !== "undefined"
     ? `${window.location.origin}/share/${record._id}`
@@ -85,16 +94,13 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
 
   useEffect(() => {
     if (!shouldShowGuestNotice || !record.privacy?.expiresAt) {
-      setRemainingMinutes(null);
       return;
     }
 
     const updateRemainingMinutes = () => {
-      const remainingMs = new Date(record.privacy?.expiresAt || "").getTime() - Date.now();
-      setRemainingMinutes(Math.max(0, Math.ceil(remainingMs / 60000)));
+      setRemainingMinutes(getRemainingMinutes(record.privacy?.expiresAt || ""));
     };
 
-    updateRemainingMinutes();
     const timer = window.setInterval(updateRemainingMinutes, 1000);
     return () => window.clearInterval(timer);
   }, [record.privacy?.expiresAt, shouldShowGuestNotice]);
@@ -207,8 +213,8 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
           {/* 标签 */}
           {record.article.output.tags && record.article.output.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {record.article.output.tags.map((tag, index) => (
-                <Badge key={index} variant="outline">
+              {record.article.output.tags.map(tag => (
+                <Badge key={tag} variant="outline">
                   {tag}
                 </Badge>
               ))}

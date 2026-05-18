@@ -2,6 +2,7 @@
 
 import type { GradingModelConfig } from "@ink-battles/shared/types/common/config";
 import { AlertTriangle, Brain, Clock, Crown, Globe, Lightbulb, Settings, Sparkles, Target, Zap } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -94,7 +95,11 @@ export default function WriterModelSelector({
                 </p>
                 <p>
                   <span className="text-slate-800 font-medium dark:text-slate-200">服务波动：</span>
-                  受大模型厂商限制，偶发连接超时或回答失败属常规现象，遇异常重试即可。
+                  受大模型厂商限制，偶发连接超时或回答失败属常规现象，遇异常可重试，也可以前往
+                  <Link href="/status" className="text-indigo-700 font-medium underline underline-offset-2 cursor-pointer dark:text-indigo-300">
+                    状态页
+                  </Link>
+                  查看模型稳定性。
                 </p>
               </div>
             </div>
@@ -136,7 +141,7 @@ export default function WriterModelSelector({
                         <div className="flex flex-wrap gap-1.5">
                           {selectedModel.features.map((feature, index) => (
                             <Badge
-                              key={index}
+                              key={feature}
                               variant="outline"
                               className={`text-xs ${selectedModel.premium
                                 ? index === 0

@@ -2,7 +2,7 @@
 
 import type { HistoryPageData, HistorySortOption, HistoryVisibilityOption } from "@/utils/dashboard/history";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,9 @@ const HISTORY_VISIBILITY_LABELS: Record<HistoryVisibilityOption, string> = {
   public: "仅已分享",
   private: "仅未分享",
 };
+
+const createHistorySkeletonKeys = (count: number) =>
+  Array.from({ length: count }, (_, index) => `history-card-skeleton-${index + 1}`);
 
 interface HistoryListProps {
   initialData?: HistoryPageData;
@@ -118,9 +121,9 @@ export function HistoryList({
     },
     {
       fallbackData:
-				initialData && currentPage === initialData.page && sort === initialSort && visibility === initialVisibility
-				  ? initialData
-				  : undefined,
+        initialData && currentPage === initialData.page && sort === initialSort && visibility === initialVisibility
+          ? initialData
+          : undefined,
       revalidateOnMount: false,
       revalidateOnFocus: false,
       keepPreviousData: true,
@@ -132,9 +135,7 @@ export function HistoryList({
     },
   );
 
-  useEffect(() => {
-    setPageInput(String(data?.page ?? 1));
-  }, [data?.page]);
+  const skeletonKeys = useMemo(() => createHistorySkeletonKeys(data?.limit ?? initialData?.limit ?? 6), [data?.limit, initialData?.limit]);
 
   /**
    * 更新查询条件时，先滚动回顶部，再交由 SWR 基于新 key 拉取数据。
@@ -145,6 +146,7 @@ export function HistoryList({
     setSort(nextSort);
     setVisibility(nextVisibility);
     setCurrentPage(nextPage);
+    setPageInput(String(nextPage));
   }, []);
 
   /** 切换排序方式 */
@@ -285,8 +287,8 @@ export function HistoryList({
       {/* 记录列表 / 骨架屏 */}
       <div className="gap-6 grid md:grid-cols-2">
         {isLoading
-          ? Array.from({ length: data.limit }).map((_, i) => (
-              <HistoryCardSkeleton key={i} />
+          ? skeletonKeys.map(key => (
+              <HistoryCardSkeleton key={key} />
             ))
           : data.records.map((record: HistoryPageData["records"][number]) => (
               <HistoryCard

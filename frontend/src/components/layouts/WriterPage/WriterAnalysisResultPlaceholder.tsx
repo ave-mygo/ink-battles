@@ -3,7 +3,7 @@
 import type { AnalysisTaskProgress, AnalysisTaskValidation } from "@/utils/analysis";
 import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clock, Loader2, RefreshCw, Trash2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,13 +60,13 @@ export default function WriterAnalysisResultPlaceholder() {
   /**
    * 同步任务列表到组件状态和 localStorage。
    */
-  const persistTasks = (nextTasks: LocalTask[]) => {
+  const persistTasks = useCallback((nextTasks: LocalTask[]) => {
     setTasks(nextTasks);
     localStorage.setItem("ink_battles_tasks", JSON.stringify(nextTasks));
     window.dispatchEvent(new Event("ink_battles_tasks_updated"));
-  };
+  }, []);
 
-  const updateTaskFromSnapshot = (
+  const updateTaskFromSnapshot = useCallback((
     taskId: string,
     snapshot: {
       status?: string;
@@ -112,7 +112,7 @@ export default function WriterAnalysisResultPlaceholder() {
 
       return nextTasks;
     });
-  };
+  }, []);
 
   // Initial load and listen to custom event
   useEffect(() => {
@@ -133,6 +133,10 @@ export default function WriterAnalysisResultPlaceholder() {
 
   // 清理所有 timer
   useEffect(() => {
+    const eventSources = eventSourcesRef.current;
+    const reconnectTimers = reconnectTimersRef.current;
+    const healthyStreamTaskIds = healthyStreamTaskIdsRef.current;
+
     return () => {
       if (cooldownTimerRef.current) {
         clearTimeout(cooldownTimerRef.current);
@@ -143,15 +147,15 @@ export default function WriterAnalysisResultPlaceholder() {
       if (elapsedTimerRef.current) {
         clearInterval(elapsedTimerRef.current);
       }
-      for (const source of eventSourcesRef.current.values()) {
+      for (const source of eventSources.values()) {
         source.close();
       }
-      eventSourcesRef.current.clear();
-      for (const timer of reconnectTimersRef.current.values()) {
+      eventSources.clear();
+      for (const timer of reconnectTimers.values()) {
         clearTimeout(timer);
       }
-      reconnectTimersRef.current.clear();
-      healthyStreamTaskIdsRef.current.clear();
+      reconnectTimers.clear();
+      healthyStreamTaskIds.clear();
     };
   }, []);
 
@@ -221,7 +225,7 @@ export default function WriterAnalysisResultPlaceholder() {
   /**
    * 拉取进行中任务的最新状态和阶段进度。
    */
-  const refreshTaskStatuses = async (targetTaskIds?: string[]) => {
+  const refreshTaskStatuses = useCallback(async (targetTaskIds?: string[]) => {
     const targetTaskIdSet = targetTaskIds ? new Set(targetTaskIds) : null;
     let updated = false;
     const nextTasks = [...tasksRef.current];
@@ -264,12 +268,12 @@ export default function WriterAnalysisResultPlaceholder() {
     if (updated) {
       persistTasks(nextTasks);
     }
-  };
+  }, [persistTasks]);
 
   /**
    * 关闭指定任务的 SSE 与重连定时器，避免任务结束后残留后台连接。
    */
-  const cleanupTaskRealtimeResources = (taskId: string) => {
+  const cleanupTaskRealtimeResources = useCallback((taskId: string) => {
     eventSourcesRef.current.get(taskId)?.close();
     eventSourcesRef.current.delete(taskId);
     healthyStreamTaskIdsRef.current.delete(taskId);
@@ -278,13 +282,13 @@ export default function WriterAnalysisResultPlaceholder() {
       clearTimeout(reconnectTimer);
       reconnectTimersRef.current.delete(taskId);
     }
-  };
+  }, []);
 
   /**
    * 为任务建立 SSE 订阅。
    * 当流式更新稳定后，该任务不再参与兜底轮询；只有断线时才恢复补偿拉取。
    */
-  const connectTaskStatusStream = (taskId: string) => {
+  const connectTaskStatusStream = useCallback((taskId: string) => {
     if (eventSourcesRef.current.has(taskId))
       return;
 
@@ -308,7 +312,7 @@ export default function WriterAnalysisResultPlaceholder() {
     });
 
     eventSourcesRef.current.set(taskId, source);
-  };
+  }, [cleanupTaskRealtimeResources, refreshTaskStatuses, updateTaskFromSnapshot]);
 
   useEffect(() => {
     const activeTaskIds = new Set(tasks.filter(isActiveTask).map(task => task.taskId));
@@ -338,7 +342,7 @@ export default function WriterAnalysisResultPlaceholder() {
     if (taskIdsNeedingBootstrap.length > 0) {
       void refreshTaskStatuses(taskIdsNeedingBootstrap);
     }
-  }, [tasks]);
+  }, [connectTaskStatusStream, cleanupTaskRealtimeResources, refreshTaskStatuses, tasks]);
 
   /**
    * 手动刷新任务状态
@@ -389,7 +393,7 @@ export default function WriterAnalysisResultPlaceholder() {
     }, FALLBACK_POLL_INTERVAL);
 
     return () => clearInterval(timer);
-  }, [tasks]);
+  }, [refreshTaskStatuses, tasks]);
 
   const cancelTask = async (taskId: string) => {
     setCancellingTaskId(taskId);
@@ -440,24 +444,24 @@ export default function WriterAnalysisResultPlaceholder() {
 
   if (tasks.length === 0) {
     return (
-      <Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
+      <Card className="border border-slate-200/70 bg-white/80 shadow-lg backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/80">
         <CardContent className="py-12 text-center">
-          <div className="text-slate-400 mb-4">
+          <div className="text-slate-400 mb-4 dark:text-slate-500">
             <BarChart3 className="mx-auto h-16 w-16" />
           </div>
-          <h3 className="text-lg text-slate-600 font-medium mb-2">等待分析</h3>
-          <p className="text-slate-500">请输入作品内容并点击"开始战力评测"按钮</p>
+          <h3 className="text-lg text-slate-700 font-medium mb-2 dark:text-slate-200">等待分析</h3>
+          <p className="text-slate-500 dark:text-slate-400">请输入作品内容并点击"开始战力评测"按钮</p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="border-0 bg-white/80 shadow-lg backdrop-blur-sm">
-      <CardHeader className="pb-3">
+    <Card className="border border-slate-200/70 bg-white/80 shadow-lg backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/80">
+      <CardHeader className="pb-3 border-b border-slate-100/80 dark:border-slate-800/80">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg text-slate-700 flex gap-2 items-center">
-            <BarChart3 className="text-blue-500 h-5 w-5" />
+          <CardTitle className="text-lg text-slate-700 flex gap-2 items-center dark:text-slate-100">
+            <BarChart3 className="text-blue-500 h-5 w-5 dark:text-blue-400" />
             等待分析
           </CardTitle>
           {hasActiveTasks && (
@@ -501,11 +505,14 @@ export default function WriterAnalysisResultPlaceholder() {
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+      <CardContent className="pt-4 flex flex-col gap-3">
         {tasks.map(task => (
-          <div key={task.taskId} className="p-3 border rounded-lg bg-gray-50 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-700 font-medium">
+          <div
+            key={task.taskId}
+            className="p-3 border border-slate-200/80 rounded-lg bg-slate-50/90 flex flex-col gap-2 dark:border-slate-800 dark:bg-slate-900/70"
+          >
+            <div className="flex gap-3 items-start justify-between">
+              <span className="text-sm text-slate-700 font-medium min-w-0 wrap-break-word dark:text-slate-200">
                 内容摘选：
                 {task.title || "未命名分析"}
               </span>
@@ -521,7 +528,7 @@ export default function WriterAnalysisResultPlaceholder() {
                       <Badge status="completed" />
                     )}
             </div>
-            <div className="text-xs text-slate-500 gap-2 grid sm:grid-cols-3">
+            <div className="text-xs text-slate-500 gap-2 grid dark:text-slate-400 sm:grid-cols-3">
               <span>
                 评分模式：
                 {task.modeName || "默认模式"}
@@ -538,7 +545,7 @@ export default function WriterAnalysisResultPlaceholder() {
 
             {task.progress && (
               <div className="gap-2 grid">
-                <div className="text-xs text-slate-600 flex gap-3 items-center justify-between">
+                <div className="text-xs text-slate-600 flex gap-3 items-center justify-between dark:text-slate-300">
                   <span>{formatStageLabel(task.progress)}</span>
                   <span>
                     {task.progress.percent}
@@ -548,12 +555,12 @@ export default function WriterAnalysisResultPlaceholder() {
                   </span>
                 </div>
                 <Progress value={task.progress.percent} className="h-2" />
-                <p className="text-xs text-slate-500">{task.progress.message}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{task.progress.message}</p>
               </div>
             )}
 
             {task.validation && (
-              <p className={`text-xs ${task.validation.success ? "text-emerald-600" : "text-red-500"}`}>
+              <p className={`text-xs ${task.validation.success ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
                 审核结果：
                 {task.validation.message}
               </p>
@@ -562,7 +569,7 @@ export default function WriterAnalysisResultPlaceholder() {
             {/* 超时提示：分析用时超过 10 分钟时提示取消重试 */}
             {isActiveTask(task)
               && (elapsedSeconds[task.taskId] ?? 0) >= LONG_ANALYSIS_THRESHOLD && (
-              <p className="text-xs text-amber-600 flex gap-1 items-center">
+              <p className="text-xs text-amber-600 flex gap-1 items-center dark:text-amber-400">
                 <AlertTriangle className="shrink-0 h-3 w-3" />
                 分析已超过 10 分钟，建议取消该任务后重新提交分析
               </p>
@@ -584,16 +591,16 @@ export default function WriterAnalysisResultPlaceholder() {
             )}
 
             {task.status === "failed" && task.error && (
-              <p className="text-xs text-red-500 line-clamp-2">{task.error}</p>
+              <p className="text-xs text-red-500 line-clamp-2 dark:text-red-400">{task.error}</p>
             )}
 
             {task.status === "cancelled" && task.error && (
-              <p className="text-xs text-slate-500 line-clamp-2">{task.error}</p>
+              <p className="text-xs text-slate-500 line-clamp-2 dark:text-slate-400">{task.error}</p>
             )}
 
             {(task.status === "failed" || task.status === "cancelled") && (
               <div className="mt-1 flex gap-2 justify-end">
-                <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => removeTask(task.taskId)}>
+                <Button size="sm" variant="outline" className="text-xs h-7 cursor-pointer" onClick={() => removeTask(task.taskId)}>
                   <Trash2 className="mr-1 h-3 w-3" />
                   删除记录
                 </Button>
@@ -671,11 +678,11 @@ function normalizeTaskStatus(status: unknown): LocalTaskStatus {
 function Badge({ status, elapsedSeconds }: { status: "processing" | "failed" | "completed" | "cancelled"; elapsedSeconds?: number }) {
   if (status === "processing") {
     return (
-      <span className="text-xs text-blue-700 font-medium px-2 py-1 rounded bg-blue-100 inline-flex gap-1 items-center">
+      <span className="text-xs text-blue-700 font-medium px-2 py-1 rounded bg-blue-100 inline-flex gap-1 shrink-0 items-center dark:text-blue-200 dark:bg-blue-950/70 dark:ring-1 dark:ring-blue-800/60">
         <Loader2 className="h-3 w-3 animate-spin" />
         分析中
         {elapsedSeconds !== undefined && (
-          <span className="text-blue-500 ml-0.5 inline-flex gap-0.5 items-center">
+          <span className="text-blue-500 ml-0.5 inline-flex gap-0.5 items-center dark:text-blue-300">
             <Clock className="h-2.5 w-2.5" />
             {formatElapsed(elapsedSeconds)}
           </span>
@@ -685,7 +692,7 @@ function Badge({ status, elapsedSeconds }: { status: "processing" | "failed" | "
   }
   if (status === "failed") {
     return (
-      <span className="text-xs text-red-700 font-medium px-2 py-1 rounded bg-red-100 inline-flex gap-1 items-center">
+      <span className="text-xs text-red-700 font-medium px-2 py-1 rounded bg-red-100 inline-flex gap-1 shrink-0 items-center dark:text-red-200 dark:bg-red-950/70 dark:ring-1 dark:ring-red-800/60">
         <XCircle className="h-3 w-3" />
         失败
       </span>
@@ -693,14 +700,14 @@ function Badge({ status, elapsedSeconds }: { status: "processing" | "failed" | "
   }
   if (status === "cancelled") {
     return (
-      <span className="text-xs text-slate-700 font-medium px-2 py-1 rounded bg-slate-100 inline-flex gap-1 items-center">
+      <span className="text-xs text-slate-700 font-medium px-2 py-1 rounded bg-slate-100 inline-flex gap-1 shrink-0 items-center dark:text-slate-200 dark:bg-slate-800 dark:ring-1 dark:ring-slate-700">
         <XCircle className="h-3 w-3" />
         已取消
       </span>
     );
   }
   return (
-    <span className="text-xs text-green-700 font-medium px-2 py-1 rounded bg-green-100 inline-flex gap-1 items-center">
+    <span className="text-xs text-green-700 font-medium px-2 py-1 rounded bg-green-100 inline-flex gap-1 shrink-0 items-center dark:text-emerald-200 dark:bg-emerald-950/70 dark:ring-1 dark:ring-emerald-800/60">
       <CheckCircle2 className="h-3 w-3" />
       完成
     </span>

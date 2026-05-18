@@ -61,7 +61,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
           .join(" ");
         return (
           <polygon
-            key={levelIdx}
+            key={`level-${levelValue}`}
             points={points}
             fill="none"
             stroke="currentColor"
@@ -73,11 +73,11 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
       })}
 
       {/* 轴线 */}
-      {labels.map((_, i) => {
+      {labels.map((label, i) => {
         const { x, y } = pointFor(i, 5);
         return (
           <line
-            key={`axis-${i}`}
+            key={`axis-${label}`}
             x1={center}
             y1={center}
             x2={x}
@@ -102,7 +102,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
       {values.map((v, i) => {
         const { x, y } = pointFor(i, v);
         return (
-          <g key={`dot-${i}`}>
+          <g key={`dot-${labels[i] ?? v}`}>
             <circle
               cx={x}
               cy={y}
@@ -121,7 +121,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({ labels, values, size = 2
         const { x, y } = pointFor(i, 5.6); // 稍微往外移一点，给点空间
         return (
           <text
-            key={`label-${i}`}
+            key={`label-${label}`}
             x={x}
             y={y}
             textAnchor="middle"
