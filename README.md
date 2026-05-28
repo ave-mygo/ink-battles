@@ -1,246 +1,352 @@
-# 作家战力分析系统 (Ink Battles)
+# Ink Battles - 作家战力分析系统
 
-基于 AI 技术的专业文本分析工具，为创作者提供深度洞察和智能分析服务。通过多维度评估系统，深入分析写作风格、内容质量、语言表达等关键要素，为作家提供可操作的改进建议。
+基于 AI 技术的专业文本分析平台，为创作者提供多维度写作评估与深度洞察。系统通过多种 AI 模型与可切换的评分视角，从写作风格、内容质量、语言表达、叙事结构等维度进行全面分析，输出量化评分、雷达图可视化报告和可操作的改进建议。
 
-## 🚀 功能特性
+## 功能特性
 
-### 核心功能
+### 智能文本分析
 
-- **智能文本分析**：使用先进的 AI 模型对文本进行多维度分析，提供客观的评分和建议。
-- **多模式评估**：内置多种评分视角，满足不同场景需求：
-  - **初窥门径**：适合新手，设定最高评分限制。
-  - **严苛编辑**：模拟出版行业标准，进行反向压力测试。
-  - **宽容读者**：侧重鼓励，主动发现作品优点。
-  - **文本法官**：要求评分有理有据，适合学术评价。
-  - **热血粉丝**：允许突破评分上限，适合特定风格偏好。
-  - **反现代主义者**：削弱先锋性维度权重，适合传统叙事。
-  - **速写视角**：快速评分，仅选取少量核心维度。
-  - **碎片主义护法**：强化先锋性和实验性维度权重。
-  - **AI 鉴别师**：(开发中) 检测文本的 AI 生成特征。
-- **实时流式反馈**：分析过程实时展示，提供流畅的用户体验。
-- **可视化报告**：生成雷达图和详细的分析报告，直观展示各项指标。
+- 多模型支持：可配置多种 AI 评分模型（ChatGPT、Gemini、DeepSeek、GLM 等），支持免费/会员分级
+- 多维度评估：从语言表达、叙事结构、人物塑造、先锋性、情感共鸣等核心维度综合评分
+- 实时流式反馈：分析过程实时输出，提供流畅的用户体验
+- 可视化报告：雷达图直观展示各项指标，生成详细的文本分析报告
+- Mermaid 图表：结构化展示文本逻辑关系和叙事脉络
+- 搜索验证：集成搜索模型（Gemini/DeepSeek）对文本事实性进行交叉验证
+
+### 评分模式
+
+内置 9 种评分视角，满足不同场景需求：
+
+| 模式 | 说明 |
+|------|------|
+| 初窥门径 | 适合新手作者，设定最高评分限制，提供基础建议 |
+| 严苛编辑 | 模拟出版行业标准，进行反向压力测试 |
+| 宽容读者 | 侧重鼓励与正向反馈，主动发现作品优点 |
+| 文本法官 | 要求评分有理有据，适合学术评价场景 |
+| 热血粉丝 | 允许突破评分上限，适合特定风格偏好 |
+| 反现代主义者 | 削弱先锋性维度权重，适合传统叙事评价 |
+| 速写视角 | 快速评分，仅选取少量核心维度 |
+| 碎片主义护法 | 强化先锋性和实验性维度权重 |
+| AI 鉴别师 | (开发中) 检测文本的 AI 生成特征 |
+
+支持多模式组合选择，同时从多个视角获取分析结果。
 
 ### 用户体系
 
-- **分级权限管理**：
-  - **游客用户**：单次 5,000 字，每日 100,000 字限制。
-  - **普通用户**：单次 60,000 字，无日累计限制，支持保存历史记录。
-  - **会员用户**：无字数限制，拥有高级 AI 模型调用权限。
-- **会员赞助系统**：集成爱发电 (Afdian) 支付，支持多等级会员权益（铜牌、银牌、金牌、钻石）。
-- **用户仪表盘**：管理个人信息、账号绑定和查看历史记录。
+**分级权限管理：**
 
-## 🛠️ 技术栈
+| 用户类型 | 单次字数上限 | 日累计限制 | 高级模型 | 历史记录 |
+|----------|-------------|-----------|---------|---------|
+| 游客 | 60,000 字 | 100,000 字 | 不可用 | 不支持 |
+| 注册用户 | 60,000 字 | 无限制 | 不可用 | 支持 |
+| 会员用户 | 无限制 | 无限制 | 可用 | 支持 |
 
-**前端 (Frontend)**
+**会员等级体系：** 铜牌、银牌、金牌、钻石四级会员，享有不同额度的月度调用赠送和折扣优惠。
 
-- **框架**：Next.js 16.0.1 (React 19.2.0)
-- **语言**：TypeScript
-- **样式**：Tailwind CSS v4 + UnoCSS
-- **UI 组件**：Radix UI + shadcn/ui
-- **状态管理**：Zustand
-- **工具库**：Date-fns, Crypto-js, Sonner (Toast)
+### 用户仪表盘
 
-**后端 (Backend)**
+- 个人资料管理与头像设置
+- 第三方账号绑定（QQ OAuth）
+- 分析历史记录查看与管理
+- 分析结果公开分享
+- 计费管理与额度查看
+- 兑换码/优惠码使用
 
-- **框架**：Elysia (Bun 运行时)
-- **语言**：TypeScript
-- **中间件**：Elysia 生态中间件集
+### 其他功能
 
-**数据库与服务**
+- OAuth 登录：支持 QQ、爱发电等第三方登录
+- 邮箱注册与密码找回
+- 设备指纹识别（FingerprintJS）
+- 深色/浅色主题切换
+- 响应式设计，移动端适配
+- 系统状态监控面板（API 请求统计、模型稳定性、成功率）
+- 赞助者列表展示
+- SEO 优化（JSON-LD 结构化数据、OpenGraph、Sitemap）
+- 文档解析（支持上传 .docx 文件解析为纯文本）
 
-- **数据库**：MongoDB
-- **AI 服务**：OpenAI API (支持自定义模型配置)
-- **认证安全**：Jose (JWT), Bcryptjs, FingerprintJS
-- **第三方集成**：爱发电 (Afdian) 赞助系统
-- **邮件服务**：Nodemailer
+## 技术栈
 
-## 📦 安装与运行
+### 前端
+
+| 分类 | 技术 |
+|------|------|
+| 框架 | Next.js 16.2.6 (App Router) + React 19.2.5 |
+| 语言 | TypeScript 6.0 (strict mode) |
+| 样式 | Tailwind CSS v4 + UnoCSS |
+| UI 组件 | Radix UI + shadcn/ui |
+| 状态管理 | Zustand 5.0 |
+| 数据请求 | ElysiaJS Eden (类型安全 API 客户端) + SWR |
+| 图表 | Mermaid 11.15 |
+| 文档解析 | Mammoth (Word 文档) |
+| 通知 | Sonner |
+| 主题 | next-themes |
+| 图标 | Lucide React + Iconify |
+| 构建 | Turbopack |
+
+### 后端
+
+| 分类 | 技术 |
+|------|------|
+| 框架 | Elysia 1.4 (Bun 运行时) |
+| 语言 | TypeScript 6.0 |
+| 数据库 | MongoDB 7.2 |
+| AI 集成 | OpenAI SDK 6.8 + Google GenAI 1.52 |
+| 认证 | Jose (JWT) + Bcryptjs |
+| 邮件 | Nodemailer |
+| 校验 | TypeBox (JSON Schema) |
+| 加密 | Crypto-js |
+| 第三方 | 爱发电 (Afdian) API |
+
+### 基础设施
+
+| 分类 | 技术 |
+|------|------|
+| 包管理 | pnpm 10+ (workspaces monorepo) |
+| 容器 | Docker + Docker Compose |
+| CI/CD | GitHub Actions (自动构建 GHCR 镜像) |
+| 进程管理 | PM2 |
+| 代码规范 | ESLint (Antfu config) + Prettier |
+
+## 项目结构
+
+```
+ink-battles/
+├── frontend/                  # Next.js 前端应用
+│   ├── src/
+│   │   ├── app/               # App Router 路由与页面
+│   │   │   ├── analysis/[id]/ # 分析结果页（动态路由）
+│   │   │   ├── dashboard/     # 用户仪表盘
+│   │   │   │   ├── profile/   # 个人资料
+│   │   │   │   ├── accounts/  # 账号绑定
+│   │   │   │   ├── history/   # 历史记录
+│   │   │   │   └── billing/   # 计费管理
+│   │   │   ├── signin/        # 登录
+│   │   │   ├── signup/        # 注册
+│   │   │   ├── forgot-password/ # 密码找回
+│   │   │   ├── oauth/         # OAuth 回调 (QQ, Afdian)
+│   │   │   ├── share/[id]/    # 分享页
+│   │   │   ├── sponsors/      # 赞助者
+│   │   │   ├── status/        # 系统状态
+│   │   │   ├── token/         # Token 管理
+│   │   │   ├── friends/       # 友情链接
+│   │   │   └── about/         # 关于页面
+│   │   ├── components/        # React 组件
+│   │   │   ├── ui/            # shadcn/ui 基础组件 (25+)
+│   │   │   ├── common/        # 通用组件 (Header, 分析卡片等)
+│   │   │   ├── layouts/       # 页面布局组件
+│   │   │   │   ├── WriterPage/  # 写作分析核心组件
+│   │   │   │   ├── Auth/        # 认证表单
+│   │   │   │   ├── Dashboard/   # 仪表盘布局
+│   │   │   │   ├── Status/      # 状态页组件
+│   │   │   │   ├── Token/       # Token 页组件
+│   │   │   │   └── Sponsor/     # 赞助页组件
+│   │   │   ├── dashboard/     # 仪表盘业务组件
+│   │   │   ├── marketing/     # 营销/着陆页组件
+│   │   │   └── seo/           # SEO 组件 (JSON-LD)
+│   │   ├── lib/               # 核心库函数
+│   │   ├── utils/             # 业务工具函数 (按功能域组织)
+│   │   │   ├── api/           # API 客户端与请求工具
+│   │   │   ├── auth/          # 认证工具 (client/server/common)
+│   │   │   ├── billing/       # 计费计算
+│   │   │   ├── analysis/      # 分析结果处理
+│   │   │   ├── dashboard/     # 仪表盘数据工具
+│   │   │   └── common/        # 通用工具 (文件解析等)
+│   │   ├── store/             # Zustand 状态管理
+│   │   ├── hooks/             # 自定义 Hooks
+│   │   └── types/             # TypeScript 类型定义
+│   ├── public/                # 静态资源
+│   ├── next.config.ts         # Next.js 配置
+│   ├── unocss.config.ts       # UnoCSS 配置
+│   └── components.json        # shadcn/ui 配置
+│
+├── backend/                   # Elysia 后端服务
+│   └── src/
+│       ├── modules/           # 业务模块
+│       │   ├── analysis.ts    # 文本分析接口
+│       │   ├── analysis/      # 分析子模块 (队列/缓存/事件/结果)
+│       │   ├── auth.ts        # 认证接口
+│       │   ├── billing.ts     # 计费接口
+│       │   ├── dashboard.ts   # 仪表盘接口
+│       │   ├── oauth.ts       # OAuth 接口
+│       │   ├── accounts.ts    # 账号管理
+│       │   ├── public.ts      # 公开接口
+│       │   └── status.ts      # 健康检查
+│       ├── integrations/      # 第三方服务集成
+│       │   ├── ai.ts          # AI 服务 (OpenAI/Gemini)
+│       │   ├── afdian.ts      # 爱发电 API
+│       │   ├── mail.ts        # SMTP 邮件
+│       │   └── external-status.ts # 外部状态监控
+│       ├── middleware/        # 中间件 (auth, csrf, rate-limit, errors)
+│       ├── db/                # 数据库层 (MongoDB 连接/索引/仓库)
+│       ├── constants/         # 常量与 AI 提示词
+│       │   └── prompts/       # System Prompts (Markdown)
+│       └── utils/             # 工具函数
+│
+├── shared/                    # 跨包共享代码
+│   ├── types/                 # 共享 TypeScript 类型
+│   │   ├── ai/               # AI 分析/评分类型
+│   │   ├── auth/             # 认证/会话类型
+│   │   ├── common/           # 通用业务类型
+│   │   ├── database/         # 数据库模型类型
+│   │   └── users/            # 用户类型
+│   └── constants/             # 共享常量 (计费规则等)
+│
+├── scripts/                   # 运维脚本
+│   ├── grant-user-calls.js    # 用户额度管理工具
+│   └── py/                    # Python 数据分析工具
+│
+├── config.toml                # 应用配置 (从 config.example.toml 复制)
+├── docker-compose.yml         # Docker 编排
+├── docker-compose.build.yml   # Docker 构建配置
+├── ecosystem.config.cjs       # PM2 配置
+├── pnpm-workspace.yaml        # pnpm workspace 定义
+└── .github/workflows/         # GitHub Actions CI/CD
+```
+
+## 安装与运行
 
 ### 环境要求
 
-- **Node.js** 18+ (前端)，或 **Bun** 1.0+ (后端推荐)
-- **pnpm** 10+ (推荐) 或 npm
+- **Node.js** 18+ (前端)
+- **Bun** 1.0+ (后端运行时)
+- **pnpm** 10+
 - **MongoDB** 5.0+
 
 ### 本地开发
 
-1. **克隆项目**
-
 ```bash
+# 克隆项目
 git clone https://github.com/ave-mygo/ink-battles.git
 cd ink-battles
-```
 
-2. **安装依赖**
-
-```bash
+# 安装依赖
 pnpm install
-```
 
-3. **配置项目**
-
-复制配置文件模板并重命名：
-
-```bash
+# 复制配置文件并填入必要信息
 cp config.example.toml config.toml
-```
 
-编辑 `config.toml` 文件，填入必要的配置信息（详见配置说明）。
-
-4. **启动开发服务器**
-
-```bash
-# 同时启动前端（localhost:3000）和后端（localhost:3001）
+# 同时启动前端 (localhost:3000) 和后端 (localhost:3001)
 pnpm dev
 
-# 或单独启动前端/后端
-pnpm frontend:dev  # 启动前端，访问 http://localhost:3000
-pnpm backend:dev   # 启动后端，API 地址 http://localhost:3001
+# 或单独启动
+pnpm frontend:dev   # 前端开发服务器
+pnpm backend:dev    # 后端开发服务器
 ```
 
 ### 构建与部署
 
 ```bash
-# 构建生产版本（前端 + 后端）
-pnpm build
+# 构建生产版本
+pnpm build:all
 
 # 单独构建
-pnpm frontend:build   # 构建前端
-pnpm backend:build    # 构建后端
+pnpm frontend:build
+pnpm backend:build
 
-# 启动生产服务器（仅前端）
-pnpm start
-
-# Docker 部署
-pnpm build:docker         # 构建前端和后端镜像
-pnpm compose:up           # 启动容器
-pnpm compose:logs         # 查看日志
+# 启动生产服务器
+pnpm frontend:start
+pnpm backend:start
 ```
 
-## ⚙️ 配置说明
+### Docker 部署
 
-主要配置文件位于 `config.toml`，包含以下核心配置项：
+```bash
+# 构建镜像
+pnpm build:docker
 
-- **system_models**: 系统核心模型配置（验证器、搜索服务）
-- **grading_models**: 评分模型列表，可配置多个模型供用户选择（如 ChatGPT, Gemini 等），支持设置是否为会员专享 (`premium`)
-- **mongodb**: MongoDB 数据库连接配置
-- **afdian**: 爱发电 API 配置，用于处理赞助回调和会员权益验证
-- **email**: SMTP 邮件服务配置，用于发送通知
-- **jwt**: JWT 签名密钥
-- **app**: 应用基础配置（名称、URL、公告等）
-- **oauth**: OAuth 认证配置（QQ、Google 等第三方登录）
-- **external_status**: 外部服务状态监控配置
+# 启动服务
+pnpm compose:up
 
-## 📊 项目结构
+# 查看日志
+pnpm compose:logs
 
-Monorepo 架构 (pnpm workspaces)：
-
-```
-ink-battles/
-├── frontend/              # Next.js 16 前端应用 (App Router)
-│   ├── src/
-│   │   ├── app/           # 页面路由与布局
-│   │   │   ├── analysis/  # 分析页面
-│   │   │   ├── dashboard/ # 用户仪表盘
-│   │   │   ├── signin/    # 登录页面
-│   │   │   ├── oauth/     # OAuth 回调处理
-│   │   │   └── api/       # API Routes (服务器端点)
-│   │   ├── components/    # React 组件库
-│   │   │   ├── ui/        # 基础 UI 组件 (shadcn/ui)
-│   │   │   ├── common/    # 通用组件
-│   │   │   ├── layouts/   # 布局组件
-│   │   │   ├── analysis/  # 分析功能组件
-│   │   │   ├── dashboard/ # 仪表盘组件
-│   │   │   └── marketing/ # 营销页面组件
-│   │   ├── lib/           # 核心工具与配置
-│   │   │   ├── db.ts      # 数据库统一接口
-│   │   │   └── config.ts  # 全局配置
-│   │   ├── utils/         # 业务逻辑工具（按功能域组织）
-│   │   │   ├── auth/      # 认证工具 (client/server/common)
-│   │   │   ├── api/       # API 调用工具
-│   │   │   ├── analysis/  # 分析工具
-│   │   │   ├── dashboard/ # 仪表盘工具
-│   │   │   ├── billing/   # 计费相关工具
-│   │   │   └── common/    # 通用工具函数
-│   │   ├── types/         # TypeScript 类型定义
-│   │   │   ├── auth/      # 认证相关类型
-│   │   │   ├── database/  # 数据库模型类型
-│   │   │   ├── ai/        # AI 服务类型
-│   │   │   └── common/    # 通用类型
-│   │   ├── store/         # Zustand 状态管理
-│   │   ├── hooks/         # 自定义 React Hooks
-│   │   └── public/        # 静态资源
-│   ├── package.json
-│   └── tsconfig.json
-├── backend/               # Elysia 后端服务
-│   ├── src/
-│   │   ├── modules/       # 业务模块（核心业务逻辑）
-│   │   │   ├── auth.ts
-│   │   │   ├── analysis.ts
-│   │   │   ├── dashboard.ts
-│   │   │   ├── billing.ts
-│   │   │   └── ...
-│   │   ├── integrations/  # 第三方服务集成
-│   │   │   ├── ai.ts      # OpenAI/AI 服务
-│   │   │   ├── afdian.ts  # 爱发电集成
-│   │   │   ├── mail.ts    # 邮件服务
-│   │   │   └── validator.ts # 数据验证
-│   │   ├── middleware/    # 中间件
-│   │   ├── db/            # 数据库层
-│   │   ├── constants/     # 常量定义
-│   │   │   └── prompts/   # AI 提示词配置
-│   │   └── utils/         # 工具函数
-│   ├── package.json
-│   └── tsconfig.json
-├── shared/                # 共享代码
-│   ├── constants/         # 共享常量
-│   └── package.json
-├── scripts/               # 构建与工具脚本
-├── config.toml            # 应用配置文件
-├── docker-compose.yml     # Docker 编排
-├── package.json           # 工作区根配置
-└── pnpm-workspace.yaml    # pnpm workspace 配置
+# 停止服务
+pnpm compose:down
 ```
 
-**架构特点：**
+Docker Compose 配置包含前端 (端口 3000) 和后端 (端口 3001) 两个服务，后端挂载 `config.toml` 为只读卷，内存限制 2GB，配有健康检查。
 
-- **frontend/src/** 遵循 CLAUDE.md 规范，按功能域组织工具函数和类型
-- **backend/src/** 采用模块化架构，modules 层负责业务逻辑，integrations 层处理外部服务
-- **共享层** 通过 shared 包复用常量和通用类型
-- **类型安全** 跨 monorepo 共享 TypeScript 类型定义
+### CI/CD
 
-## 📝 贡献指南
+项目通过 GitHub Actions 自动构建 Docker 镜像并推送至 GitHub Container Registry (GHCR)：
+
+- `ghcr.io/ave-mygo/ink-battles-frontend`
+- `ghcr.io/ave-mygo/ink-battles-backend`
+
+触发条件：推送至 main 分支、创建版本标签 (v*)、Pull Request。
+
+## 配置说明
+
+主配置文件 `config.toml`，各配置项说明：
+
+| 配置段 | 说明 |
+|--------|------|
+| `system_models` | 系统核心模型（验证器、搜索服务），配置 API Key 和 Base URL |
+| `grading_models` | 评分模型列表，支持多模型配置，可设置 `premium` 标记为会员专享 |
+| `server` | 服务配置（最大请求体、CORS 允许源） |
+| `analysis` | 分析参数（最大字数 40 万、最大并发 2、最大队列 20、游客结果 TTL 15 分钟） |
+| `mongodb` | MongoDB 连接配置 |
+| `afdian` | 爱发电 API 配置（赞助回调、OAuth、会员验证） |
+| `email` | SMTP 邮件服务配置 |
+| `jwt` | JWT 签名密钥 |
+| `registration` | 注册限制（是否要求邀请码） |
+| `app` | 应用基础信息（名称、URL、公告内容） |
+| `oauth` | 第三方登录配置（QQ 等） |
+| `external_status` | 外部服务状态监控 |
+| `friends` | 友情链接配置 |
+
+## 架构设计
+
+### 前端架构
+
+- 采用 Next.js App Router，页面组件仅作编排者，业务逻辑下沉至独立组件
+- 服务器组件处理数据获取，客户端组件仅负责交互
+- 通过 Eden Treaty 实现与后端 Elysia 的端到端类型安全通信
+- Zustand 管理认证状态和全局 UI 状态
+- 工具函数按功能域组织，client/server 通过文件命名和指令隔离
+
+### 后端架构
+
+- Elysia 框架运行于 Bun，高性能 TypeScript 后端
+- 模块化设计：modules 层处理业务逻辑，integrations 层封装第三方服务
+- 分析任务队列系统：支持并发控制、优先队列（赞助者优先）、进度追踪
+- 中间件栈：认证、CSRF 防护、速率限制、错误处理
+- MongoDB 数据层：统一仓库模式，自动索引管理
+
+### 共享层
+
+- `@ink-battles/shared` 包通过 pnpm workspace 链接
+- 跨前后端复用 TypeScript 类型定义和业务常量
+- 保证前后端数据结构一致性
+
+## 贡献指南
 
 1. Fork 本项目
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
+2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改，遵循 Conventional Commits 规范：`<type>(<scope>): <description>`
+4. 推送到分支 (`git push origin feature/amazing-feature`)
 5. 提交 Pull Request
 
-## 📄 许可证
+**提交类型：** `feat` | `fix` | `docs` | `style` | `refactor` | `perf` | `test` | `chore`
+
+**范围：** `auth` | `db` | `ui` | `api` | `deps` | `analysis` | `billing` 等
+
+## 许可证
 
 本项目采用 **Business Source License 1.1 (BSL 1.1)**。
 
-- **变更日期**：2030-09-14
-- **变更后许可证**：GNU Affero General Public License v3.0 (AGPL-3.0)
+- **变更日期：** 2030-09-14
+- **变更后许可证：** GNU Affero General Public License v3.0 (AGPL-3.0)
 
-**简要说明**：
+**使用限制：**
+- 允许：个人学习、开发、测试、非生产环境使用
+- 禁止：将本项目作为核心功能提供 SaaS 或托管服务（需获商业授权）
+- 2030-09-14 后自动转为 AGPL-3.0 开源协议
 
-- ✅ **允许**：个人学习、内部测试、非生产环境使用。
-- ❌ **禁止**：将本项目作为核心功能提供 SaaS 服务或托管服务（除非获得商业授权）。
-- 📅 **2030-09-14 后**：自动转为 AGPL-3.0 开源协议。
+完整条款参见 [LICENSE](./LICENSE)。
 
-完整条款请参见 [LICENSE.md](./LICENSE.md)。
-
-## 🤝 支持与联系
-
-如果您觉得这个项目对您有帮助，欢迎支持：
+## 支持与联系
 
 - [爱发电赞助](https://ifdian.net/a/tianxiang?tab=feed)
-- GitHub Star
-- 提交 Issue 反馈问题
-
-**联系方式**：
-
+- GitHub Star / Issues
 - QQ 群：625618470
-- GitHub Issues
