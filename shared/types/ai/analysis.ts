@@ -19,6 +19,11 @@ export interface AuthorStyleMatch {
 	reasons: string[];
 }
 
+export interface ExcellentSentenceCandidate {
+	content: string;
+	reason: string;
+}
+
 export interface AnalysisResult {
 	overallScore: number;
 	title: string;
@@ -31,6 +36,7 @@ export interface AnalysisResult {
 	strengths: string[];
 	improvements: string[];
 	authorMatches?: AuthorStyleMatch[];
+	excellentSentences?: ExcellentSentenceCandidate[];
 	mermaid_diagrams?: MermaidDiagram[];
 }
 

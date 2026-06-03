@@ -51,6 +51,7 @@ export async function saveAnalysisResult(input: {
   if (!isValidAnalysisResult(parseResult.data))
     throw new Error("返回结果格式无效");
 
+  parseResult.data.excellentSentences = normalizeExcellentSentences(parseResult.data.excellentSentences);
   const overallScore = calculateFinalScore(parseResult.data);
   const resultId = new ObjectId();
   await insertOne(COLLECTIONS.analysisRequests, {
@@ -131,5 +132,37 @@ function isValidAnalysisResult(result: AnalysisResult) {
       && typeof item.styleLabel === "string"
       && typeof item.description === "string"
       && typeof item.confidence === "number"
-      && Array.isArray(item.reasons)));
+      && Array.isArray(item.reasons)))
+    && (result.excellentSentences === undefined || result.excellentSentences.every(item =>
+      typeof item.content === "string"
+      && item.content.trim().length > 0
+      && typeof item.reason === "string"
+      && item.reason.trim().length > 0));
+}
+
+/**
+ * 限制优秀句子候选数量，避免模型为了凑数量输出低质量或重复摘录。
+ * @param sentences - 模型输出的优秀句子候选
+ * @returns 最多两个去重后的候选句
+ */
+function normalizeExcellentSentences(sentences: AnalysisResult["excellentSentences"]) {
+  if (!Array.isArray(sentences))
+    return [];
+
+  const seen = new Set<string>();
+  const normalizedSentences: NonNullable<AnalysisResult["excellentSentences"]> = [];
+  for (const sentence of sentences) {
+    const normalizedContent = sentence.content.trim().replace(/\s+/g, "");
+    if (!normalizedContent || seen.has(normalizedContent))
+      continue;
+    seen.add(normalizedContent);
+    normalizedSentences.push({
+      content: sentence.content.trim(),
+      reason: sentence.reason.trim(),
+    });
+    if (normalizedSentences.length >= 2)
+      break;
+  }
+
+  return normalizedSentences;
 }

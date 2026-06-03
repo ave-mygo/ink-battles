@@ -245,6 +245,7 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
           modelName={record.metadata?.modelName}
           modeName={record.article.input.mode}
           percentileData={percentileData}
+          sourceArticleId={record._id}
         />
       </div>
     </div>

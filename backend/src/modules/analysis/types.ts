@@ -24,6 +24,7 @@ export interface AnalysisResult {
   strengths: unknown[];
   improvements: unknown[];
   authorMatches?: Array<{ name: string; styleLabel: string; description: string; confidence: number; reasons: string[] }>;
+  excellentSentences?: Array<{ content: string; reason: string }>;
 }
 
 export interface AnalysisSearchContext {

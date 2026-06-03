@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import { AnalysisCard } from "@/components/common/analysis/AnalysisCard";
 import { DimensionsCard } from "@/components/common/analysis/DimensionsCard";
+import { ExcellentSentencesCard } from "@/components/common/analysis/ExcellentSentencesCard";
 import { MermaidDiagramsSection } from "@/components/common/analysis/MermaidDiagramsSection";
 import { ScoreCard } from "@/components/common/analysis/ScoreCard";
 import { SearchCredentials } from "@/components/common/SearchCredentials";
@@ -38,6 +39,7 @@ export function AnalysisResults({
   showSponsor = false,
   compactMode = false, // 新增精简模式
   analysisId, // 新增 analysisId，提供给完整报告详情页
+  sourceArticleId,
 }: {
   analysisResult?: {
     overallScore: number;
@@ -51,6 +53,7 @@ export function AnalysisResults({
     strengths: string[];
     improvements: string[];
     authorMatches?: AnalysisResult["authorMatches"];
+    excellentSentences?: AnalysisResult["excellentSentences"];
     mermaid_diagrams?: Array<{ type: string; title: string; code: string }>;
   };
   result?: AnalysisOutput;
@@ -65,6 +68,7 @@ export function AnalysisResults({
   percentileData?: ScorePercentileResult | null;
   compactMode?: boolean;
   analysisId?: string;
+  sourceArticleId?: string;
 }) {
   const parsedResult = useMemo<ParsedAnalysisResult>(() => {
     if (analysisResult) {
@@ -167,6 +171,7 @@ export function AnalysisResults({
   const strengths = data.strengths || [];
   const improvements = data.improvements || [];
   const tags = data.tags || [];
+  const excellentSentences = data.excellentSentences || [];
   const mermaidDiagrams = data.mermaid_diagrams || [];
 
   /**
@@ -241,6 +246,13 @@ export function AnalysisResults({
           tags={tags}
           authorMatches={data.authorMatches}
         />
+
+        {sourceArticleId && (
+          <ExcellentSentencesCard
+            sentences={excellentSentences}
+            sourceArticleId={sourceArticleId}
+          />
+        )}
 
         {/* Mermaid 图表 */}
         <MermaidDiagramsSection diagrams={mermaidDiagrams} />

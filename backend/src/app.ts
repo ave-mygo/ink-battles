@@ -13,6 +13,7 @@ import { recoverInterruptedAnalysisTasks } from "./modules/analysis-worker";
 import { authModule } from "./modules/auth";
 import { billingModule } from "./modules/billing";
 import { dashboardModule } from "./modules/dashboard";
+import { excellentSentencesModule } from "./modules/excellent-sentences";
 import { oauthModule } from "./modules/oauth";
 import { publicModule } from "./modules/public";
 import { statusModule } from "./modules/status";
@@ -70,6 +71,7 @@ function createTypedApp() {
     .use(billingModule)
     .use(accountsModule)
     .use(dashboardModule)
+    .use(excellentSentencesModule)
     .use(statusModule)
     .all("/*", ({ request }) => shouldProxy(new URL(request.url).pathname) ? proxyToFrontend(request) : Response.json({ success: false, message: "Not found" }, { status: 404 }));
 }

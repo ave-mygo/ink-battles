@@ -112,4 +112,8 @@ export async function ensureBackendIndexes() {
     name: "idx_analysis_requests_settings_public_timestamp_desc",
     partialFilterExpression: { "settings.public": true },
   });
+  await ensureIndex("excellent_sentences", { normalizedContent: 1 }, { unique: true, name: "uniq_excellent_sentences_normalizedContent" });
+  await ensureIndex("excellent_sentences", { uid: 1, createdAt: -1 }, { name: "idx_excellent_sentences_uid_createdAt" });
+  await ensureIndex("excellent_sentences", { sourceArticleId: 1, uid: 1 }, { name: "idx_excellent_sentences_sourceArticleId_uid" });
+  await ensureIndex("excellent_sentences", { reviewStatus: 1, recommendationStatus: 1, displayStatus: 1, createdAt: -1 }, { name: "idx_excellent_sentences_public_workflow" });
 }

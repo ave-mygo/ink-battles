@@ -11,6 +11,7 @@ export const DB_NAME = "ink_battles";
 export const COLLECTIONS = {
   analysisRequests: "analysis_requests",
   analysisTasks: "analysis_tasks",
+  excellentSentences: "excellent_sentences",
   userBilling: "user_billing",
   promoCodes: "promo_codes",
   promoCodeRedemptions: "promo_code_redemptions",
@@ -169,7 +170,7 @@ export async function updateMany<T extends Document>(name: string, filter: Filte
  * @param options - 更新选项
  * @returns 更新后的文档或 null
  */
-export async function findOneAndUpdate<T extends Document>(name: string,	filter: Filter<T>,	update: UpdateFilter<T>,	options: FindOneAndUpdateOptions = {}) {
+export async function findOneAndUpdate<T extends Document>(name: string, filter: Filter<T>, update: UpdateFilter<T>, options: FindOneAndUpdateOptions = {}) {
   return (await collection<T>(name)).findOneAndUpdate(filter, update, { returnDocument: "after", ...options }) as Promise<WithId<T> | null>;
 }
 
