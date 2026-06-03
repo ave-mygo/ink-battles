@@ -2,17 +2,16 @@ import { randomBytes } from "node:crypto";
 import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto-js";
 import OpenAI from "openai";
-import { getAnalysisConfig, getConfig } from "../config";
+import { getConfig } from "../config";
 import { COLLECTIONS, ensureTtlIndex, findOne, insertOne } from "../db/mongo";
+import { getCachedSiteSettingValue } from "../modules/site-settings";
 import { parseModelOutput } from "../utils/json-parser";
 
 const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
 const JSON_MATCH_REGEX = /data:\s*(\{[\s\S]*\})/;
 const DATA_PREFIX_REGEX = /^data:\s*/;
-const MAX_VALIDATION_TEXT_CHARS = 200_000;
 
 type SearchModel = "none" | "gemini" | "gemini-lite" | "ds-search";
-const analysisConfig = getAnalysisConfig();
 
 interface ValidationResult {
   success: boolean;
@@ -176,7 +175,8 @@ async function validateWithGemini(input: {
     },
   });
   const rawText = response.text || "";
-  if (rawText.length > MAX_VALIDATION_TEXT_CHARS)
+  const analysisConfig = getCachedSiteSettingValue("analysis.runtime");
+  if (rawText.length > analysisConfig.validation_max_text_chars)
     throw new Error("AI验证服务返回内容过大");
   const parsed = parseValidation(rawText);
   const searchWebPages = response.candidates?.[0]?.groundingMetadata?.groundingChunks
@@ -217,7 +217,8 @@ async function validateWithOpenAI(input: {
     response_format: { type: "json_object" },
   }, { signal: input.signal });
   const rawText = response.choices[0]?.message?.content || "";
-  if (rawText.length > MAX_VALIDATION_TEXT_CHARS)
+  const analysisConfig = getCachedSiteSettingValue("analysis.runtime");
+  if (rawText.length > analysisConfig.validation_max_text_chars)
     throw new Error("AI验证服务返回内容过大");
   return createValidationSession(input.fingerprint, input.sha1, parseValidation(rawText), []);
 }
@@ -246,7 +247,8 @@ function parseValidation(rawText: string): ParsedValidation {
  * @param searchWebPages - 搜索结果网页列表
  * @returns 验证结果，包含会话ID
  */
-async function createValidationSession(fingerprint: string,	sha1: string,	parsed: ParsedValidation,	searchWebPages: Array<{ uri: string; title?: string }>): Promise<ValidationResult> {
+async function createValidationSession(fingerprint: string, sha1: string, parsed: ParsedValidation, searchWebPages: Array<{ uri: string; title?: string }>): Promise<ValidationResult> {
+  const analysisConfig = getCachedSiteSettingValue("analysis.runtime");
   const session = randomBytes(8).toString("hex");
   await ensureTtlIndex(COLLECTIONS.sessions, "createdAt", 30 * 60);
   const searchSummary = parsed.searchSummary?.slice(0, analysisConfig.max_output_chars);

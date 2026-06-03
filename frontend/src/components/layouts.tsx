@@ -1,10 +1,12 @@
 "use client";
 
 import type { AnalysisResult, ScorePercentileResult } from "@ink-battles/shared/types/ai";
+import type { PublicQuote } from "@ink-battles/shared/types/common";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { AnalysisResults } from "@/components/common/analysis/AnalysisResults";
+import { PublicQuotesShowcase } from "@/components/common/PublicQuotesShowcase";
 import WriterAnalysisHeader from "@/components/layouts/WriterPage/WriterAnalysisHeader";
 import WriterAnalysisInput from "@/components/layouts/WriterPage/WriterAnalysisInput";
 import WriterAnalysisModes from "@/components/layouts/WriterPage/WriterAnalysisModes";
@@ -130,7 +132,7 @@ const evaluationModes = [
   },
 ];
 
-export default function WriterAnalysisSystem() {
+export default function WriterAnalysisSystem({ featuredQuotes = [] }: { featuredQuotes?: PublicQuote[] }) {
   const availableGradingModels = useAvailableGradingModels();
   const [articleText, setArticleText] = useState("");
   const [selectedMode, setSelectedMode] = useState<string[]>([]);
@@ -373,6 +375,7 @@ export default function WriterAnalysisSystem() {
     <div className="min-h-screen from-slate-50 to-slate-100 bg-linear-to-br dark:from-slate-900 dark:to-slate-800">
       <div className="mx-auto px-4 py-6 container max-w-7xl sm:py-8">
         <WriterAnalysisHeader />
+        <PublicQuotesShowcase quotes={featuredQuotes} />
 
         <div className="mb-6 gap-6 grid lg:gap-8 lg:grid-cols-8">
           <div className="lg:col-span-5">

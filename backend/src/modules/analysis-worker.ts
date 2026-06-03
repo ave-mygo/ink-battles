@@ -1,7 +1,6 @@
 import type { AnalysisTaskOptions } from "./analysis/types";
 import crypto from "crypto-js";
 import { ObjectId } from "mongodb";
-import { getAnalysisConfig, getGradingModelById } from "../config";
 import { COLLECTIONS, deleteOne, findOne, findOneAndUpdate, updateMany, updateOne, withTransaction } from "../db/mongo";
 import { runAnalysisModel } from "../integrations/ai";
 import { verifyArticleValue } from "../integrations/validator";
@@ -11,14 +10,21 @@ import { cleanModelName } from "./analysis/cache";
 import { forgetAnalysisAbortController, runQueuedAnalysisTask } from "./analysis/queue";
 import { loadSearchContext, saveAnalysisResult } from "./analysis/result";
 import { refundCallBalance } from "./billing";
+import { getCachedEffectiveGradingModelById, getCachedSiteSettingValue } from "./site-settings";
 
 export { canAcceptAnalysisTask, cancelRunningTask, getAnalysisBackpressure, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot } from "./analysis/queue";
 
 const NORMALIZE_TEXT_REGEX = /[\s\p{P}\p{S}]/gu;
 const CANCELLED_MESSAGE = "分析任务已取消";
 const TASK_TIMEOUT_MESSAGE = "分析任务超时，请稍后重试";
-const analysisConfig = getAnalysisConfig();
-const STREAM_LIMITS = { maxContentSize: analysisConfig.max_output_chars, maxTimeoutMs: 7 * 60 * 1000, maxChunks: 20000 } as const;
+const getStreamLimits = () => {
+  const analysisConfig = getCachedSiteSettingValue("analysis.runtime");
+  return {
+    maxContentSize: analysisConfig.max_output_chars,
+    maxTimeoutMs: analysisConfig.task_timeout_ms,
+    maxChunks: analysisConfig.stream_max_chunks,
+  };
+};
 
 interface AnalysisTaskBillingSnapshot {
   billing?: {
@@ -72,12 +78,13 @@ export function runAnalysisTask(taskId: ObjectId, options: AnalysisTaskOptions) 
 async function executeAnalysisTask(taskId: ObjectId, options: AnalysisTaskOptions, abortController: AbortController) {
   const key = taskId.toString();
   let timedOut = false;
+  const streamLimits = getStreamLimits();
   const timeoutTimer = setTimeout(() => {
     timedOut = true;
     abortController.abort(TASK_TIMEOUT_MESSAGE);
-  }, STREAM_LIMITS.maxTimeoutMs);
+  }, streamLimits.maxTimeoutMs);
   try {
-    const model = getGradingModelById(options.modelId);
+    const model = getCachedEffectiveGradingModelById(options.modelId);
     if (!model)
       throw new Error("无效的评分模型");
     await ensureTaskActive(taskId);
@@ -109,7 +116,7 @@ async function executeAnalysisTask(taskId: ObjectId, options: AnalysisTaskOption
         fingerprint: options.fingerprint,
         searchResults: search.searchResults,
         signal: abortController.signal,
-        maxOutputChars: STREAM_LIMITS.maxContentSize,
+        maxOutputChars: streamLimits.maxContentSize,
         onProgress: progress,
       }));
 
@@ -151,8 +158,9 @@ async function executeAnalysisTask(taskId: ObjectId, options: AnalysisTaskOption
  * @returns 累积的完整内容
  */
 async function accumulateStreamContent(taskId: ObjectId,	fingerprint: string,	runStream: (onProgress: (chunk: string, chunkCount: number) => Promise<void>) => Promise<string>) {
+  const streamLimits = getStreamLimits();
   const startTime = Date.now();
-  const maxTime = startTime + STREAM_LIMITS.maxTimeoutMs;
+  const maxTime = startTime + streamLimits.maxTimeoutMs;
   let contentSize = 0;
   let lastChunkLogTime = startTime;
   return runStream(async (chunk, chunkCount) => {
@@ -160,10 +168,10 @@ async function accumulateStreamContent(taskId: ObjectId,	fingerprint: string,	ru
     contentSize += chunk.length;
     if (now > maxTime)
       throw new Error(`流式处理超时 (${((now - startTime) / 1000).toFixed(1)}s)`);
-    if (chunkCount >= STREAM_LIMITS.maxChunks)
-      throw new Error(`流式块数量超过限制 (${STREAM_LIMITS.maxChunks})`);
-    if (contentSize > STREAM_LIMITS.maxContentSize)
-      throw new Error(`流式内容大小超过限制 (${STREAM_LIMITS.maxContentSize / 1024}KB)`);
+    if (chunkCount >= streamLimits.maxChunks)
+      throw new Error(`流式块数量超过限制 (${streamLimits.maxChunks})`);
+    if (contentSize > streamLimits.maxContentSize)
+      throw new Error(`流式内容大小超过限制 (${streamLimits.maxContentSize / 1024}KB)`);
     if (chunkCount % 50 === 0)
       await ensureTaskActive(taskId);
     if (chunkCount === 1 || now - lastChunkLogTime >= 5000 || chunkCount % 20 === 0) {

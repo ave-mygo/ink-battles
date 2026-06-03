@@ -4,5 +4,7 @@ export * from "./config";
 export * from "./history";
 export * from "./password";
 export * from "./public-config";
+export * from "./public-quotes";
+export * from "./site-settings";
 export * from "./sponsor";
 export * from "./status";

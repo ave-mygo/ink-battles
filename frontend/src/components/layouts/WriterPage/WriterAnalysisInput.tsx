@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { USER_LIMITS, UserType } from "@/lib/constants";
 import { getFingerprintId } from "@/lib/fingerprint";
 import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
+import { useWriterUploadLimits } from "@/store/writer-config-context";
 import { BILLING_BALANCE_UPDATED_EVENT, getAvailableCalls } from "@/utils/billing/client";
 import { FILE_ACCEPT_STRING, parseFile, SUPPORTED_EXTENSIONS } from "@/utils/common/file-parser";
 
@@ -26,6 +27,21 @@ interface UserTierData {
   };
   advancedModelCalls?: boolean;
   donationAmount?: number;
+}
+
+function getDynamicUserLimits(uploadLimits: ReturnType<typeof useWriterUploadLimits>) {
+  return {
+    ...USER_LIMITS,
+    [UserType.GUEST]: {
+      ...USER_LIMITS[UserType.GUEST],
+      perRequest: uploadLimits?.guestPerRequestChars ?? USER_LIMITS[UserType.GUEST].perRequest,
+      dailyLimit: uploadLimits?.guestDailyChars ?? USER_LIMITS[UserType.GUEST].dailyLimit,
+    },
+    [UserType.REGULAR]: {
+      ...USER_LIMITS[UserType.REGULAR],
+      perRequest: uploadLimits?.loggedPerRequestChars ?? USER_LIMITS[UserType.REGULAR].perRequest,
+    },
+  };
 }
 
 function LimitModal({ open, onClose, tierData }: {
@@ -167,6 +183,8 @@ const WordCounter = React.memo(({ articleLength, currentLimit, userType }: {
 WordCounter.displayName = "WordCounter";
 
 export default function WriterAnalysisInput({ articleText, setArticleText }: { articleText: string; setArticleText: (text: string) => void }) {
+  const uploadLimits = useWriterUploadLimits();
+  const dynamicUserLimits = useMemo(() => getDynamicUserLimits(uploadLimits), [uploadLimits]);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [_browserFingerprint, setBrowserFingerprint] = useState<string>("");
   const [tierData, setTierData] = useState<UserTierData>({
@@ -174,7 +192,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
     displayName: "游客用户",
     icon: <Users className="h-4 w-4" />,
     badgeColor: "text-gray-600 bg-gray-50 border-gray-200",
-    limits: USER_LIMITS[UserType.GUEST],
+    limits: dynamicUserLimits[UserType.GUEST],
   });
   const [loading, setLoading] = useState(true);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
@@ -212,7 +230,7 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
         }
       }
 
-      const limits = USER_LIMITS[userType];
+      const limits = dynamicUserLimits[userType];
 
       let displayName = "";
       let icon: React.ReactNode = null;
@@ -249,10 +267,10 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
         displayName: "游客用户",
         icon: <Users className="h-4 w-4" />,
         badgeColor: "text-gray-600 bg-gray-50 border-gray-200 dark:text-slate-300 dark:bg-slate-800/60 dark:border-slate-700",
-        limits: USER_LIMITS[UserType.GUEST],
+        limits: dynamicUserLimits[UserType.GUEST],
       });
     }
-  }, []);
+  }, [dynamicUserLimits]);
 
   // 页面加载时初始化浏览器指纹并获取用户分级信息
   useEffect(() => {

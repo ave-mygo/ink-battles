@@ -107,6 +107,10 @@ export async function ensureBackendIndexes() {
   await ensureIndex("auth_sessions", { uid: 1, revokedAt: 1, expiresAt: 1 }, { name: "idx_auth_sessions_uid_state" });
   await ensureIndex("auth_sessions", { expiresAt: 1 }, { expireAfterSeconds: 0, name: "ttl_auth_sessions_expiresAt" });
   await ensureIndex("audit_logs", { createdAt: 1 }, { name: "idx_audit_logs_createdAt" });
+  await ensureIndex("site_settings", { key: 1 }, { unique: true, name: "uniq_site_settings_key" });
+  await ensureIndex("site_settings", { category: 1, updatedAt: -1 }, { name: "idx_site_settings_category_updatedAt" });
+  await ensureIndex("site_setting_changes", { key: 1, createdAt: -1 }, { name: "idx_site_setting_changes_key_createdAt" });
+  await ensureIndex("site_setting_changes", { adminUid: 1, createdAt: -1 }, { name: "idx_site_setting_changes_adminUid_createdAt" });
   await ensureIndex("analysis_requests", { uid: 1, timestamp: -1, _id: -1 }, { name: "idx_analysis_requests_uid_timestamp_desc" });
   await ensureIndex("analysis_requests", { "settings.public": 1, "timestamp": -1, "_id": -1 }, {
     name: "idx_analysis_requests_settings_public_timestamp_desc",

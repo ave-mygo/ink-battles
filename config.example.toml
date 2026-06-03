@@ -38,8 +38,11 @@ base_url = "https://api.openai.com/v1"
 model = "glm-4.7"
 
 # -------------------------------------------------------------
-# 评分模型配置
+# 评分模型凭证配置
 # -------------------------------------------------------------
+# 模型密钥、地址和真实模型名必须在服务启动前确定。
+# 模型展示名、启用状态、会员标记、功能说明等运营配置会在首次启动时写入数据库，
+# 后续请在管理员后台维护。
 default_model = 0
 
 # -------------------------------------------------------------
@@ -55,30 +58,8 @@ allowed_origins = [
   "http://localhost:3001"
 ]
 
-# -------------------------------------------------------------
-# 分析模块运行参数
-# -------------------------------------------------------------
-[analysis]
-# 单次提交允许分析的最大正文长度，单位为字符。
-max_article_chars = 400000
-# 单次分析结果允许保存的最大输出长度，单位为字符。
-max_output_chars = 1048576
-# 后台同时执行中的分析任务上限，决定服务端并发处理能力。
-max_concurrent_tasks = 2
-# 当执行中的任务已满时，最多允许排队等待的任务数量。
-max_queued_tasks = 20
-# 已捐赠账户使用的独立排队任务池容量，避免和免费/游客争占排队名额。
-max_sponsor_queued_tasks = 40
-# 单个用户或游客指纹最多允许同时存在的进行中任务数。
-max_active_tasks_per_user = 5
-# 分析模式字段允许的最大长度，主要用于限制拼接后的模式字符串。
-max_mode_chars = 200
-# 游客指纹字段允许的最大长度。
-max_fingerprint_chars = 128
-# 游客分析记录在首次打开结果页后保留的分钟数，到期后会逻辑隐藏。
-guest_result_ttl_minutes = 15
-
 [[grading_models]]
+id = "gemini-3-pro-preview"
 name = "Gemini 3 Pro"
 base_url = "https://api.example.com/v1"
 api_key = "YOUR_API_KEY"
@@ -148,11 +129,11 @@ password = "YOUR_EMAIL_PASSWORD"
 secret = "YOUR_JWT_SECRET_KEY"
 
 # -------------------------------------------------------------
-# 注册配置
+# 管理员配置
 # -------------------------------------------------------------
-[registration]
-# 是否启用邀请码注册（启用后注册必须提供有效邀请码）
-invite_code_required = false
+[admin]
+# 管理员用户 UID 列表。UID 来自用户表，启动时加载。
+users = []
 
 # -------------------------------------------------------------
 # 应用配置
@@ -160,16 +141,3 @@ invite_code_required = false
 [app]
 app_name = "Ink Battles"
 base_url = "https://your-domain.com"
-
-[app.notice]
-enabled = true
-content = "欢迎使用 Ink Battles！"
-link = "https://your-domain.com"
-
-# -------------------------------------------------------------
-# 友情链接
-# -------------------------------------------------------------
-[[friends]]
-title = "示例站点"
-description = "示例描述"
-url = "https://example.com"

@@ -1,11 +1,10 @@
 import type { AnalysisTaskOptions, AnalysisTaskPool } from "./types";
 import { ObjectId } from "mongodb";
-import { getAnalysisConfig } from "../../config";
 import { COLLECTIONS, updateOne } from "../../db/mongo";
 import { createProgress } from "../analysis-progress";
+import { getCachedSiteSettingValue } from "../site-settings";
 
 const CANCELLED_MESSAGE = "分析任务已取消";
-const analysisConfig = getAnalysisConfig();
 
 interface QueuedAnalysisTask {
   taskId: ObjectId;
@@ -36,6 +35,7 @@ const reservedAnalysisTaskSlotCounts: Record<AnalysisTaskPool, number> = {
  * @returns 队列最大长度
  */
 function getQueueLimit(pool: AnalysisTaskPool) {
+  const analysisConfig = getCachedSiteSettingValue("analysis.runtime");
   return pool === "sponsor" ? analysisConfig.max_sponsor_queued_tasks : analysisConfig.max_queued_tasks;
 }
 
@@ -54,6 +54,7 @@ function getQueue(pool: AnalysisTaskPool) {
  * @returns 背压统计对象
  */
 export function getAnalysisBackpressure() {
+  const analysisConfig = getCachedSiteSettingValue("analysis.runtime");
   return {
     running: runningAnalysisTaskCount,
     queued: queuedAnalysisTasks.length,
@@ -156,6 +157,7 @@ export function forgetAnalysisAbortController(taskId: string) {
  * @param executeTask - 任务执行器函数
  */
 function drainAnalysisQueue(executeTask: AnalysisTaskExecutor) {
+  const analysisConfig = getCachedSiteSettingValue("analysis.runtime");
   while (runningAnalysisTaskCount < analysisConfig.max_concurrent_tasks && (sponsorQueuedAnalysisTasks.length > 0 || queuedAnalysisTasks.length > 0)) {
     const nextTask = sponsorQueuedAnalysisTasks.shift() ?? queuedAnalysisTasks.shift();
     if (!nextTask)

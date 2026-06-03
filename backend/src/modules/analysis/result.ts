@@ -1,6 +1,7 @@
 import type { AnalysisResult, AnalysisSearchContext } from "./types";
 import { ObjectId } from "mongodb";
 import { COLLECTIONS, findOne, insertOne, updateOne } from "../../db/mongo";
+import { getCachedSiteSettingValue } from "../site-settings";
 import { parseModelOutput } from "../../utils/json-parser";
 import { createProgress } from "../analysis-progress";
 
@@ -96,14 +97,15 @@ export async function saveAnalysisResult(input: {
  * @returns 计算后的最终分数，保留两位小数
  */
 function calculateFinalScore(result: AnalysisResult): number {
+  const scoringPolicy = getCachedSiteSettingValue("analysis.scoringPolicy");
   const dimensions = Array.isArray(result.dimensions) ? result.dimensions : [];
   const baseDimensions = dimensions.filter(item => !item.name.includes("经典") && !item.name.includes("新锐"));
   const countAbove35 = baseDimensions.filter(item => item.score > 3.5).length;
   const countAbove40 = baseDimensions.filter(item => item.score > 4).length;
-  if (countAbove35 >= 6 || countAbove40 >= 3) {
+  if (scoringPolicy.enable_low_score_compensation && (countAbove35 >= scoringPolicy.compensation_min_count_above_3_5 || countAbove40 >= scoringPolicy.compensation_min_count_above_4_0)) {
     for (const dimension of baseDimensions) {
-      if (dimension.score < 3)
-        dimension.score = 3;
+      if (dimension.score < scoringPolicy.compensation_score_floor)
+        dimension.score = scoringPolicy.compensation_score_floor;
     }
   }
   const baseScore = baseDimensions.reduce((sum, item) => sum + (item.score || 0), 0);
@@ -146,6 +148,7 @@ function isValidAnalysisResult(result: AnalysisResult) {
  * @returns 最多两个去重后的候选句
  */
 function normalizeExcellentSentences(sentences: AnalysisResult["excellentSentences"]) {
+  const analysisConfig = getCachedSiteSettingValue("analysis.runtime");
   if (!Array.isArray(sentences))
     return [];
 
@@ -160,7 +163,7 @@ function normalizeExcellentSentences(sentences: AnalysisResult["excellentSentenc
       content: sentence.content.trim(),
       reason: sentence.reason.trim(),
     });
-    if (normalizedSentences.length >= 2)
+    if (normalizedSentences.length >= analysisConfig.excellent_sentences_max_count)
       break;
   }
 

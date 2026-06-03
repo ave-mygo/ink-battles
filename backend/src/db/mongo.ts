@@ -24,6 +24,8 @@ export const COLLECTIONS = {
   rateLimits: "rate_limits",
   authSessions: "auth_sessions",
   auditLogs: "audit_logs",
+  siteSettings: "site_settings",
+  siteSettingChanges: "site_setting_changes",
 } as const;
 
 /**

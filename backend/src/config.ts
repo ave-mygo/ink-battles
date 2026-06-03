@@ -42,6 +42,7 @@ export interface RuntimeConfig {
   api: { key: string; user: number; base_url: string };
   email: { host: string; port: number; user: string; password: string };
   jwt: { secret: string };
+  admin?: { users?: number[] };
   registration: { invite_code_required: boolean };
   app: { app_name: string; base_url: string; notice: { enabled: boolean; content: string; link: string } };
   friends: Array<{ title: string; description: string; url: string }>;
@@ -101,6 +102,21 @@ function applyRuntimeDefaults(config: RuntimeConfig) {
   config.analysis.max_mode_chars ??= 200;
   config.analysis.max_fingerprint_chars ??= 128;
   config.analysis.guest_result_ttl_minutes ??= 15;
+
+  config.admin ??= { users: [] };
+  config.admin.users = Array.from(new Set((config.admin.users ?? [])
+    .map(uid => Number(uid))
+    .filter(uid => Number.isInteger(uid) && uid > 0)));
+
+  config.registration ??= { invite_code_required: false };
+  config.registration.invite_code_required ??= false;
+  config.app ??= { app_name: "Ink Battles", base_url: "http://localhost:3001", notice: { enabled: false, content: "", link: "" } };
+  config.app.app_name ??= "Ink Battles";
+  config.app.notice ??= { enabled: false, content: "", link: "" };
+  config.app.notice.enabled ??= false;
+  config.app.notice.content ??= "";
+  config.app.notice.link ??= "";
+  config.friends ??= [];
 }
 
 /**
@@ -170,7 +186,10 @@ export function getConfig(): RuntimeConfig {
 export function getPublicConfig() {
   const config = getConfig();
   return {
-    app: config.app,
+    app: {
+      app_name: config.app.app_name,
+      notice: config.app.notice,
+    },
     friends: config.friends,
     registration: config.registration,
     gradingModels: config.grading_models.filter(model => model.enabled).map(model => ({
@@ -207,6 +226,13 @@ export const getServerConfig = () => getConfig().server;
  * @returns 分析配置对象（字符数限制、并发任务数等）
  */
 export const getAnalysisConfig = () => getConfig().analysis;
+
+/**
+ * 判断指定 UID 是否为配置层管理员。
+ *
+ * 当前 source of truth 是 config.toml，后续切换数据库角色时只需要替换这一层。
+ */
+export const isConfiguredAdminUid = (uid: number) => getConfig().admin?.users?.includes(uid) === true;
 
 /**
  * 获取应用的 Origin（协议 + 域名 + 端口）

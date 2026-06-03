@@ -1,6 +1,6 @@
 import OpenAI from "openai";
-import { getConfig, getGradingModelById } from "../config";
 import { buildSystemPrompt, getModeInstructions } from "../constants/other/prompts";
+import { getCachedEffectiveGradingModelById, getCachedSiteSettingValue } from "../modules/site-settings";
 
 export interface AnalysisStreamInput {
   articleText: string;
@@ -27,10 +27,11 @@ export interface AnalysisStreamInput {
  * @returns 完整的分析结果文本
  */
 export async function runAnalysisModel(input: AnalysisStreamInput) {
-  const model = getGradingModelById(input.modelId);
+  const model = getCachedEffectiveGradingModelById(input.modelId);
   if (!model)
     throw new Error("无效的评分模型");
 
+  const generationConfig = getCachedSiteSettingValue("ai.generation");
   const client = new OpenAI({ apiKey: model.api_key, baseURL: model.base_url });
   const modeInstruction = await getModeInstructions(input.mode);
   const systemPrompt = await buildSystemPrompt(modeInstruction);
@@ -46,9 +47,9 @@ export async function runAnalysisModel(input: AnalysisStreamInput) {
   const stream = await client.chat.completions.create({
     model: model.model,
     messages,
-    temperature: model.model.includes("gpt-5-nano") ? 1 : 0.3,
-    ...(model.supports_json_mode !== false ? { response_format: { type: "json_object" as const } } : {}),
-    seed: input.fingerprint ? Number.parseInt(input.fingerprint) : undefined,
+    temperature: model.model.includes("gpt-5-nano") ? generationConfig.gpt5_nano_temperature : generationConfig.default_temperature,
+    ...(generationConfig.enable_json_mode_when_supported && model.supports_json_mode !== false ? { response_format: { type: "json_object" as const } } : {}),
+    seed: generationConfig.enable_seed && input.fingerprint ? Number.parseInt(input.fingerprint) : undefined,
     stream: true,
   }, { signal: input.signal });
 
@@ -85,4 +86,4 @@ export function calculateScorePercentile(score: number) {
  * 获取所有已启用的公开评分模型列表
  * @returns 已启用的评分模型数组
  */
-export const publicModels = () => getConfig().grading_models.filter(model => model.enabled);
+export const publicModels = () => getCachedSiteSettingValue("ai.gradingModels").filter(model => model.enabled);

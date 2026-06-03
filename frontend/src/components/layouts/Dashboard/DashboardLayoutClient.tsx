@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { DASHBOARD_NAV_ITEMS } from "@/lib/constants";
+import { DASHBOARD_ADMIN_NAV_ITEMS, DASHBOARD_NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useDashboardSidebarActions, useDashboardSidebarOpen } from "@/store/ui";
 
@@ -20,12 +20,13 @@ interface DashboardLayoutClientProps {
  * 仪表盘布局客户端组件
  * 提供可折叠侧边栏和主内容区域
  */
-export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) => {
+export const DashboardLayoutClient = ({ user, children }: DashboardLayoutClientProps) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const mobileOpen = useDashboardSidebarOpen();
   const { close } = useDashboardSidebarActions();
   const pathname = usePathname();
   const mainOffsetClass = isSidebarCollapsed ? "lg:ml-16" : "lg:ml-64";
+  const navItems = user.isAdmin ? [...DASHBOARD_NAV_ITEMS, ...DASHBOARD_ADMIN_NAV_ITEMS] : DASHBOARD_NAV_ITEMS;
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">
@@ -41,7 +42,7 @@ export const DashboardLayoutClient = ({ children }: DashboardLayoutClientProps) 
         <nav className="p-4 flex flex-col h-full">
           {/* 导航项 */}
           <ul className="space-y-2">
-            {DASHBOARD_NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
 

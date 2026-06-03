@@ -1,8 +1,10 @@
-import type { DatabaseExcellentSentence } from "@ink-battles/shared/types/database";
 import type { AnalysisResult, ExcellentSentenceCandidate } from "@ink-battles/shared/types/ai";
+import type { DatabaseExcellentSentence } from "@ink-battles/shared/types/database";
 import { Elysia, t } from "elysia";
-import { COLLECTIONS, findMany, findOne, insertOne, isObjectId, objectId } from "../db/mongo";
-import { requireUser } from "../middleware/auth";
+import { COLLECTIONS, findMany, findOne, insertOne, isObjectId, objectId, updateOne } from "../db/mongo";
+import { requireAdmin, requireUser } from "../middleware/auth";
+import { writeAuditLog } from "../utils/audit";
+import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { ok } from "../utils/response";
 
 const NORMALIZE_SENTENCE_REGEX = /[\s\p{P}\p{S}]/gu;
@@ -18,6 +20,10 @@ interface AnalysisRecordDocument extends Record<string, unknown> {
     };
   };
 }
+
+type ExcellentSentenceDocument = Omit<DatabaseExcellentSentence, "_id"> & {
+  _id?: unknown;
+};
 
 /**
  * 生成用于重复检测的句子指纹。
@@ -68,7 +74,7 @@ function normalizeSourceName(value: string | undefined, fallback: string) {
 /**
  * 格式化收录文档，避免向前端暴露 MongoDB 原始 ObjectId。
  */
-function serializeExcellentSentence(sentence: DatabaseExcellentSentence) {
+function serializeExcellentSentence(sentence: ExcellentSentenceDocument) {
   return {
     ...sentence,
     _id: sentence._id?.toString(),
@@ -83,6 +89,70 @@ function isDuplicateKeyError(error: unknown) {
 }
 
 export const excellentSentencesModule = new Elysia()
+  .get("/api/v2/admin/excellent-sentences", async ({ request, query }) => {
+    await requireAdmin(request.headers);
+    const reviewStatus = query.reviewStatus && query.reviewStatus !== "all" ? query.reviewStatus : undefined;
+    const filter: Record<string, unknown> = {};
+    if (reviewStatus)
+      filter.reviewStatus = reviewStatus;
+
+    const sentences = await findMany<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, filter, {
+      sort: { createdAt: -1 },
+      limit: Math.min(Number(query.limit ?? 50) || 50, 100),
+    });
+
+    return ok(sentences.map(serializeExcellentSentence));
+  }, {
+    query: t.Object({
+      reviewStatus: t.Optional(t.String({ enum: ["all", "pending", "approved", "rejected"] })),
+      limit: t.Optional(t.Numeric()),
+    }),
+    detail: { tags: ["REST: Admin"] },
+  })
+  .patch("/api/v2/admin/excellent-sentences/:id", async ({ request, params, body }) => {
+    const admin = await requireAdmin(request.headers);
+    if (!isObjectId(params.id))
+      return { success: false, message: "句子记录不存在" };
+
+    const before = await findOne<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, { _id: objectId(params.id) });
+    if (!before)
+      return { success: false, message: "句子记录不存在" };
+
+    const now = new Date().toISOString();
+    await updateOne<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, { _id: objectId(params.id) }, {
+      reviewStatus: body.reviewStatus,
+      recommendationStatus: body.recommendationStatus,
+      displayStatus: body.displayStatus,
+      reviewerUid: admin.uid,
+      reviewedAt: now,
+      updatedAt: now,
+    });
+
+    writeAuditLog({
+      event: "excellent_sentence_reviewed",
+      uid: admin.uid,
+      ip: getRequestIp(request),
+      userAgent: getRequestUserAgent(request),
+      metadata: {
+        sentenceId: params.id,
+        before: {
+          reviewStatus: before.reviewStatus,
+          recommendationStatus: before.recommendationStatus,
+          displayStatus: before.displayStatus,
+        },
+        after: body,
+      },
+    });
+
+    return { success: true, message: "审核状态已更新" };
+  }, {
+    body: t.Object({
+      reviewStatus: t.String({ enum: ["pending", "approved", "rejected"] }),
+      recommendationStatus: t.String({ enum: ["none", "candidate", "recommended"] }),
+      displayStatus: t.String({ enum: ["hidden", "public"] }),
+    }),
+    detail: { tags: ["REST: Admin"] },
+  })
   .get("/api/v2/excellent-sentences/source/:sourceArticleId", async ({ request, params }) => {
     const user = await requireUser(request.headers);
     if (!isObjectId(params.sourceArticleId))
@@ -92,7 +162,7 @@ export const excellentSentencesModule = new Elysia()
     if (!record)
       return { success: false, message: "分析记录不存在或无权访问" };
 
-    const sentences = await findMany<DatabaseExcellentSentence>(COLLECTIONS.excellentSentences, {
+    const sentences = await findMany<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, {
       sourceArticleId: params.sourceArticleId,
       uid: user.uid,
       authorizationStatus: "granted",
@@ -122,7 +192,7 @@ export const excellentSentencesModule = new Elysia()
 
     const now = new Date().toISOString();
     const normalizedContent = normalizeSentenceContent(candidate.content);
-    const existing = await findOne<DatabaseExcellentSentence>(COLLECTIONS.excellentSentences, {
+    const existing = await findOne<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, {
       normalizedContent,
       authorizationStatus: "granted",
     });
@@ -135,7 +205,7 @@ export const excellentSentencesModule = new Elysia()
       : null;
 
     try {
-      await insertOne<DatabaseExcellentSentence>(COLLECTIONS.excellentSentences, {
+      await insertOne<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, {
         content: candidate.content.trim(),
         normalizedContent,
         sourceArticleId: body.sourceArticleId,

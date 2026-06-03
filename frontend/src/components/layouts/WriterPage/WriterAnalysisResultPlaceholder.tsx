@@ -1,14 +1,13 @@
 "use client";
 
 import type { AnalysisTaskProgress, AnalysisTaskValidation } from "@/utils/analysis";
-import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clock, Loader2, RefreshCw, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowRight, BarChart3, CheckCircle2, Clock, Loader2, Trash2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cancelAnalysisTask, deleteAnalysisTask, getAnalysisStatus, openAnalysisStatusStream } from "@/utils/analysis";
 import { notifyBillingBalanceUpdated } from "@/utils/billing/client";
 
@@ -28,7 +27,6 @@ interface LocalTask {
 
 type LocalTaskStatus = "pending" | "processing" | "completed" | "failed" | "cancelled";
 
-const REFRESH_COOLDOWN = 2000; // 2秒冷却
 const LONG_ANALYSIS_THRESHOLD = 600; // 10分钟（秒），超过此阈值提示用户取消重试
 const FALLBACK_POLL_INTERVAL = 3000;
 const SSE_RECONNECT_DELAY = 3000;
@@ -36,12 +34,7 @@ const SSE_RECONNECT_DELAY = 3000;
 export default function WriterAnalysisResultPlaceholder() {
   const [tasks, setTasks] = useState<LocalTask[]>([]);
   const [cancellingTaskId, setCancellingTaskId] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [canRefresh, setCanRefresh] = useState(true);
-  const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState<Record<string, number>>({});
-  const cooldownTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const elapsedTimerRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const healthyStreamTaskIdsRef = useRef<Set<string>>(new Set());
@@ -138,12 +131,6 @@ export default function WriterAnalysisResultPlaceholder() {
     const healthyStreamTaskIds = healthyStreamTaskIdsRef.current;
 
     return () => {
-      if (cooldownTimerRef.current) {
-        clearTimeout(cooldownTimerRef.current);
-      }
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
       if (elapsedTimerRef.current) {
         clearInterval(elapsedTimerRef.current);
       }
@@ -344,42 +331,6 @@ export default function WriterAnalysisResultPlaceholder() {
     }
   }, [connectTaskStatusStream, cleanupTaskRealtimeResources, refreshTaskStatuses, tasks]);
 
-  /**
-   * 手动刷新任务状态
-   * 带有2秒冷却时间，避免频繁请求
-   */
-  const handleRefreshStatus = async () => {
-    if (!canRefresh || isRefreshing)
-      return;
-
-    setIsRefreshing(true);
-    setCanRefresh(false);
-    setCooldownRemaining(Math.ceil(REFRESH_COOLDOWN / 1000));
-
-    // 启动倒计时
-    intervalRef.current = setInterval(() => {
-      setCooldownRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(intervalRef.current!);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    // 启动冷却计时器
-    cooldownTimerRef.current = setTimeout(() => {
-      setCanRefresh(true);
-      setCooldownRemaining(0);
-    }, REFRESH_COOLDOWN);
-
-    try {
-      await refreshTaskStatuses();
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   useEffect(() => {
     const fallbackTaskIds = tasks
       .filter(task => isActiveTask(task) && !healthyStreamTaskIdsRef.current.has(task.taskId))
@@ -439,9 +390,6 @@ export default function WriterAnalysisResultPlaceholder() {
     router.push(`/analysis/${task.taskId}#analysis-results`);
   };
 
-  // 判断是否有进行中的任务
-  const hasActiveTasks = tasks.some(isActiveTask);
-
   if (tasks.length === 0) {
     return (
       <Card className="border border-slate-200/70 bg-white/80 shadow-lg backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/80">
@@ -459,51 +407,10 @@ export default function WriterAnalysisResultPlaceholder() {
   return (
     <Card className="border border-slate-200/70 bg-white/80 shadow-lg backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-950/80">
       <CardHeader className="pb-3 border-b border-slate-100/80 dark:border-slate-800/80">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg text-slate-700 flex gap-2 items-center dark:text-slate-100">
-            <BarChart3 className="text-blue-500 h-5 w-5 dark:text-blue-400" />
-            等待分析
-          </CardTitle>
-          {hasActiveTasks && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="sm"
-                  variant="default"
-                  className="btn-mygo-rainbow text-xs text-white h-8 cursor-pointer shadow-sm"
-                  onClick={handleRefreshStatus}
-                  disabled={!canRefresh || isRefreshing}
-                >
-                  {isRefreshing
-                    ? (
-                        <>
-                          <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
-                          查询中...
-                        </>
-                      )
-                    : cooldownRemaining > 0
-                      ? (
-                          <>
-                            <RefreshCw className="mr-1 h-3.5 w-3.5" />
-                            刷新进度 (
-                            {cooldownRemaining}
-                            s)
-                          </>
-                        )
-                      : (
-                          <>
-                            <RefreshCw className="mr-1 h-3.5 w-3.5" />
-                            刷新进度
-                          </>
-                        )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-center max-w-60">
-                <p>向服务器查询分析任务的最新进度，不会重新开始分析</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+        <CardTitle className="text-lg text-slate-700 flex gap-2 items-center dark:text-slate-100">
+          <BarChart3 className="text-blue-500 h-5 w-5 dark:text-blue-400" />
+          等待分析
+        </CardTitle>
       </CardHeader>
       <CardContent className="pt-4 flex flex-col gap-3">
         {tasks.map(task => (

@@ -12,7 +12,14 @@ export interface PublicAppNotice {
 	link?: string;
 }
 
+export interface PublicUploadLimits {
+	guestPerRequestChars?: number;
+	loggedPerRequestChars?: number;
+	guestDailyChars?: number;
+}
+
 export interface PublicAppConfig {
+	app_name?: string;
 	notice?: PublicAppNotice;
 }
 
@@ -21,6 +28,7 @@ export interface PublicConfigResponse {
 	registration?: {
 		invite_code_required?: boolean;
 	};
+	uploadLimits?: PublicUploadLimits;
 	gradingModels?: GradingModelConfig[];
 	friends?: FriendLink[];
 }

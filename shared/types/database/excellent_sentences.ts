@@ -15,6 +15,8 @@ export interface DatabaseExcellentSentence {
 	reviewStatus: ExcellentSentenceReviewStatus;
 	recommendationStatus: ExcellentSentenceRecommendationStatus;
 	displayStatus: ExcellentSentenceDisplayStatus;
+	reviewerUid?: number | null;
+	reviewedAt?: string | null;
 	metadata?: {
 		reason?: string;
 	};

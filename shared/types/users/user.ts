@@ -14,6 +14,7 @@ export interface AuthUserInfo {
 	nickname?: string | null;
 	bio?: string | null;
 	avatar?: string | null;
+	isAdmin?: boolean;
 }
 
 export interface AuthUserInfoSafe {
@@ -29,6 +30,7 @@ export interface AuthUserInfoSafe {
 	nickname?: string | null;
 	bio?: string | null;
 	avatar?: string | null;
+	isAdmin?: boolean;
 }
 
 export type AuthUser = AuthUserInfo;

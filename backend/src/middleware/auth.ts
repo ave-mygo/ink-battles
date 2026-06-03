@@ -1,4 +1,5 @@
 import type { AuthUser } from "@ink-battles/shared/types/users/user";
+import { isConfiguredAdminUid } from "../config";
 import { COLLECTIONS, findOne } from "../db/mongo";
 import { verifyAuthToken } from "../utils/crypto";
 
@@ -42,5 +43,24 @@ export async function requireUser(headers: Headers) {
   const user = await getCurrentUser(headers);
   if (!user)
     throw new Error("UNAUTHORIZED");
+  return user;
+}
+
+/**
+ * 判断用户是否具备后台管理员权限。
+ *
+ * 当前权限统一走配置层，便于后续扩展为数据库角色或后台授权模式。
+ */
+export function isAdminUser(user: Pick<AuthUser, "uid"> | null | undefined) {
+  return typeof user?.uid === "number" && isConfiguredAdminUid(user.uid);
+}
+
+/**
+ * 要求用户必须为管理员，否则抛出 FORBIDDEN 错误。
+ */
+export async function requireAdmin(headers: Headers) {
+  const user = await requireUser(headers);
+  if (!isAdminUser(user))
+    throw new Error("FORBIDDEN");
   return user;
 }

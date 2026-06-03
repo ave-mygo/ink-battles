@@ -6,7 +6,7 @@ import {
   calculatePaidCallPrice as calculatePaidCallPriceByBillingPlan,
   getBillingTierInfo,
 } from "@ink-battles/shared/constants/billing";
-import { CreditCard, History, Link as LinkIcon, User } from "lucide-react";
+import { CreditCard, History, Link as LinkIcon, Quote, Settings, User } from "lucide-react";
 
 export const db_name = "ink_battles";
 export const db_table = "analysis_requests";
@@ -85,6 +85,12 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { label: "账号绑定与管理", href: "/dashboard/accounts", icon: LinkIcon },
   { label: "分析历史", href: "/dashboard/history", icon: History },
   { label: "账单管理", href: "/dashboard/billing", icon: CreditCard },
+];
+
+/** 管理员专属仪表盘导航配置 */
+export const DASHBOARD_ADMIN_NAV_ITEMS: DashboardNavItem[] = [
+  { label: "站点配置", href: "/dashboard/admin/site-settings", icon: Settings },
+  { label: "亮点句子审核", href: "/dashboard/admin/excellent-sentences", icon: Quote },
 ];
 
 /** About 页面 FAQ 配置（集中管理，便于复用与 SEO） */

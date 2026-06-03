@@ -61,7 +61,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
   const user = useCurrentUser();
   const isAuthenticated = useIsAuthenticated();
   const candidates = useMemo(() => dedupeCandidates(sentences), [sentences]);
-  const [collectedContents, setCollectedContents] = useState<Set<string>>(new Set());
+  const [collectedContents, setCollectedContents] = useState<Set<string>>(() => new Set());
   const [selectedSentence, setSelectedSentence] = useState<ExcellentSentenceCandidate | null>(null);
   const [authorName, setAuthorName] = useState("");
   const [workName, setWorkName] = useState("");

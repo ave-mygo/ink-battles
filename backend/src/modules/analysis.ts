@@ -1,7 +1,7 @@
 import type { AnalysisTaskPool, SearchModel } from "./analysis/types";
+import type { AnalysisRuntimeSetting } from "@ink-battles/shared/types/common";
 import { Elysia, t } from "elysia";
 import { ObjectId } from "mongodb";
-import { getAnalysisConfig, getGradingModelById } from "../config";
 import { COLLECTIONS, count, findOne, insertOne, isObjectId, objectId, updateOne, withTransaction } from "../db/mongo";
 import { getCurrentUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
@@ -12,6 +12,7 @@ import { cleanModelName, createCachedTask, findCachedAnalysis } from "./analysis
 import { createAnalysisTaskEventStream } from "./analysis/events";
 import { createTaskSnapshot, getAnalysisTaskResult } from "./analysis/records";
 import { deductCallBalanceInTransaction, hasDonatedAccount } from "./billing";
+import { getCachedEffectiveGradingModelById, getSiteSettingValue } from "./site-settings";
 
 const validSearchModels = new Set<SearchModel>(["none", "gemini", "gemini-lite", "ds-search"]);
 
@@ -25,7 +26,6 @@ function normalizeSearchModel(value?: string): SearchModel {
 }
 
 const activeTaskStatuses = ["pending", "processing"];
-const analysisConfig = getAnalysisConfig();
 
 /**
  * 统计提交者当前活跃的任务数量
@@ -44,7 +44,7 @@ function countActiveTasksForSubmitter(uid: number | null, fingerprint: string) {
  * @param pool - 任务池类型
  * @returns 提示消息字符串
  */
-function getQueueFullMessage(pool: AnalysisTaskPool) {
+function getQueueFullMessage(pool: AnalysisTaskPool, analysisConfig: AnalysisRuntimeSetting) {
   return pool === "sponsor"
     ? `赞助者分析任务池已满，最多允许 ${analysisConfig.max_sponsor_queued_tasks} 个任务排队，请稍后再试`
     : `免费/游客分析任务池已满，最多允许 ${analysisConfig.max_queued_tasks} 个任务排队，请稍后再试`;
@@ -52,10 +52,18 @@ function getQueueFullMessage(pool: AnalysisTaskPool) {
 
 export const analysisModule = new Elysia()
   .post("/api/v2/analysis/tasks", async ({ request, body }) => {
+    const analysisConfig = await getSiteSettingValue("analysis.runtime");
     console.log(`[analysis:submit] mode="${body.mode}" modelId="${body.modelId}" searchModel="${body.searchModel ?? "none"}" articleLength=${body.articleText?.length ?? 0}`);
     if (!body.articleText)
       return { success: false, error: "文章内容不能为空" };
-    const model = getGradingModelById(body.modelId);
+    if (body.articleText.length > analysisConfig.max_article_chars)
+      return { success: false, error: `文章内容超过 ${analysisConfig.max_article_chars.toLocaleString()} 字限制` };
+    if (body.mode.length > analysisConfig.max_mode_chars)
+      return { success: false, error: "分析模式字段过长" };
+    if (body.fingerprint.length > analysisConfig.max_fingerprint_chars)
+      return { success: false, error: "浏览器指纹字段过长" };
+
+    const model = getCachedEffectiveGradingModelById(body.modelId);
     if (!model)
       return { success: false, error: "无效的评分模型" };
 
@@ -86,11 +94,11 @@ export const analysisModule = new Elysia()
       return { success: false, error: `最多只能同时创建 ${analysisConfig.max_active_tasks_per_user} 个进行中的分析任务，请等待已有任务完成` };
     if (!canAcceptAnalysisTask(pool)) {
       console.warn("[analysis:submit] rejected by backpressure", { pool, ...getAnalysisBackpressure() });
-      return { success: false, error: getQueueFullMessage(pool) };
+      return { success: false, error: getQueueFullMessage(pool, analysisConfig) };
     }
     if (!reserveAnalysisTaskSlot(pool)) {
       console.warn("[analysis:submit] rejected by reserved backpressure", getAnalysisBackpressure());
-      return { success: false, error: getQueueFullMessage(pool) };
+      return { success: false, error: getQueueFullMessage(pool, analysisConfig) };
     }
 
     const taskId = new ObjectId();
@@ -187,10 +195,10 @@ export const analysisModule = new Elysia()
     };
   }, {
     body: t.Object({
-      articleText: t.String({ minLength: 1, maxLength: analysisConfig.max_article_chars }),
-      mode: t.String({ minLength: 1, maxLength: analysisConfig.max_mode_chars }),
+      articleText: t.String({ minLength: 1 }),
+      mode: t.String({ minLength: 1 }),
       modelId: t.String({ minLength: 1, maxLength: 128 }),
-      fingerprint: t.String({ minLength: 1, maxLength: analysisConfig.max_fingerprint_chars }),
+      fingerprint: t.String({ minLength: 1 }),
       searchModel: t.Optional(t.String({ enum: ["none", "gemini", "gemini-lite", "ds-search"] })),
     }),
     detail: { tags: ["REST: Analysis"] },

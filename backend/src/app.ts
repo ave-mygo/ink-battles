@@ -16,6 +16,8 @@ import { dashboardModule } from "./modules/dashboard";
 import { excellentSentencesModule } from "./modules/excellent-sentences";
 import { oauthModule } from "./modules/oauth";
 import { publicModule } from "./modules/public";
+import { quotesModule } from "./modules/quotes";
+import { ensureSiteSettingsInitialized, siteSettingsModule } from "./modules/site-settings";
 import { statusModule } from "./modules/status";
 
 /**
@@ -65,6 +67,7 @@ function createTypedApp() {
     })
     .onError(({ error }) => mapError(error))
     .use(publicModule)
+    .use(quotesModule)
     .use(authModule)
     .use(oauthModule)
     .use(analysisModule)
@@ -72,6 +75,7 @@ function createTypedApp() {
     .use(accountsModule)
     .use(dashboardModule)
     .use(excellentSentencesModule)
+    .use(siteSettingsModule)
     .use(statusModule)
     .all("/*", ({ request }) => shouldProxy(new URL(request.url).pathname) ? proxyToFrontend(request) : Response.json({ success: false, message: "Not found" }, { status: 404 }));
 }
@@ -85,6 +89,7 @@ export type App = ReturnType<typeof createTypedApp>;
  */
 export async function createApp() {
   await ensureBackendIndexes();
+  await ensureSiteSettingsInitialized();
   const recoveredTasks = await recoverInterruptedAnalysisTasks();
   if (recoveredTasks > 0)
     console.warn(`[analysis] recovered ${recoveredTasks} interrupted tasks`);

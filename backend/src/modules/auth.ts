@@ -2,10 +2,9 @@ import type { AuthUser } from "@ink-battles/shared/types/users/user";
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { Elysia, t } from "elysia";
-import { getPublicConfig } from "../config";
 import { COLLECTIONS, findMany, findOne, findOneAndUpdate, insertOne, updateOne } from "../db/mongo";
 import { createUser, generateNextUID, getUserByEmail } from "../db/repositories";
-import { getCookie, getCurrentUser } from "../middleware/auth";
+import { getCookie, getCurrentUser, isAdminUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { createAuthSession, revokeAuthSession, revokeUserSessions } from "../utils/auth-sessions";
 import { authCookie, clearAuthCookie, gravatarUrl, signAuthToken, verifyAuthTokenPayload } from "../utils/crypto";
@@ -14,6 +13,7 @@ import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { safeUser } from "../utils/response";
 import { EMAIL_REGEX, isPasswordValid, normalizeEmail } from "../utils/validators";
 import { initializeUserBilling } from "./billing";
+import { getSiteSettingValue } from "./site-settings";
 
 const MINIMUM_PASSWORD_MESSAGE = "密码不符合要求。密码必须：至少10位字符、包含任意 3 种字符类型";
 const RESET_SESSION_TTL_MS = 10 * 60 * 1000;
@@ -84,7 +84,8 @@ async function consumePasswordResetSession(email: string, code: string) {
  * @returns 验证结果，包含成功标志和邀请码记录
  */
 async function validateInvite(inviteCode?: string) {
-  if (!getPublicConfig().registration.invite_code_required)
+  const registrationPolicy = await getSiteSettingValue("registration.policy");
+  if (!registrationPolicy.invite_code_required)
     return { success: true };
   if (!inviteCode)
     return { success: false, message: "当前注册需要邀请码", needInviteCode: true };
@@ -133,7 +134,7 @@ export const authModule = new Elysia()
     if (!safe)
       return { success: false, message: "未登录", data: null };
     const avatar = user?.avatar || (user?.email ? gravatarUrl(user.email, user.uid) : gravatarUrl("", user!.uid));
-    return { success: true, data: { ...safe, avatar } };
+    return { success: true, data: { ...safe, avatar, isAdmin: isAdminUser(user) } };
   }, { detail: { tags: ["REST: Auth"] } })
   .post("/api/v2/rpc/auth.login", async ({ request, body }) => {
     const email = normalizeEmail(body.email);

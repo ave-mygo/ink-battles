@@ -13,7 +13,9 @@ type AuditEvent
     | "account_bound"
     | "account_unbound"
     | "oauth_login"
-    | "oauth_bind";
+    | "oauth_bind"
+    | "site_setting_updated"
+    | "excellent_sentence_reviewed";
 
 interface AuditLogInput {
   event: AuditEvent;
