@@ -1,5 +1,5 @@
-import type { AnalysisTaskPool, SearchModel } from "./analysis/types";
 import type { AnalysisRuntimeSetting } from "@ink-battles/shared/types/common";
+import type { AnalysisTaskPool, SearchModel } from "./analysis/types";
 import { Elysia, t } from "elysia";
 import { ObjectId } from "mongodb";
 import { COLLECTIONS, count, findOne, insertOne, isObjectId, objectId, updateOne, withTransaction } from "../db/mongo";

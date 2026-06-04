@@ -1,9 +1,9 @@
 import type { AnalysisResult, AnalysisSearchContext } from "./types";
 import { ObjectId } from "mongodb";
 import { COLLECTIONS, findOne, insertOne, updateOne } from "../../db/mongo";
-import { getCachedSiteSettingValue } from "../site-settings";
 import { parseModelOutput } from "../../utils/json-parser";
 import { createProgress } from "../analysis-progress";
+import { getCachedSiteSettingValue } from "../site-settings";
 
 /**
  * 加载搜索上下文数据

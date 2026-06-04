@@ -105,7 +105,7 @@ export function releaseAnalysisTaskSlot(pool: AnalysisTaskPool) {
  * @param executeTask - 任务执行器函数
  * @returns 是否成功加入队列
  */
-export function runQueuedAnalysisTask(taskId: ObjectId,	options: AnalysisTaskOptions,	executeTask: AnalysisTaskExecutor) {
+export function runQueuedAnalysisTask(taskId: ObjectId, options: AnalysisTaskOptions, executeTask: AnalysisTaskExecutor) {
   const queue = getQueue(options.pool);
   if (queue.length >= getQueueLimit(options.pool))
     return false;

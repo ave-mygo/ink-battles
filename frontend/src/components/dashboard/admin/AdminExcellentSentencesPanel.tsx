@@ -50,12 +50,12 @@ const RECOMMENDATION_STATUS_LABELS: Record<ExcellentSentenceRecommendationStatus
 };
 
 const REVIEW_FILTER_QUERIES: Record<ReviewFilter, ReviewFilterQuery> = {
-  pending: { reviewStatus: "pending" },
+  "pending": { reviewStatus: "pending" },
   "approved-normal": { reviewStatus: "approved", recommendationStatus: "not_recommended" },
   "approved-recommended": { reviewStatus: "approved", recommendationStatus: "recommended" },
-  rejected: { reviewStatus: "rejected" },
-  approved: { reviewStatus: "approved" },
-  all: { reviewStatus: "all" },
+  "rejected": { reviewStatus: "rejected" },
+  "approved": { reviewStatus: "approved" },
+  "all": { reviewStatus: "all" },
 };
 
 /**

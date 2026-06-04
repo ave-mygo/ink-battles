@@ -10,7 +10,7 @@ const RE_LINE_SEP = /[;\n]/;
  * @param validators - 验证器映射对象
  * @param path - 当前路径，默认为空字符串
  */
-export function autoDetectMermaidPaths(data: unknown,	validators: Record<string, (item: unknown) => boolean>,	path = ""): void {
+export function autoDetectMermaidPaths(data: unknown, validators: Record<string, (item: unknown) => boolean>, path = ""): void {
   if (data === null || typeof data !== "object")
     return;
 

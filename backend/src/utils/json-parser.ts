@@ -28,7 +28,7 @@ export interface RemovedEntry {
  * @param options - 解析选项，包含验证器和 Mermaid 验证开关
  * @returns 解析结果，包含数据、移除项和警告信息
  */
-export function safeParse<T = unknown>(raw: string,	options: SafeParseOptions = {}): SafeParseResult<T> {
+export function safeParse<T = unknown>(raw: string, options: SafeParseOptions = {}): SafeParseResult<T> {
   const warnings: string[] = [];
   const removed: RemovedEntry[] = [];
   const jsonText = extractJson(raw);
@@ -168,7 +168,7 @@ function applyFixes(json: string): string {
  * @param index - 项的索引
  * @returns 是否有效
  */
-function isValidItem(item: unknown,	validator: (item: unknown) => boolean,	warnings: string[],	path: string,	index: number): boolean {
+function isValidItem(item: unknown, validator: (item: unknown) => boolean, warnings: string[], path: string, index: number): boolean {
   try {
     return validator(item);
   } catch (error) {

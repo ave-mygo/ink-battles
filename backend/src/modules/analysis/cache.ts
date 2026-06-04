@@ -64,7 +64,7 @@ export async function createCachedTask(input: {
  * @param searchModel - 搜索模型类型
  * @returns 匹配的分析请求记录，未找到时返回 null
  */
-export async function findCachedAnalysis(sha1: string,	mode: string,	modelName: string,	searchModel: SearchModel) {
+export async function findCachedAnalysis(sha1: string, mode: string, modelName: string, searchModel: SearchModel) {
   const now = new Date().toISOString();
   return findOne(COLLECTIONS.analysisRequests, {
     "metadata.sha1": sha1,

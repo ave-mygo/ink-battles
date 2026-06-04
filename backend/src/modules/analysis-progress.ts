@@ -28,7 +28,7 @@ export interface AnalysisProgress {
  * @param extra - 额外的进度信息（如块数量、内容长度）
  * @returns 分析进度对象
  */
-export function createProgress(stage: AnalysisStage,	message: string,	percent: number,	extra: Partial<Pick<AnalysisProgress, "chunkCount" | "contentLength">> = {}): AnalysisProgress {
+export function createProgress(stage: AnalysisStage, message: string, percent: number, extra: Partial<Pick<AnalysisProgress, "chunkCount" | "contentLength">> = {}): AnalysisProgress {
   return {
     stage,
     message,
@@ -44,7 +44,7 @@ export function createProgress(stage: AnalysisStage,	message: string,	percent: n
  * @param progress - 进度对象
  * @param status - 可选的任务状态
  */
-export async function updateTaskProgress(taskId: ObjectId,	progress: AnalysisProgress,	status?: "pending" | "processing" | "completed" | "failed" | "cancelled") {
+export async function updateTaskProgress(taskId: ObjectId, progress: AnalysisProgress, status?: "pending" | "processing" | "completed" | "failed" | "cancelled") {
   await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
     ...(status ? { status } : {}),
     progress,

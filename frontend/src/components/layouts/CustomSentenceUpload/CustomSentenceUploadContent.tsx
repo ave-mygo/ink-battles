@@ -108,7 +108,9 @@ export function CustomSentenceUploadContent({
                 <div className="flex items-center justify-between gap-3">
                   <Label htmlFor="custom-sentence-content">句子内容</Label>
                   <span className="text-xs text-muted-foreground">
-                    {content.length}/{MAX_SENTENCE_LENGTH}
+                    {content.length}
+                    /
+                    {MAX_SENTENCE_LENGTH}
                   </span>
                 </div>
                 <Textarea
@@ -151,7 +153,9 @@ export function CustomSentenceUploadContent({
                 <div className="flex items-center justify-between gap-3">
                   <Label htmlFor="custom-sentence-reason">推荐理由</Label>
                   <span className="text-xs text-muted-foreground">
-                    {reason.length}/{MAX_REASON_LENGTH}
+                    {reason.length}
+                    /
+                    {MAX_REASON_LENGTH}
                   </span>
                 </div>
                 <Textarea
