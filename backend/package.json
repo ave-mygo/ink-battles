@@ -7,7 +7,7 @@
     "./app": "./src/app.ts"
   },
   "scripts": {
-    "dev": "bun --watch src/index.ts",
+    "dev": "CONFIG_PATH=../config.toml PORT=3001 FRONTEND_ORIGIN=http://localhost:3000 APP_BASE_URL=http://localhost:3001 ALLOWED_ORIGINS=http://localhost:3001,http://localhost:3000 bun --watch src/index.ts",
     "build": "tsc --noEmit",
     "start": "bun src/index.ts",
     "typecheck": "tsc --noEmit"
@@ -15,7 +15,7 @@
   "dependencies": {
     "@elysiajs/cors": "^1.4.2",
     "@elysiajs/openapi": "^1.4.15",
-    "@google/genai": "^1.52.0",
+    "@google/genai": "^2.8.0",
     "@ink-battles/shared": "workspace:*",
     "@sinclair/typebox": "^0.34.49",
     "bcryptjs": "^3.0.3",
@@ -24,8 +24,8 @@
     "jose": "^6.2.3",
     "md5": "^2.3.0",
     "mongodb": "^7.2.0",
-    "nodemailer": "^8.0.7",
-    "openai": "6.8.1",
+    "nodemailer": "^8.0.10",
+    "openai": "6.42.0",
     "toml": "^4.1.1"
   },
   "devDependencies": {
