@@ -1,14 +1,39 @@
+"use client";
+
 import type { PublicQuote } from "@ink-battles/shared/types/common";
 import { Quote, Sparkles } from "lucide-react";
-
-interface PublicQuotesShowcaseProps {
-  quotes: PublicQuote[];
-}
+import { useEffect, useState } from "react";
+import { createClientEden } from "@/utils/api/eden-client";
+import { unwrapEdenPayload } from "@/utils/api/eden-response";
 
 /**
  * 首页公开名句展示区，只展示已审核且公开的句子。
  */
-export function PublicQuotesShowcase({ quotes }: PublicQuotesShowcaseProps) {
+export function PublicQuotesShowcase() {
+  const [quotes, setQuotes] = useState<PublicQuote[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadQuotes = async () => {
+      const response = await createClientEden().api.v2.quotes.get({ query: { recommend: "true", count: 1 } });
+      const result = await unwrapEdenPayload(
+        response.data,
+        response.error,
+        { success: true, data: { quotes: [], count: 0, type: "recommended" as const } },
+      );
+      if (isMounted) {
+        setQuotes(result.data.quotes);
+      }
+    };
+
+    void loadQuotes();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   if (quotes.length === 0)
     return null;
 

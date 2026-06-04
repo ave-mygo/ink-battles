@@ -1,4 +1,3 @@
-import type { PublicQuotesResponse } from "@ink-battles/shared/types/common";
 import type { PublicConfigResponse } from "@ink-battles/shared/types/common/public-config";
 import type { Metadata } from "next";
 import { DEFAULT_PUBLIC_CONFIG } from "@ink-battles/shared/types/common/public-config";
@@ -52,12 +51,6 @@ export default async function Home() {
   const api = await createServerEden();
   const response = await api.api.v2.config.public.get();
   const publicConfig = await unwrapEdenPayload<PublicConfigResponse>(response.data, response.error, DEFAULT_PUBLIC_CONFIG);
-  const quotesResponse = await api.api.v2.quotes.get({ query: { recommend: "true", count: 1 } });
-  const quotesResult = await unwrapEdenPayload<PublicQuotesResponse>(
-    quotesResponse.data,
-    quotesResponse.error,
-    { success: true, data: { quotes: [], count: 0, type: "recommended" } },
-  );
   const noticeConf = publicConfig.app?.notice ?? {
     enabled: false,
     content: "",
@@ -114,7 +107,7 @@ export default async function Home() {
       />
 
       <WriterConfigProvider initialAvailableGradingModels={availableGradingModels} initialUploadLimits={uploadLimits}>
-        <WriterAnalysisSystem featuredQuotes={quotesResult.data.quotes} />
+        <WriterAnalysisSystem />
       </WriterConfigProvider>
     </>
   );

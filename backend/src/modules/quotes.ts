@@ -16,13 +16,14 @@ function normalizeQuoteCount(value: unknown) {
 }
 
 /**
- * 构建公开名句查询条件，确保未授权、未审核或隐藏内容不会进入公开接口。
+ * 构建名句查询条件。
+ *
+ * 审核通过即表示可公开展示；推荐查询只额外限制推荐状态。
  */
 function buildPublicQuoteFilter(recommend: boolean) {
   return {
     authorizationStatus: "granted",
     reviewStatus: "approved",
-    displayStatus: "public",
     ...(recommend ? { recommendationStatus: "recommended" } : {}),
   };
 }
