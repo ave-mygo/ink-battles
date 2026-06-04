@@ -69,7 +69,7 @@ export const HeaderNav = () => {
           variant: "ghost",
         },
         sentences: {
-          href: "/sentences/upload",
+          href: "/sentences",
           label: "句子",
           icon: <Quote className="h-4 w-4" />,
           variant: "outline",
@@ -142,9 +142,9 @@ export const HeaderNav = () => {
               && "border-blue-300 text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300 dark:border-blue-500/30 dark:text-blue-300 dark:hover:bg-blue-500/10 dark:focus-visible:ring-blue-800",
               item.href === "/status"
               && "border-green-300 text-green-700 hover:bg-green-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-green-300 dark:border-green-500/30 dark:text-green-300 dark:hover:bg-green-500/10 dark:focus-visible:ring-green-800",
-              item.href === "/sentences/upload"
+              item.href === "/sentences"
               && "border-violet-300 text-violet-700 hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-300 dark:border-violet-500/30 dark:text-violet-300 dark:hover:bg-violet-500/10 dark:focus-visible:ring-violet-800",
-              pathname === item.href && "bg-secondary dark:bg-slate-800/60",
+              (pathname === item.href || (item.href === "/sentences" && pathname?.startsWith("/sentences"))) && "bg-secondary dark:bg-slate-800/60",
             )}
           >
             <Link href={item.href} className="flex gap-1 items-center sm:gap-2">
