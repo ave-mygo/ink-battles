@@ -1,7 +1,12 @@
+allowBuilds:
+  "@google/genai": false
+  esbuild: true
+  protobufjs: true
+  sharp: true
+minimumReleaseAge: 0
 shellEmulator: true
 
 trustPolicy: no-downgrade
-
 packages:
   - frontend
   - backend

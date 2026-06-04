@@ -3,6 +3,10 @@
   "type": "module",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
   "exports": {
     "./constants/billing": "./constants/billing.ts",
     "./types": "./types/index.ts",
