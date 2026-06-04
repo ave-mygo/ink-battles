@@ -19,6 +19,7 @@ export interface DatabaseExcellentSentence {
 	reviewedAt?: string | null;
 	metadata?: {
 		reason?: string;
+		sourceType?: "analysis" | "custom_upload";
 	};
 	createdAt: string;
 	updatedAt: string;

@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useCurrentUser, useIsAuthenticated } from "@/store";
 import { collectExcellentSentence, getExcellentSentenceSourceState } from "@/utils/analysis/excellent-sentences";
 
@@ -52,10 +51,10 @@ function dedupeCandidates(sentences: ExcellentSentenceCandidate[]) {
 }
 
 /**
- * 展示 AI 选择的文句高光，并处理用户授权与来源信息补充。
+ * 展示 AI 选择的文句高光，并处理用户收录与来源信息补充。
  *
  * 交互方案选择：候选句直接展示在评分结果面板内，降低用户发现成本和跳转成本；
- * 单句授权、来源补充与最终确认放在弹窗内，避免批量授权误操作并保持提交链路轻量。
+ * 单句收录与来源补充放在弹窗内，避免批量提交误操作并保持提交链路轻量。
  */
 export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: ExcellentSentencesCardProps) {
   const user = useCurrentUser();
@@ -65,7 +64,6 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
   const [selectedSentence, setSelectedSentence] = useState<ExcellentSentenceCandidate | null>(null);
   const [authorName, setAuthorName] = useState("");
   const [workName, setWorkName] = useState("");
-  const [authorizationAccepted, setAuthorizationAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -90,16 +88,11 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
     setSelectedSentence(sentence);
     setAuthorName("");
     setWorkName("");
-    setAuthorizationAccepted(false);
   };
 
   const submitCollection = async () => {
     if (!selectedSentence || !sourceArticleId) {
       toast.error("缺少分析记录 ID，无法收录");
-      return;
-    }
-    if (!authorizationAccepted) {
-      toast.error("请先确认授权说明");
       return;
     }
 
@@ -109,7 +102,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
       sourceArticleId,
       authorName,
       workName,
-      authorizationGranted: authorizationAccepted,
+      authorizationGranted: true,
     });
     setIsSubmitting(false);
 
@@ -134,7 +127,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
             文句高光
           </CardTitle>
           <CardDescription>
-            AI 只保留最值得被看见的 1 到 2 句，授权后进入站内展示与推荐候选库。
+            AI 只保留最值得被看见的 1 到 2 句，收录后进入站内展示与推荐候选库。
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0 p-4 space-y-3 sm:p-5 sm:pt-0">
@@ -174,7 +167,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
 
                   <div className="border-t border-slate-100 pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
                     <p className="text-xs text-slate-400 dark:text-slate-500">
-                      授权仅针对当前这一句
+                      收录仅针对当前这一句
                     </p>
                     {isAuthenticated
                       ? (
@@ -200,7 +193,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
                           <Button asChild size="sm" variant="outline" className="w-full cursor-pointer sm:w-auto">
                             <Link href="/signin">
                               <LogIn className="mr-2 h-4 w-4" />
-                              登录后授权
+                              登录后收录
                             </Link>
                           </Button>
                         )}
@@ -215,7 +208,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
       <Dialog open={!!selectedSentence} onOpenChange={open => !open && setSelectedSentence(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>授权收录这句高光</DialogTitle>
+            <DialogTitle>收录这句高光</DialogTitle>
             <DialogDescription>
               平台希望收集你文章中的高光句子，用于站内展示、推荐与内容优化。
             </DialogDescription>
@@ -224,7 +217,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
           {selectedSentence && (
             <div className="space-y-4">
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 leading-relaxed dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                只有在你主动授权当前句子后，该句子才会进入收录库。未授权句子不会被写入收录库，已提交内容会先处于待审核和隐藏状态。
+                点击提交收录即表示你同意平台收录当前句子。已提交内容会先处于待审核和隐藏状态，审核通过后才可能用于站内展示、推荐与内容优化。
               </div>
 
               <div className="rounded-lg border border-slate-200 p-3 text-sm text-slate-700 leading-relaxed dark:border-slate-800 dark:text-slate-200">
@@ -253,19 +246,9 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
                 />
               </div>
 
-              <Separator />
-
-              <label className="text-sm text-slate-700 flex gap-3 items-start cursor-pointer dark:text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={authorizationAccepted}
-                  onChange={event => setAuthorizationAccepted(event.target.checked)}
-                  className="mt-1 h-4 w-4 cursor-pointer"
-                />
-                <span>
-                  我确认授权平台收录该句子，并理解其可用于站内展示、推荐与内容优化。
-                </span>
-              </label>
+              <p className="text-xs text-slate-500 leading-relaxed dark:text-slate-400">
+                提交收录即视为同意平台在审核通过后使用该句子进行站内展示、推荐与内容优化。
+              </p>
             </div>
           )}
 
@@ -273,8 +256,8 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
             <Button type="button" variant="outline" onClick={() => setSelectedSentence(null)} className="cursor-pointer">
               取消
             </Button>
-            <Button type="button" onClick={submitCollection} disabled={isSubmitting || !authorizationAccepted} className="cursor-pointer disabled:cursor-not-allowed">
-              {isSubmitting ? "提交中" : "确认收录"}
+            <Button type="button" onClick={submitCollection} disabled={isSubmitting} className="cursor-pointer disabled:cursor-not-allowed">
+              {isSubmitting ? "提交中" : "提交收录"}
             </Button>
           </DialogFooter>
         </DialogContent>

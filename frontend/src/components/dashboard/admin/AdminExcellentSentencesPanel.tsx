@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { createClientEden } from "@/utils/api/eden-client";
 import { normalizeEdenResult, unwrapEdenPayload } from "@/utils/api/eden-response";
 
@@ -23,6 +24,23 @@ interface AdminExcellentSentencesPanelProps {
 
 type ReviewFilter = "all" | ExcellentSentenceReviewStatus;
 
+const REVIEW_STATUS_LABELS: Record<ExcellentSentenceReviewStatus, string> = {
+  pending: "待审核",
+  approved: "已通过",
+  rejected: "已拒绝",
+};
+
+const RECOMMENDATION_STATUS_LABELS: Record<ExcellentSentenceRecommendationStatus, string> = {
+  none: "未推荐",
+  candidate: "候选推荐",
+  recommended: "已推荐",
+};
+
+const DISPLAY_STATUS_LABELS: Record<ExcellentSentenceDisplayStatus, string> = {
+  hidden: "隐藏",
+  public: "公开",
+};
+
 /**
  * 亮点句子审核后台面板。
  */
@@ -30,17 +48,33 @@ export function AdminExcellentSentencesPanel({ initialSentences }: AdminExcellen
   const [sentences, setSentences] = useState(initialSentences);
   const [filter, setFilter] = useState<ReviewFilter>("pending");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadSentences = async (nextFilter: ReviewFilter = filter) => {
     const response = await createClientEden().api.v2.admin["excellent-sentences"].get({
       query: { reviewStatus: nextFilter },
     });
-    const payload = await unwrapEdenPayload<{ success: boolean; data?: DatabaseExcellentSentence[] }>(
+    const payload = await unwrapEdenPayload<{ success: boolean; data?: DatabaseExcellentSentence[]; message?: string }>(
       response.data,
       response.error,
       { success: false, data: [] },
     );
     setSentences(payload.data ?? []);
+    return payload;
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const payload = await loadSentences();
+      if (!payload.success) {
+        toast.error(payload.message ?? "刷新失败");
+        return;
+      }
+      toast.success("句子列表已刷新");
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const updateSentence = async (
@@ -99,9 +133,14 @@ export function AdminExcellentSentencesPanel({ initialSentences }: AdminExcellen
               <SelectItem value="all">全部</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={() => loadSentences()} className="cursor-pointer">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            刷新
+          <Button
+            variant="outline"
+            disabled={isRefreshing}
+            onClick={handleRefresh}
+            className="cursor-pointer disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={cn("mr-2 h-4 w-4", isRefreshing && "animate-spin")} />
+            {isRefreshing ? "刷新中" : "刷新"}
           </Button>
         </div>
       </div>
@@ -138,9 +177,9 @@ export function AdminExcellentSentencesPanel({ initialSentences }: AdminExcellen
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <Badge variant="outline">{sentence.reviewStatus}</Badge>
-                      <Badge variant="outline">{sentence.recommendationStatus}</Badge>
-                      <Badge variant="outline">{sentence.displayStatus}</Badge>
+                      <Badge variant="outline">{REVIEW_STATUS_LABELS[sentence.reviewStatus]}</Badge>
+                      <Badge variant="outline">{RECOMMENDATION_STATUS_LABELS[sentence.recommendationStatus]}</Badge>
+                      <Badge variant="outline">{DISPLAY_STATUS_LABELS[sentence.displayStatus]}</Badge>
                     </div>
                   </TableCell>
                   <TableCell>

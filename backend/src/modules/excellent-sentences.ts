@@ -9,6 +9,8 @@ import { ok } from "../utils/response";
 
 const NORMALIZE_SENTENCE_REGEX = /[\s\p{P}\p{S}]/gu;
 const MAX_SOURCE_FIELD_LENGTH = 80;
+const MAX_CUSTOM_SENTENCE_LENGTH = 500;
+const CUSTOM_UPLOAD_SOURCE_ARTICLE_ID = "custom-upload";
 
 interface AnalysisRecordDocument extends Record<string, unknown> {
   article?: {
@@ -235,6 +237,68 @@ export const excellentSentencesModule = new Elysia()
       sourceArticleId: t.String({ minLength: 1, maxLength: 64 }),
       authorName: t.Optional(t.String({ maxLength: MAX_SOURCE_FIELD_LENGTH })),
       workName: t.Optional(t.String({ maxLength: MAX_SOURCE_FIELD_LENGTH })),
+      authorizationGranted: t.Boolean(),
+    }),
+    detail: { tags: ["REST: Excellent Sentences"] },
+  })
+  .post("/api/v2/excellent-sentences/custom", async ({ request, body }) => {
+    const user = await requireUser(request.headers);
+    if (!body.authorizationGranted)
+      return { success: false, message: "请先授权平台收录该句子" };
+
+    const content = body.content.trim();
+    if (!content)
+      return { success: false, message: "句子内容不能为空" };
+
+    const normalizedContent = normalizeSentenceContent(content);
+    const existing = await findOne<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, {
+      normalizedContent,
+      authorizationStatus: "granted",
+    });
+    if (existing)
+      return { success: false, message: "该句子已被收录，请勿重复提交" };
+
+    const now = new Date().toISOString();
+    const authorName = normalizeSourceName(body.authorName, user.nickname || user.email?.split("@")[0] || `用户${user.uid}`);
+    const workName = body.workName?.trim()
+      ? body.workName.trim().slice(0, MAX_SOURCE_FIELD_LENGTH)
+      : null;
+    const reason = body.reason?.trim()
+      ? body.reason.trim().slice(0, 200)
+      : undefined;
+
+    try {
+      await insertOne<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, {
+        content,
+        normalizedContent,
+        sourceArticleId: CUSTOM_UPLOAD_SOURCE_ARTICLE_ID,
+        uid: user.uid,
+        authorName,
+        workName,
+        authorizationStatus: "granted",
+        reviewStatus: "pending",
+        recommendationStatus: "none",
+        displayStatus: "hidden",
+        metadata: {
+          reason,
+          sourceType: "custom_upload",
+        },
+        createdAt: now,
+        updatedAt: now,
+      });
+    } catch (error) {
+      if (isDuplicateKeyError(error))
+        return { success: false, message: "该句子已被收录，请勿重复提交" };
+      throw error;
+    }
+
+    return { success: true, message: "句子已提交，审核通过后可用于站内展示" };
+  }, {
+    body: t.Object({
+      content: t.String({ minLength: 1, maxLength: MAX_CUSTOM_SENTENCE_LENGTH }),
+      authorName: t.Optional(t.String({ maxLength: MAX_SOURCE_FIELD_LENGTH })),
+      workName: t.Optional(t.String({ maxLength: MAX_SOURCE_FIELD_LENGTH })),
+      reason: t.Optional(t.String({ maxLength: 200 })),
       authorizationGranted: t.Boolean(),
     }),
     detail: { tags: ["REST: Excellent Sentences"] },

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Heart, Home, Info, LayoutDashboard, LogIn, LogOut, UserPlus } from "lucide-react";
+import { Activity, Heart, Home, Info, LayoutDashboard, LogIn, LogOut, Quote, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -59,7 +59,7 @@ export const HeaderNav = () => {
 
   // 根据路由动态挑选最多三个导航项：固定包含 首页 + 我的任务 + 另外一个
   const leftItems = (() => {
-    type ItemKey = "home" | "about" | "sponsors" | "status";
+    type ItemKey = "home" | "sentences" | "about" | "sponsors" | "status";
     const all: Record<ItemKey, { href: string; label: string; icon: React.ReactNode; variant?: NavItem["variant"]; className?: string }>
       = {
         home: {
@@ -67,6 +67,12 @@ export const HeaderNav = () => {
           label: "首页",
           icon: <Home className="h-4 w-4" />,
           variant: "ghost",
+        },
+        sentences: {
+          href: "/sentences/upload",
+          label: "句子",
+          icon: <Quote className="h-4 w-4" />,
+          variant: "outline",
         },
         about: {
           href: "/about",
@@ -88,16 +94,18 @@ export const HeaderNav = () => {
         },
       };
 
-    const order: ItemKey[] = ["about", "sponsors", "status"]; // 优先级：关于 > 赞助 > 状态
+    const order: ItemKey[] = ["sentences", "about", "sponsors", "status"]; // 优先级：句子 > 关于 > 赞助 > 状态
     const currentKey: ItemKey | null = pathname === "/"
       ? "home"
       : pathname?.startsWith("/about")
         ? "about"
-        : pathname?.startsWith("/sponsors")
-          ? "sponsors"
-          : pathname?.startsWith("/status")
-            ? "status"
-            : null;
+        : pathname?.startsWith("/sentences")
+          ? "sentences"
+          : pathname?.startsWith("/sponsors")
+            ? "sponsors"
+            : pathname?.startsWith("/status")
+              ? "status"
+              : null;
 
     const result: ItemKey[] = ["home"]; // 固定包含首页和我的任务
 
@@ -134,6 +142,8 @@ export const HeaderNav = () => {
               && "border-blue-300 text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300 dark:border-blue-500/30 dark:text-blue-300 dark:hover:bg-blue-500/10 dark:focus-visible:ring-blue-800",
               item.href === "/status"
               && "border-green-300 text-green-700 hover:bg-green-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-green-300 dark:border-green-500/30 dark:text-green-300 dark:hover:bg-green-500/10 dark:focus-visible:ring-green-800",
+              item.href === "/sentences/upload"
+              && "border-violet-300 text-violet-700 hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-300 dark:border-violet-500/30 dark:text-violet-300 dark:hover:bg-violet-500/10 dark:focus-visible:ring-violet-800",
               pathname === item.href && "bg-secondary dark:bg-slate-800/60",
             )}
           >
