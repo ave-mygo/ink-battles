@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { Elysia, t } from "elysia";
 import { COLLECTIONS, findMany, findOne, findOneAndUpdate, insertOne, updateOne } from "../db/mongo";
 import { createUser, generateNextUID, getUserByEmail } from "../db/repositories";
-import { getCookie, getCurrentUser, isAdminUser } from "../middleware/auth";
+import { canReviewExcellentSentences, getCookie, getCurrentUser, isAdminUser, isHonoraryWriterUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { createAuthSession, revokeAuthSession, revokeUserSessions } from "../utils/auth-sessions";
 import { authCookie, clearAuthCookie, gravatarUrl, signAuthToken, verifyAuthTokenPayload } from "../utils/crypto";
@@ -134,7 +134,16 @@ export const authModule = new Elysia()
     if (!safe)
       return { success: false, message: "未登录", data: null };
     const avatar = user?.avatar || (user?.email ? gravatarUrl(user.email, user.uid) : gravatarUrl("", user!.uid));
-    return { success: true, data: { ...safe, avatar, isAdmin: isAdminUser(user) } };
+    return {
+      success: true,
+      data: {
+        ...safe,
+        avatar,
+        isAdmin: isAdminUser(user),
+        isHonoraryWriter: await isHonoraryWriterUser(user),
+        canReviewExcellentSentences: await canReviewExcellentSentences(user),
+      },
+    };
   }, { detail: { tags: ["REST: Auth"] } })
   .post("/api/v2/rpc/auth.login", async ({ request, body }) => {
     const email = normalizeEmail(body.email);

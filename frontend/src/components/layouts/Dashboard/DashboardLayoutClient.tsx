@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { DASHBOARD_ADMIN_NAV_ITEMS, DASHBOARD_NAV_ITEMS } from "@/lib/constants";
+import { DASHBOARD_ADMIN_NAV_ITEMS, DASHBOARD_NAV_ITEMS, DASHBOARD_REVIEWER_NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useDashboardSidebarActions, useDashboardSidebarOpen } from "@/store/ui";
 
@@ -26,7 +26,9 @@ export const DashboardLayoutClient = ({ user, children }: DashboardLayoutClientP
   const { close } = useDashboardSidebarActions();
   const pathname = usePathname();
   const mainOffsetClass = isSidebarCollapsed ? "lg:ml-16" : "lg:ml-64";
-  const navItems = user.isAdmin ? [...DASHBOARD_NAV_ITEMS, ...DASHBOARD_ADMIN_NAV_ITEMS] : DASHBOARD_NAV_ITEMS;
+  const adminNavItems = user.isAdmin ? DASHBOARD_ADMIN_NAV_ITEMS : [];
+  const reviewerNavItems = user.canReviewExcellentSentences ? DASHBOARD_REVIEWER_NAV_ITEMS : [];
+  const navItems = [...DASHBOARD_NAV_ITEMS, ...adminNavItems, ...reviewerNavItems];
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] overflow-hidden">

@@ -1,7 +1,6 @@
 export type ExcellentSentenceAuthorizationStatus = "granted" | "revoked";
 export type ExcellentSentenceReviewStatus = "pending" | "approved" | "rejected";
-export type ExcellentSentenceRecommendationStatus = "none" | "candidate" | "recommended";
-export type ExcellentSentenceDisplayStatus = "hidden" | "public";
+export type ExcellentSentenceRecommendationStatus = "none" | "recommended";
 
 export interface DatabaseExcellentSentence {
 	_id?: string;
@@ -14,7 +13,6 @@ export interface DatabaseExcellentSentence {
 	authorizationStatus: ExcellentSentenceAuthorizationStatus;
 	reviewStatus: ExcellentSentenceReviewStatus;
 	recommendationStatus: ExcellentSentenceRecommendationStatus;
-	displayStatus: ExcellentSentenceDisplayStatus;
 	reviewerUid?: number | null;
 	reviewedAt?: string | null;
 	metadata?: {

@@ -8,7 +8,7 @@ import { getCurrentUserInfo } from "@/utils/auth/server";
 
 export const metadata: Metadata = {
   title: "亮点句子审核",
-  description: "管理员审核用户授权收录的亮点句子",
+  description: "内容审核者审核用户授权收录的亮点句子",
 };
 
 /**
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
  */
 export default async function AdminExcellentSentencesPage() {
   const user = await getCurrentUserInfo();
-  if (!user?.isAdmin)
+  if (!user?.canReviewExcellentSentences)
     redirect("/dashboard/profile");
 
   const api = await createServerEden();

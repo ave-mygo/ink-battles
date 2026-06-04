@@ -4,6 +4,7 @@ import type {
   AnalysisScoringPolicySetting,
   FriendLink,
   GradingModelAdminConfig,
+  HonoraryWriterUserSummary,
   PublicConfigResponse,
   PublicUploadLimits,
   SiteSettingHistoryItem,
@@ -14,7 +15,7 @@ import type {
 import type { Document, WithId } from "mongodb";
 import { createHash } from "node:crypto";
 import { Elysia, t } from "elysia";
-import { getConfig } from "../config";
+import { getConfig, isConfiguredAdminUid } from "../config";
 import { COLLECTIONS, findMany, findOne, findOneAndUpdate, insertOne } from "../db/mongo";
 import { requireAdmin } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
@@ -92,6 +93,12 @@ const SETTING_DEFINITIONS: Array<Pick<SiteSettingMeta, "key" | "label" | "descri
     description: "模型展示名、启用状态、会员标记和公开说明；密钥与地址仍来自启动配置。",
     category: "content",
   },
+  {
+    key: "content.honoraryWriters",
+    label: "荣誉作家管理",
+    description: "授予指定用户亮点句子审核、通过和驳回权限，不包含站点配置等系统级管理能力。",
+    category: "content",
+  },
 ];
 
 let cachedSettings: Map<SiteSettingKey, SiteSettingDocument> | null = null;
@@ -144,6 +151,9 @@ function getDefaultSettingValue<Key extends SiteSettingKey>(key: Key): SiteSetti
       warning: model.warning,
       supports_json_mode: model.supports_json_mode,
     })),
+    "content.honoraryWriters": {
+      uids: [],
+    },
   };
   return defaults[key] as SiteSettingValueMap[Key];
 }
@@ -233,6 +243,14 @@ function normalizeSettingValue<Key extends SiteSettingKey>(key: Key, value: unkn
       gpt5_nano_temperature: Number.isFinite(Number(record.gpt5_nano_temperature)) ? Number(record.gpt5_nano_temperature) : fallback.gpt5_nano_temperature,
       enable_seed: record.enable_seed !== false,
       enable_json_mode_when_supported: record.enable_json_mode_when_supported !== false,
+    } as SiteSettingValueMap[Key];
+  }
+
+  if (key === "content.honoraryWriters") {
+    const record = value as Partial<SiteSettingValueMap["content.honoraryWriters"]>;
+    const uids = Array.isArray(record.uids) ? record.uids : [];
+    return {
+      uids: Array.from(new Set(uids.map(uid => Number(uid)).filter(uid => Number.isInteger(uid) && uid > 0))).slice(0, 200),
     } as SiteSettingValueMap[Key];
   }
 
@@ -431,6 +449,22 @@ function serializeHistoryItem(item: WithId<SiteSettingChangeDocument>): SiteSett
   };
 }
 
+/**
+ * 序列化后台荣誉作家候选用户。
+ */
+function serializeAdminUser(item: Record<string, unknown>, honoraryWriterUids: Set<number>): HonoraryWriterUserSummary {
+  const uid = Number(item.uid);
+  return {
+    uid,
+    nickname: typeof item.nickname === "string" ? item.nickname : null,
+    email: typeof item.email === "string" ? item.email : null,
+    avatar: typeof item.avatar === "string" ? item.avatar : null,
+    isAdmin: isConfiguredAdminUid(uid),
+    isHonoraryWriter: honoraryWriterUids.has(uid),
+    createdAt: serializeDate(item.createdAt),
+  };
+}
+
 export const siteSettingsModule = new Elysia()
   .get("/api/v2/admin/site-settings", async ({ request }) => {
     await requireAdmin(request.headers);
@@ -447,6 +481,32 @@ export const siteSettingsModule = new Elysia()
     return ok(history.map(item => serializeHistoryItem(item)));
   }, {
     query: t.Object({ key: t.Optional(t.String()) }),
+    detail: { tags: ["REST: Admin"] },
+  })
+  .get("/api/v2/admin/users", async ({ request, query }) => {
+    await requireAdmin(request.headers);
+    const keyword = String(query.q ?? "").trim();
+    const limit = Math.min(Number(query.limit ?? 200) || 200, 500);
+    const userFilter = keyword
+      ? {
+          $or: [
+            { nickname: { $regex: keyword, $options: "i" } },
+            { email: { $regex: keyword, $options: "i" } },
+            { uid: Number(keyword) || -1 },
+          ],
+        }
+      : {};
+    const [users, honoraryWriters] = await Promise.all([
+      findMany<Record<string, unknown>>(COLLECTIONS.users, userFilter, { sort: { uid: -1 }, limit }),
+      getSiteSettingValue("content.honoraryWriters"),
+    ]);
+    const honoraryWriterUids = new Set(honoraryWriters.uids);
+    return ok(users.map(item => serializeAdminUser(item, honoraryWriterUids)));
+  }, {
+    query: t.Object({
+      q: t.Optional(t.String()),
+      limit: t.Optional(t.Numeric()),
+    }),
     detail: { tags: ["REST: Admin"] },
   })
   .put("/api/v2/admin/site-settings/:key", async ({ request, params, body }) => {

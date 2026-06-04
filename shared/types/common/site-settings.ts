@@ -9,7 +9,8 @@ export type SiteSettingKey
 		| "analysis.runtime"
 		| "analysis.scoringPolicy"
 		| "ai.generation"
-		| "ai.gradingModels";
+		| "ai.gradingModels"
+		| "content.honoraryWriters";
 
 export type SiteSettingSource = "config" | "database";
 
@@ -47,6 +48,20 @@ export interface AiGenerationSetting {
 	enable_json_mode_when_supported: boolean;
 }
 
+export interface HonoraryWriterSetting {
+	uids: number[];
+}
+
+export interface HonoraryWriterUserSummary {
+	uid: number;
+	nickname?: string | null;
+	email?: string | null;
+	avatar?: string | null;
+	isAdmin?: boolean;
+	isHonoraryWriter?: boolean;
+	createdAt?: string | null;
+}
+
 export type GradingModelAdminConfig = GradingModelConfig & {
 	enabled: boolean;
 	model: string;
@@ -62,6 +77,7 @@ export interface SiteSettingValueMap {
 	"analysis.scoringPolicy": AnalysisScoringPolicySetting;
 	"ai.generation": AiGenerationSetting;
 	"ai.gradingModels": GradingModelAdminConfig[];
+	"content.honoraryWriters": HonoraryWriterSetting;
 }
 
 export interface SiteSettingMeta {

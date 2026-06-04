@@ -6,14 +6,17 @@ import type {
   AnalysisScoringPolicySetting,
   FriendLink,
   GradingModelAdminConfig,
+  HonoraryWriterSetting,
+  HonoraryWriterUserSummary,
   SiteSettingHistoryItem,
   SiteSettingKey,
   SiteSettingMeta,
   SiteSettingValueMap,
 } from "@ink-battles/shared/types/common";
-import { Clock, Plus, Save, Trash2 } from "lucide-react";
+import { Clock, Plus, Save, Search, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +31,7 @@ import { normalizeEdenResult, unwrapEdenPayload } from "@/utils/api/eden-respons
 interface AdminSiteSettingsPanelProps {
   initialSettings: SiteSettingMeta[];
   initialHistory: SiteSettingHistoryItem[];
+  initialUsers: HonoraryWriterUserSummary[];
 }
 
 type DraftValues = Record<SiteSettingKey, string>;
@@ -47,7 +51,7 @@ const parseJsonDraft = <T,>(draft: string, fallback: T): T => {
 /**
  * 后台站点配置面板。
  */
-export function AdminSiteSettingsPanel({ initialSettings, initialHistory }: AdminSiteSettingsPanelProps) {
+export function AdminSiteSettingsPanel({ initialSettings, initialHistory, initialUsers }: AdminSiteSettingsPanelProps) {
   const [settings, setSettings] = useState(initialSettings);
   const [history, setHistory] = useState(initialHistory);
   const [savingKey, setSavingKey] = useState<SiteSettingKey | null>(null);
@@ -141,6 +145,7 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory }: Admi
   const scoringPolicy = getDraftValue("analysis.scoringPolicy");
   const generation = getDraftValue("ai.generation");
   const gradingModels = getDraftValue("ai.gradingModels");
+  const honoraryWriters = getDraftValue("content.honoraryWriters");
 
   return (
     <div className="space-y-6">
@@ -185,6 +190,14 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory }: Admi
 ))}
 
         {friends && renderCard("site.friends", (<FriendLinksEditor value={friends} onChange={value => updateDraftValue("site.friends", value)} />))}
+
+        {honoraryWriters && renderCard("content.honoraryWriters", (
+          <HonoraryWritersEditor
+            value={honoraryWriters}
+            users={initialUsers}
+            onChange={value => updateDraftValue("content.honoraryWriters", value)}
+          />
+        ))}
 
         {runtime && renderCard("analysis.runtime", (<AnalysisRuntimeEditor value={runtime} onChange={value => updateDraftValue("analysis.runtime", value)} />))}
 
@@ -260,6 +273,112 @@ function FriendLinksEditor({ value, onChange }: { value: FriendLink[]; onChange:
       </Button>
     </div>
   );
+}
+
+function HonoraryWritersEditor({ value, users, onChange }: {
+  value: HonoraryWriterSetting;
+  users: HonoraryWriterUserSummary[];
+  onChange: (value: HonoraryWriterSetting) => void;
+}) {
+  const [keyword, setKeyword] = useState("");
+  const selectedUids = new Set(value.uids);
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  const filteredUsers = users.filter((user) => {
+    if (!normalizedKeyword)
+      return true;
+    return [
+      String(user.uid),
+      user.nickname ?? "",
+      user.email ?? "",
+    ].some(text => text.toLowerCase().includes(normalizedKeyword));
+  });
+
+  const updateUid = (uid: number, selected: boolean) => {
+    const nextUids = selected
+      ? Array.from(new Set([...value.uids, uid]))
+      : value.uids.filter(currentUid => currentUid !== uid);
+    onChange({ uids: nextUids });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          <span>
+            已授权
+            {" "}
+            {value.uids.length}
+            {" "}
+            位荣誉作家
+          </span>
+        </div>
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+          <Input
+            value={keyword}
+            onChange={event => setKeyword(event.target.value)}
+            placeholder="搜索昵称、邮箱或 UID"
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      <div className="max-h-[520px] space-y-2 overflow-y-auto pr-1">
+        {filteredUsers.map((user) => {
+          const displayName = user.nickname || user.email || `UID ${user.uid}`;
+          const isSelected = selectedUids.has(user.uid);
+          return (
+            <div key={user.uid} className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={user.avatar ?? undefined} alt={displayName} />
+                  <AvatarFallback>{getUserInitials(displayName)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{displayName}</p>
+                    {user.isAdmin && <Badge variant="outline">管理员</Badge>}
+                    {isSelected && <Badge className="bg-emerald-600">荣誉作家</Badge>}
+                  </div>
+                  <p className="mt-1 truncate text-xs text-slate-500">
+                    UID:
+                    {" "}
+                    {user.uid}
+                    {user.email ? ` · ${user.email}` : ""}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant={isSelected ? "outline" : "default"}
+                className="cursor-pointer disabled:cursor-not-allowed sm:w-28"
+                disabled={user.isAdmin && !isSelected}
+                onClick={() => updateUid(user.uid, !isSelected)}
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                {isSelected ? "移除" : user.isAdmin ? "已具备" : "授权"}
+              </Button>
+            </div>
+          );
+        })}
+        {filteredUsers.length === 0 && (
+          <div className="rounded-md border border-dashed p-6 text-center text-sm text-slate-500">
+            没有匹配的用户。
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getUserInitials(displayName: string) {
+  return displayName
+    .split(/\s+/u)
+    .map(item => item[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "U";
 }
 
 function AnalysisRuntimeEditor({ value, onChange }: { value: AnalysisRuntimeSetting; onChange: (value: AnalysisRuntimeSetting) => void }) {

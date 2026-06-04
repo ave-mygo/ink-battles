@@ -56,11 +56,42 @@ export function isAdminUser(user: Pick<AuthUser, "uid"> | null | undefined) {
 }
 
 /**
+ * 判断用户是否为荣誉作家。
+ *
+ * 荣誉作家只授予内容运营权限，不继承站点配置等系统级管理能力。
+ */
+export async function isHonoraryWriterUser(user: Pick<AuthUser, "uid"> | null | undefined) {
+  if (typeof user?.uid !== "number")
+    return false;
+
+  const setting = await findOne<Record<string, unknown>>(COLLECTIONS.siteSettings, { key: "content.honoraryWriters" });
+  const value = setting?.value as { uids?: unknown[] } | undefined;
+  return Array.isArray(value?.uids) && value.uids.some(uid => Number(uid) === user.uid);
+}
+
+/**
+ * 判断用户是否可以审核亮点句子。
+ */
+export async function canReviewExcellentSentences(user: Pick<AuthUser, "uid"> | null | undefined) {
+  return isAdminUser(user) || await isHonoraryWriterUser(user);
+}
+
+/**
  * 要求用户必须为管理员，否则抛出 FORBIDDEN 错误。
  */
 export async function requireAdmin(headers: Headers) {
   const user = await requireUser(headers);
   if (!isAdminUser(user))
+    throw new Error("FORBIDDEN");
+  return user;
+}
+
+/**
+ * 要求用户具备亮点句子审核权限，否则抛出 FORBIDDEN 错误。
+ */
+export async function requireExcellentSentenceReviewer(headers: Headers) {
+  const user = await requireUser(headers);
+  if (!await canReviewExcellentSentences(user))
     throw new Error("FORBIDDEN");
   return user;
 }

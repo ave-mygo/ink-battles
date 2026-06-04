@@ -90,6 +90,10 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
 /** 管理员专属仪表盘导航配置 */
 export const DASHBOARD_ADMIN_NAV_ITEMS: DashboardNavItem[] = [
   { label: "站点配置", href: "/dashboard/admin/site-settings", icon: Settings },
+];
+
+/** 内容审核者仪表盘导航配置 */
+export const DASHBOARD_REVIEWER_NAV_ITEMS: DashboardNavItem[] = [
   { label: "亮点句子审核", href: "/dashboard/admin/excellent-sentences", icon: Quote },
 ];
 

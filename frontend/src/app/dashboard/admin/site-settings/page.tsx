@@ -1,4 +1,4 @@
-import type { SiteSettingHistoryItem, SiteSettingMeta } from "@ink-battles/shared/types/common";
+import type { HonoraryWriterUserSummary, SiteSettingHistoryItem, SiteSettingMeta } from "@ink-battles/shared/types/common";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AdminSiteSettingsPanel } from "@/components/dashboard/admin/AdminSiteSettingsPanel";
@@ -20,9 +20,10 @@ export default async function AdminSiteSettingsPage() {
     redirect("/dashboard/profile");
 
   const api = await createServerEden();
-  const [settingsResponse, historyResponse] = await Promise.all([
+  const [settingsResponse, historyResponse, usersResponse] = await Promise.all([
     api.api.v2.admin["site-settings"].get(),
     api.api.v2.admin["site-settings"].history.get(),
+    api.api.v2.admin.users.get({ query: { limit: 200 } }),
   ]);
 
   const settingsPayload = await unwrapEdenPayload<{ success: boolean; data?: SiteSettingMeta[] }>(
@@ -35,11 +36,17 @@ export default async function AdminSiteSettingsPage() {
     historyResponse.error,
     { success: false, data: [] },
   );
+  const usersPayload = await unwrapEdenPayload<{ success: boolean; data?: HonoraryWriterUserSummary[] }>(
+    usersResponse.data,
+    usersResponse.error,
+    { success: false, data: [] },
+  );
 
   return (
     <AdminSiteSettingsPanel
       initialSettings={settingsPayload.data ?? []}
       initialHistory={historyPayload.data ?? []}
+      initialUsers={usersPayload.data ?? []}
     />
   );
 }

@@ -2,7 +2,7 @@ import type { AnalysisResult, ExcellentSentenceCandidate } from "@ink-battles/sh
 import type { DatabaseExcellentSentence } from "@ink-battles/shared/types/database";
 import { Elysia, t } from "elysia";
 import { COLLECTIONS, findMany, findOne, insertOne, isObjectId, objectId, updateOne } from "../db/mongo";
-import { requireAdmin, requireUser } from "../middleware/auth";
+import { requireExcellentSentenceReviewer, requireUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { ok } from "../utils/response";
@@ -92,11 +92,15 @@ function isDuplicateKeyError(error: unknown) {
 
 export const excellentSentencesModule = new Elysia()
   .get("/api/v2/admin/excellent-sentences", async ({ request, query }) => {
-    await requireAdmin(request.headers);
+    await requireExcellentSentenceReviewer(request.headers);
     const reviewStatus = query.reviewStatus && query.reviewStatus !== "all" ? query.reviewStatus : undefined;
     const filter: Record<string, unknown> = {};
     if (reviewStatus)
       filter.reviewStatus = reviewStatus;
+    if (query.recommendationStatus === "not_recommended")
+      filter.recommendationStatus = "none";
+    else if (query.recommendationStatus)
+      filter.recommendationStatus = query.recommendationStatus;
 
     const sentences = await findMany<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, filter, {
       sort: { createdAt: -1 },
@@ -107,12 +111,13 @@ export const excellentSentencesModule = new Elysia()
   }, {
     query: t.Object({
       reviewStatus: t.Optional(t.String({ enum: ["all", "pending", "approved", "rejected"] })),
+      recommendationStatus: t.Optional(t.String({ enum: ["none", "recommended", "not_recommended"] })),
       limit: t.Optional(t.Numeric()),
     }),
     detail: { tags: ["REST: Admin"] },
   })
   .patch("/api/v2/admin/excellent-sentences/:id", async ({ request, params, body }) => {
-    const admin = await requireAdmin(request.headers);
+    const reviewer = await requireExcellentSentenceReviewer(request.headers);
     if (!isObjectId(params.id))
       return { success: false, message: "句子记录不存在" };
 
@@ -121,18 +126,19 @@ export const excellentSentencesModule = new Elysia()
       return { success: false, message: "句子记录不存在" };
 
     const now = new Date().toISOString();
+    const recommendationStatus = body.reviewStatus === "approved" ? body.recommendationStatus : "none";
+
     await updateOne<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, { _id: objectId(params.id) }, {
       reviewStatus: body.reviewStatus,
-      recommendationStatus: body.recommendationStatus,
-      displayStatus: body.displayStatus,
-      reviewerUid: admin.uid,
+      recommendationStatus,
+      reviewerUid: reviewer.uid,
       reviewedAt: now,
       updatedAt: now,
     });
 
     writeAuditLog({
       event: "excellent_sentence_reviewed",
-      uid: admin.uid,
+      uid: reviewer.uid,
       ip: getRequestIp(request),
       userAgent: getRequestUserAgent(request),
       metadata: {
@@ -140,9 +146,11 @@ export const excellentSentencesModule = new Elysia()
         before: {
           reviewStatus: before.reviewStatus,
           recommendationStatus: before.recommendationStatus,
-          displayStatus: before.displayStatus,
         },
-        after: body,
+        after: {
+          reviewStatus: body.reviewStatus,
+          recommendationStatus,
+        },
       },
     });
 
@@ -150,8 +158,7 @@ export const excellentSentencesModule = new Elysia()
   }, {
     body: t.Object({
       reviewStatus: t.String({ enum: ["pending", "approved", "rejected"] }),
-      recommendationStatus: t.String({ enum: ["none", "candidate", "recommended"] }),
-      displayStatus: t.String({ enum: ["hidden", "public"] }),
+      recommendationStatus: t.String({ enum: ["none", "recommended"] }),
     }),
     detail: { tags: ["REST: Admin"] },
   })
@@ -217,7 +224,6 @@ export const excellentSentencesModule = new Elysia()
         authorizationStatus: "granted",
         reviewStatus: "pending",
         recommendationStatus: "none",
-        displayStatus: "hidden",
         metadata: {
           reason: candidate.reason,
         },
@@ -278,7 +284,6 @@ export const excellentSentencesModule = new Elysia()
         authorizationStatus: "granted",
         reviewStatus: "pending",
         recommendationStatus: "none",
-        displayStatus: "hidden",
         metadata: {
           reason,
           sourceType: "custom_upload",
