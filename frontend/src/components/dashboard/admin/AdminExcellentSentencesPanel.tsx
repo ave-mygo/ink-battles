@@ -172,6 +172,7 @@ export function AdminExcellentSentencesPanel({ initialSentences }: AdminExcellen
                   <TableCell>
                     <div className="space-y-1">
                       <div>{sentence.authorName}</div>
+                      <div className="text-xs text-slate-500">UID: {sentence.uid}</div>
                       <div className="text-xs text-slate-500">{sentence.workName ?? "未填写作品"}</div>
                     </div>
                   </TableCell>

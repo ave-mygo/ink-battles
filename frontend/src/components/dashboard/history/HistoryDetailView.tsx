@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
+import { useAuthHydration, useAuthLoading, useCurrentUser, useIsAuthenticated } from "@/store";
 import { toggleRecordPublic } from "@/utils/dashboard/history";
 import { ShareToggle } from "./ShareToggle";
 
@@ -38,10 +38,15 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
   const [isShared, setIsShared] = useState(record.settings?.public || false);
   const [copied, setCopied] = useState(false);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const currentUser = useCurrentUser();
   const isLoggedIn = useIsAuthenticated();
   const authLoading = useAuthLoading();
   useAuthHydration();
   const shouldShowGuestNotice = record.uid == null && !authLoading && !isLoggedIn;
+  const canCollectExcellentSentences = !authLoading
+    && !!currentUser?.isLoggedIn
+    && record.uid != null
+    && String(record.uid) === String(currentUser.uid);
   const timestamp = useMemo(() => new Date(record.timestamp), [record.timestamp]);
   const timeAgo = useMemo(() => formatDistanceToNow(timestamp, { addSuffix: true, locale: zhCN }), [timestamp]);
   const [remainingMinutes, setRemainingMinutes] = useState<number | null>(() =>
@@ -246,6 +251,7 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
           modeName={record.article.input.mode}
           percentileData={percentileData}
           sourceArticleId={record._id}
+          allowExcellentSentenceCollection={canCollectExcellentSentences}
         />
       </div>
     </div>

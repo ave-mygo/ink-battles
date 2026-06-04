@@ -24,6 +24,7 @@ import { collectExcellentSentence, getExcellentSentenceSourceState } from "@/uti
 interface ExcellentSentencesCardProps {
   sentences?: ExcellentSentenceCandidate[];
   sourceArticleId?: string;
+  allowCollection?: boolean;
 }
 
 const NORMALIZE_SENTENCE_REGEX = /[\s\p{P}\p{S}]/gu;
@@ -56,7 +57,7 @@ function dedupeCandidates(sentences: ExcellentSentenceCandidate[]) {
  * 交互方案选择：候选句直接展示在评分结果面板内，降低用户发现成本和跳转成本；
  * 单句收录与来源补充放在弹窗内，避免批量提交误操作并保持提交链路轻量。
  */
-export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: ExcellentSentencesCardProps) {
+export function ExcellentSentencesCard({ sentences = [], sourceArticleId, allowCollection = false }: ExcellentSentencesCardProps) {
   const user = useCurrentUser();
   const isAuthenticated = useIsAuthenticated();
   const candidates = useMemo(() => dedupeCandidates(sentences), [sentences]);
@@ -67,7 +68,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!sourceArticleId || !isAuthenticated) {
+    if (!sourceArticleId || !allowCollection || !isAuthenticated) {
       return;
     }
 
@@ -76,7 +77,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
         setCollectedContents(new Set(result.data.normalizedContents));
       }
     });
-  }, [isAuthenticated, sourceArticleId]);
+  }, [allowCollection, isAuthenticated, sourceArticleId]);
 
   if (candidates.length === 0) {
     return null;
@@ -93,6 +94,10 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
   const submitCollection = async () => {
     if (!selectedSentence || !sourceArticleId) {
       toast.error("缺少分析记录 ID，无法收录");
+      return;
+    }
+    if (!allowCollection) {
+      toast.error("当前页面不支持收录句子");
       return;
     }
 
@@ -165,39 +170,41 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId }: Exce
                     <span>{sentence.reason}</span>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
-                    <p className="text-xs text-slate-400 dark:text-slate-500">
-                      收录仅针对当前这一句
-                    </p>
-                    {isAuthenticated
-                      ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={alreadyCollected ? "outline" : "default"}
-                            disabled={alreadyCollected || !sourceArticleId}
-                            onClick={() => openCollectDialog(sentence)}
-                            className="w-full cursor-pointer disabled:cursor-not-allowed sm:w-auto"
-                          >
-                            {alreadyCollected
-                              ? (
-                                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                                )
-                              : (
-                                  <ShieldCheck className="mr-2 h-4 w-4" />
-                                )}
-                            {alreadyCollected ? "已收录" : "收录这句"}
-                          </Button>
-                        )
-                      : (
-                          <Button asChild size="sm" variant="outline" className="w-full cursor-pointer sm:w-auto">
-                            <Link href="/signin">
-                              <LogIn className="mr-2 h-4 w-4" />
-                              登录后收录
-                            </Link>
-                          </Button>
-                        )}
-                  </div>
+                  {allowCollection && (
+                    <div className="border-t border-slate-100 pt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+                      <p className="text-xs text-slate-400 dark:text-slate-500">
+                        收录仅针对当前这一句
+                      </p>
+                      {isAuthenticated
+                        ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={alreadyCollected ? "outline" : "default"}
+                              disabled={alreadyCollected || !sourceArticleId}
+                              onClick={() => openCollectDialog(sentence)}
+                              className="w-full cursor-pointer disabled:cursor-not-allowed sm:w-auto"
+                            >
+                              {alreadyCollected
+                                ? (
+                                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                                  )
+                                : (
+                                    <ShieldCheck className="mr-2 h-4 w-4" />
+                                  )}
+                              {alreadyCollected ? "已收录" : "收录这句"}
+                            </Button>
+                          )
+                        : (
+                            <Button asChild size="sm" variant="outline" className="w-full cursor-pointer sm:w-auto">
+                              <Link href="/signin">
+                                <LogIn className="mr-2 h-4 w-4" />
+                                登录后收录
+                              </Link>
+                            </Button>
+                          )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -40,6 +40,7 @@ export function AnalysisResults({
   compactMode = false, // 新增精简模式
   analysisId, // 新增 analysisId，提供给完整报告详情页
   sourceArticleId,
+  allowExcellentSentenceCollection = false,
 }: {
   analysisResult?: {
     overallScore: number;
@@ -69,6 +70,7 @@ export function AnalysisResults({
   compactMode?: boolean;
   analysisId?: string;
   sourceArticleId?: string;
+  allowExcellentSentenceCollection?: boolean;
 }) {
   const parsedResult = useMemo<ParsedAnalysisResult>(() => {
     if (analysisResult) {
@@ -251,6 +253,7 @@ export function AnalysisResults({
           <ExcellentSentencesCard
             sentences={excellentSentences}
             sourceArticleId={sourceArticleId}
+            allowCollection={allowExcellentSentenceCollection}
           />
         )}
 
