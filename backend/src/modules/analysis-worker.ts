@@ -1,7 +1,7 @@
 import type { AnalysisTaskOptions } from "./analysis/types";
 import crypto from "crypto-js";
 import { ObjectId } from "mongodb";
-import { COLLECTIONS, deleteOne, findOne, findOneAndUpdate, updateMany, updateOne, withTransaction } from "../db/mongo";
+import { COLLECTIONS, deleteOne, findMany, findOne, findOneAndUpdate, updateMany, updateOne, withTransaction } from "../db/mongo";
 import { runAnalysisModel } from "../integrations/ai";
 import { verifyArticleValue } from "../integrations/validator";
 import { writeAuditLog } from "../utils/audit";
@@ -46,6 +46,27 @@ export const sha1Article = (articleText: string) => crypto.SHA1(articleText.repl
  */
 export async function recoverInterruptedAnalysisTasks() {
   const now = new Date().toISOString();
+
+  // 先退还被中断的已扣费任务
+  const interruptedBilledTasks = await findMany<{
+    _id: ObjectId;
+    uid: number;
+    billing: { deductedFrom?: "grant" | "paid" | null };
+  }>(COLLECTIONS.analysisTasks, {
+    "status": { $in: ["pending", "processing"] },
+    "billing.deducted": true,
+    "billing.refunded": { $ne: true },
+    "billing.completedAt": { $exists: false },
+  });
+
+  let refundedCount = 0;
+  for (const task of interruptedBilledTasks) {
+    if (await refundTaskCallBalance(task._id, task.uid, "failed"))
+      refundedCount++;
+  }
+  if (refundedCount > 0)
+    console.warn(`[analysis] refunded ${refundedCount} interrupted tasks`);
+
   return updateMany(COLLECTIONS.analysisTasks, {
     status: { $in: ["pending", "processing"] },
   }, {
@@ -157,7 +178,7 @@ async function executeAnalysisTask(taskId: ObjectId, options: AnalysisTaskOption
  * @param runStream - 执行流式处理的函数
  * @returns 累积的完整内容
  */
-async function accumulateStreamContent(taskId: ObjectId,	fingerprint: string,	runStream: (onProgress: (chunk: string, chunkCount: number) => Promise<void>) => Promise<string>) {
+async function accumulateStreamContent(taskId: ObjectId, fingerprint: string, runStream: (onProgress: (chunk: string, chunkCount: number) => Promise<void>) => Promise<string>) {
   const streamLimits = getStreamLimits();
   const startTime = Date.now();
   const maxTime = startTime + streamLimits.maxTimeoutMs;
@@ -199,7 +220,7 @@ async function accumulateStreamContent(taskId: ObjectId,	fingerprint: string,	ru
  * @param reason - 退款原因（失败或取消）
  * @returns 是否成功完成退款
  */
-async function refundTaskCallBalance(taskId: ObjectId,	uid: number,	reason: "failed" | "cancelled") {
+async function refundTaskCallBalance(taskId: ObjectId, uid: number, reason: "failed" | "cancelled") {
   const refundedAt = new Date().toISOString();
   let refunded = false;
   try {
