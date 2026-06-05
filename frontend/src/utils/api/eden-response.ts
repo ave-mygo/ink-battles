@@ -66,18 +66,19 @@ export const unwrapEdenPayload = async <T>(
   error: unknown,
   fallbackValue: T,
 ): Promise<T> => {
-  if (data !== undefined) {
+  if (data !== undefined && data !== null) {
     return data as T;
   }
 
   if (error instanceof Response) {
     const contentType = error.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
-      return error.json() as Promise<T>;
+      const payload = await error.json();
+      return (payload ?? fallbackValue) as T;
     }
   }
 
-  if (error !== undefined) {
+  if (error !== undefined && error !== null) {
     return error as T;
   }
 

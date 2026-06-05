@@ -1,4 +1,4 @@
-import type { PublicConfigResponse } from "@ink-battles/shared/types/common/public-config";
+import { DEFAULT_PUBLIC_CONFIG, type PublicConfigResponse } from "@ink-battles/shared/types/common/public-config";
 import type { Metadata } from "next";
 import { ExternalLink, Globe, Home, LinkIcon, Plus } from "lucide-react";
 import Link from "next/link";
@@ -24,7 +24,7 @@ export default async function FriendsPage() {
   // 在组件内部获取配置，确保运行时读取
   const api = await createServerEden();
   const { data, error } = await api.api.v2.config.public.get();
-  const publicConfig = await unwrapEdenPayload<PublicConfigResponse>(data, error, {});
+  const publicConfig = await unwrapEdenPayload<PublicConfigResponse>(data, error, DEFAULT_PUBLIC_CONFIG);
   const friends = publicConfig.friends ?? [];
 
   return (

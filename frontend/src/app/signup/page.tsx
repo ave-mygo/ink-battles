@@ -1,4 +1,4 @@
-import type { PublicConfigResponse } from "@ink-battles/shared/types/common/public-config";
+import { DEFAULT_PUBLIC_CONFIG, type PublicConfigResponse } from "@ink-battles/shared/types/common/public-config";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import SignUpForm from "@/components/layouts/Auth/SignUpForm";
@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SignUpPage() {
   const api = await createServerEden();
   const response = await api.api.v2.config.public.get();
-  const publicConfig = await unwrapEdenPayload<PublicConfigResponse>(response.data, response.error, {});
+  const publicConfig = await unwrapEdenPayload<PublicConfigResponse>(response.data, response.error, DEFAULT_PUBLIC_CONFIG);
   const inviteCodeRequired = publicConfig.registration?.invite_code_required ?? false;
 
   return (
