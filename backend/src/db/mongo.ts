@@ -12,6 +12,7 @@ export const COLLECTIONS = {
   analysisRequests: "analysis_requests",
   analysisTasks: "analysis_tasks",
   excellentSentences: "excellent_sentences",
+  sentenceVectors: "sentence_vectors",
   userBilling: "user_billing",
   promoCodes: "promo_codes",
   promoCodeRedemptions: "promo_code_redemptions",

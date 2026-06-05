@@ -1,16 +1,19 @@
 "use client";
 
-import type { PublicQuote } from "@ink-battles/shared/types/common";
-import { Code2, ExternalLink, Quote, RefreshCw, Sparkles, Upload } from "lucide-react";
+import type { PublicQuote, SentenceSearchResult } from "@ink-battles/shared/types/common";
+import { Code2, ExternalLink, Quote, RefreshCw, Search, Sparkles, Upload } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import { createClientEden } from "@/utils/api/eden-client";
-import { unwrapEdenPayload } from "@/utils/api/eden-response";
+import { normalizeEdenResult, unwrapEdenPayload } from "@/utils/api/eden-response";
 
 const SENTENCE_SAMPLE_COUNT = 6;
 
@@ -27,6 +30,12 @@ function getQuoteSource(quote: PublicQuote) {
 export function SentencesContent() {
   const [quotes, setQuotes] = useState<PublicQuote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [queryText, setQueryText] = useState("");
+  const [queryTags, setQueryTags] = useState("");
+  const [authorName, setAuthorName] = useState("");
+  const [workName, setWorkName] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<SentenceSearchResult[]>([]);
   const featuredQuote = quotes[0];
   const supportingQuotes = useMemo(() => quotes.slice(1, 5), [quotes]);
 
@@ -47,6 +56,38 @@ export function SentencesContent() {
   useEffect(() => {
     void loadQuotes();
   }, [loadQuotes]);
+
+  const runSentenceSearch = async () => {
+    const tags = queryTags.split(/[,\n，]/u).map(tag => tag.trim()).filter(Boolean);
+    if (!queryText.trim()) {
+      toast.error("请输入要搜索的文段");
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const response = await createClientEden().api.v2.sentences.search.post({
+        queryType: "text",
+        text: queryText,
+        tags,
+        authorName: authorName.trim() || undefined,
+        workName: workName.trim() || undefined,
+        limit: 8,
+      });
+      const result = await normalizeEdenResult<{ success: boolean; message?: string; data?: { results: SentenceSearchResult[] } }>(
+        response.data,
+        response.error,
+        "搜索失败",
+      );
+      if (!result.success) {
+        toast.error(result.message ?? "搜索失败");
+        return;
+      }
+      setSearchResults(result.data?.results ?? []);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   return (
     <main className="min-h-screen">
@@ -135,6 +176,68 @@ export function SentencesContent() {
                           还没有已审核句子，欢迎先上传你想分享的句子。
                         </div>
                       )}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-lg">
+              <CardHeader className="border-b bg-muted/30">
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Search className="size-5" />
+                  搜句
+                </CardTitle>
+                <CardDescription>输入文段，从已审核句库里按语义相似度检索。</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5 p-5">
+                <Textarea
+                  className="min-h-32"
+                  value={queryText}
+                  placeholder="粘贴一段想寻找相近表达的文字"
+                  onChange={event => setQueryText(event.target.value)}
+                />
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  <Input value={queryTags} placeholder="标签，用逗号分隔" onChange={event => setQueryTags(event.target.value)} />
+                  <Input value={authorName} placeholder="偏好作者" onChange={event => setAuthorName(event.target.value)} />
+                  <Input value={workName} placeholder="偏好作品" onChange={event => setWorkName(event.target.value)} />
+                </div>
+
+                <Button type="button" className="cursor-pointer disabled:cursor-not-allowed" disabled={searching} onClick={() => void runSentenceSearch()}>
+                  <Search className={searching ? "size-4 animate-spin" : "size-4"} />
+                  {searching ? "搜索中" : "开始搜索"}
+                </Button>
+
+                <div className="space-y-3">
+                  {searchResults.map(result => (
+                    <div key={result.id} className="rounded-md border p-4">
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span>{result.workName ? `${result.authorName} · ${result.workName}` : result.authorName}</span>
+                        {result.isHonoraryWriter && <Badge variant="outline">荣誉作者</Badge>}
+                        {result.isRecommended && <Badge>推荐</Badge>}
+                        <span>
+                          相似度
+                          {" "}
+                          {(result.similarity * 100).toFixed(1)}
+                          %
+                        </span>
+                        {typeof result.rerankScore === "number" && (
+                          <span>
+                            重排
+                            {" "}
+                            {(result.rerankScore * 100).toFixed(1)}
+                            %
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm leading-7 text-foreground">{result.content}</p>
+                      {result.reason && <p className="mt-2 text-xs leading-5 text-muted-foreground">{result.reason}</p>}
+                    </div>
+                  ))}
+                  {!searching && searchResults.length === 0 && (
+                    <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+                      搜索结果会显示在这里。
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

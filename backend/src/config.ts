@@ -4,8 +4,28 @@ import process from "node:process";
 import toml from "toml";
 import { env } from "./env";
 
+export interface SystemModelCredential {
+  api_key: string;
+  base_url: string;
+  model?: string;
+}
+
+export interface SystemEmbeddingModelConfig extends Omit<SystemModelCredential, "model"> {
+  model: string;
+}
+
+export interface SystemRerankModelConfig extends Omit<SystemModelCredential, "model"> {
+  model: string;
+}
+
+export interface SystemModelsConfig extends Record<string, unknown> {
+  embedding?: SystemEmbeddingModelConfig;
+  rerank?: SystemRerankModelConfig;
+  remark: Record<string, SystemModelCredential>;
+}
+
 export interface RuntimeConfig {
-  system_models: Record<string, { api_key: string; base_url: string; model?: string }>;
+  system_models: SystemModelsConfig;
   default_model: number;
   server: {
     max_json_body_bytes: number;
@@ -54,6 +74,12 @@ const MINIMUM_SECRET_BYTES = 32;
 const FORBIDDEN_JWT_SECRETS = new Set(["dev_secret_change_me"]);
 const LOCAL_APP_HOSTNAMES = new Set(["localhost", "127.0.0.1", "0.0.0.0"]);
 
+const isSystemModelCredential = (value: unknown): value is SystemModelCredential =>
+  typeof value === "object"
+  && value !== null
+  && typeof (value as Partial<SystemModelCredential>).api_key === "string"
+  && typeof (value as Partial<SystemModelCredential>).base_url === "string";
+
 /**
  * 断言配置值为非空字符串，否则抛出错误
  * @param value - 待检查的配置值
@@ -73,6 +99,16 @@ function assertRequiredString(value: unknown, name: string) {
  * @param config - 运行时配置对象
  */
 function applyRuntimeDefaults(config: RuntimeConfig) {
+  config.system_models ??= {} as SystemModelsConfig;
+  const rawSystemModels = config.system_models as Record<string, unknown>;
+  const embeddingModel = rawSystemModels.embedding as SystemEmbeddingModelConfig | undefined;
+  const rerankModel = rawSystemModels.rerank as SystemRerankModelConfig | undefined;
+  const remarkGroup = rawSystemModels.remark as Record<string, SystemModelCredential> | undefined;
+
+  config.system_models.embedding = embeddingModel;
+  config.system_models.rerank = rerankModel;
+  config.system_models.remark = remarkGroup ?? {};
+
   config.server ??= {
     max_json_body_bytes: 4 * 1024 * 1024,
     allowed_origins: ["http://localhost:3001"],
@@ -239,3 +275,19 @@ export const isConfiguredAdminUid = (uid: number) => getConfig().admin?.users?.i
  * @returns 应用的 Origin 字符串
  */
 export const getAppOrigin = () => new URL(getConfig().app.base_url).origin;
+
+/**
+ * 读取旧式 system_models.<key> 凭证，自动跳过 embedding/rerank/remark 分组配置。
+ */
+export function getSystemModelCredential(key: string) {
+  const value = (getConfig().system_models as Record<string, unknown>)[key];
+  return isSystemModelCredential(value) ? value : null;
+}
+
+/**
+ * 列出可直接用于状态统计的系统模型凭证。
+ */
+export function listSystemModelCredentials() {
+  return Object.entries(getConfig().system_models as Record<string, unknown>)
+    .filter((entry): entry is [string, SystemModelCredential] => isSystemModelCredential(entry[1]));
+}

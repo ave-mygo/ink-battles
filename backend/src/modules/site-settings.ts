@@ -5,6 +5,7 @@ import type {
   SiteSettingKey,
   SiteSettingMeta,
   SiteSettingValueMap,
+  VectorSearchSetting,
 } from "@ink-battles/shared/types/common";
 import type { WithId } from "mongodb";
 import { createHash } from "node:crypto";
@@ -91,6 +92,69 @@ function mergeGradingModels() {
 }
 
 /**
+ * 合并启动配置中的嵌入模型凭证和数据库中的向量检索运营配置。
+ */
+function mergeVectorSearchSetting(setting: VectorSearchSetting): VectorSearchSetting {
+  const defaultSetting = getDefaultSettingValue("ai.vectorSearch");
+  const normalizedSetting = normalizeSettingValue("ai.vectorSearch", setting);
+  const dynamicModels = new Map(normalizedSetting.models.flatMap(model => [[model.id, model], [model.model, model]]));
+  const dynamicRerankModels = new Map(normalizedSetting.rerankModels.flatMap(model => [[model.id, model], [model.model, model]]));
+  const baseEmbeddingModel = getConfig().system_models.embedding;
+  const models = baseEmbeddingModel ? [baseEmbeddingModel].map((baseModel) => {
+    const dynamicModel = dynamicModels.get(baseModel.model);
+    return {
+      id: dynamicModel?.id ?? baseModel.model,
+      name: dynamicModel?.name ?? baseModel.model,
+      model: baseModel.model,
+      provider: dynamicModel?.provider,
+      dimensions: dynamicModel?.dimensions,
+      capabilities: dynamicModel?.capabilities ?? ["text"],
+      enabled: true,
+      description: dynamicModel?.description,
+    };
+  }) : [];
+  const baseRerankModel = getConfig().system_models.rerank;
+  const rerankModels = baseRerankModel ? [baseRerankModel].map((baseModel) => {
+    const dynamicModel = dynamicRerankModels.get(baseModel.model);
+    return {
+      id: dynamicModel?.id ?? baseModel.model,
+      name: dynamicModel?.name ?? baseModel.model,
+      model: baseModel.model,
+      provider: dynamicModel?.provider,
+      enabled: true,
+      description: dynamicModel?.description,
+    };
+  }) : [];
+  const embeddingModelIds = new Set(models.map(model => model.id));
+  const rerankModelIds = new Set(rerankModels.map(model => model.id));
+
+  return {
+    ...normalizedSetting,
+    enabled: normalizedSetting.enabled && models.length > 0,
+    activeEmbeddingModelId: embeddingModelIds.has(normalizedSetting.activeEmbeddingModelId) ? normalizedSetting.activeEmbeddingModelId : defaultSetting.activeEmbeddingModelId,
+    rerankEnabled: normalizedSetting.rerankEnabled && rerankModels.length > 0,
+    activeRerankModelId: rerankModelIds.has(normalizedSetting.activeRerankModelId) ? normalizedSetting.activeRerankModelId : defaultSetting.activeRerankModelId,
+    models,
+    rerankModels,
+  };
+}
+
+/**
+ * 同步读取合并后的向量检索配置。
+ */
+export function getCachedEffectiveVectorSearchSetting() {
+  return mergeVectorSearchSetting(getCachedSiteSettingValue("ai.vectorSearch"));
+}
+
+/**
+ * 异步读取合并后的向量检索配置。
+ */
+export async function getEffectiveVectorSearchSetting() {
+  await getSettingsMap();
+  return getCachedEffectiveVectorSearchSetting();
+}
+
+/**
  * 根据 ID 查询有效评分模型，凭证仍来自启动配置。
  */
 export function getCachedEffectiveGradingModelById(id: string) {
@@ -143,13 +207,13 @@ export async function ensureSiteSettingsInitialized() {
  */
 export async function getMergedPublicConfig(): Promise<PublicConfigResponse> {
   const baseConfig = getConfig();
-  const [notice, friends, registration, uploadLimits, gradingModels] = await Promise.all([
+  const [notice, friends, registration, uploadLimits] = await Promise.all([
     getSiteSettingValue("site.notice"),
     getSiteSettingValue("site.friends"),
     getSiteSettingValue("registration.policy"),
     getSiteSettingValue("content.uploadLimits"),
-    getSiteSettingValue("ai.gradingModels"),
   ]);
+  const gradingModels = mergeGradingModels();
 
   return {
     app: {
@@ -179,9 +243,15 @@ async function listSiteSettings(): Promise<SiteSettingMeta[]> {
   const settings = await getSettingsMap();
   return SETTING_DEFINITIONS.map((definition) => {
     const setting = settings.get(definition.key);
+    const rawValue = setting?.value ?? getDefaultSettingValue(definition.key);
+    const value = definition.key === "ai.gradingModels"
+      ? mergeGradingModels()
+      : definition.key === "ai.vectorSearch"
+        ? mergeVectorSearchSetting(rawValue as VectorSearchSetting)
+        : rawValue;
     return {
       ...definition,
-      value: setting?.value ?? getDefaultSettingValue(definition.key),
+      value,
       source: setting ? "database" : "config",
       updatedAt: serializeDate(setting?.updatedAt),
       updatedByUid: setting?.updatedByUid ?? null,

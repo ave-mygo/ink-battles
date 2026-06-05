@@ -10,6 +10,7 @@ export type SiteSettingKey
 		| "analysis.scoringPolicy"
 		| "ai.generation"
 		| "ai.gradingModels"
+		| "ai.vectorSearch"
 		| "content.honoraryWriters";
 
 export type SiteSettingSource = "config" | "database";
@@ -52,6 +53,67 @@ export interface HonoraryWriterSetting {
 	uids: number[];
 }
 
+export type EmbeddingModelCapability = "text" | "image";
+
+export interface VectorSearchModelAdminConfig {
+	id: string;
+	name: string;
+	model: string;
+	provider?: string;
+	dimensions?: number;
+	capabilities: EmbeddingModelCapability[];
+	enabled: boolean;
+	description?: string;
+}
+
+export interface RerankModelAdminConfig {
+	id: string;
+	name: string;
+	model: string;
+	provider?: string;
+	enabled: boolean;
+	description?: string;
+}
+
+export interface VectorSearchSetting {
+	enabled: boolean;
+	activeEmbeddingModelId: string;
+	rerankEnabled: boolean;
+	activeRerankModelId: string;
+	rerankCandidateLimit: number;
+	topK: number;
+	minSimilarity: number;
+	similarityWeight: number;
+	rerankWeight: number;
+	recommendationWeight: number;
+	honoraryWriterWeight: number;
+	metadataWeight: number;
+	models: VectorSearchModelAdminConfig[];
+	rerankModels: RerankModelAdminConfig[];
+}
+
+export interface SentenceSearchResult {
+	id: string;
+	content: string;
+	authorName: string;
+	workName?: string | null;
+	reason?: string;
+	tags: string[];
+	similarity: number;
+	rerankScore?: number | null;
+	score: number;
+	isRecommended: boolean;
+	isHonoraryWriter: boolean;
+}
+
+export interface SentenceSearchResponse {
+	results: SentenceSearchResult[];
+	count: number;
+	queryType: "text" | "image";
+	modelId: string;
+	rerankModelId?: string | null;
+}
+
 export interface HonoraryWriterUserSummary {
 	uid: number;
 	nickname?: string | null;
@@ -77,6 +139,7 @@ export interface SiteSettingValueMap {
 	"analysis.scoringPolicy": AnalysisScoringPolicySetting;
 	"ai.generation": AiGenerationSetting;
 	"ai.gradingModels": GradingModelAdminConfig[];
+	"ai.vectorSearch": VectorSearchSetting;
 	"content.honoraryWriters": HonoraryWriterSetting;
 }
 

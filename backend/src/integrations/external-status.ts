@@ -1,4 +1,4 @@
-import { getConfig } from "../config";
+import { getConfig, listSystemModelCredentials } from "../config";
 
 interface ConfiguredStatusModel {
   id: string;
@@ -90,7 +90,7 @@ function getConfiguredStatusModels(): ConfiguredStatusModel[] {
     });
   });
 
-  Object.entries(config.system_models).forEach(([key, model]) => {
+  listSystemModelCredentials().forEach(([key, model]) => {
     const modelName = (model.model ?? key).trim();
     if (!modelName)
       return;

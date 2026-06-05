@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { GoogleGenAI } from "@google/genai";
 import crypto from "crypto-js";
 import OpenAI from "openai";
-import { getConfig } from "../config";
+import { getSystemModelCredential } from "../config";
 import { COLLECTIONS, ensureTtlIndex, findOne, insertOne } from "../db/mongo";
 import { getCachedSiteSettingValue } from "../modules/site-settings";
 import { parseModelOutput } from "../utils/json-parser";
@@ -123,14 +123,13 @@ async function findCachedAnalysis(sha1: string, mode: string, modelId: string, m
  * @returns 模型配置，包含API密钥、基础URL和模型名称
  */
 function selectValidatorModel(searchModel: SearchModel) {
-  const config = getConfig();
   const key = {
     "ds-search": "validator_deepseek_search",
     "gemini": "validator_gemini",
     "gemini-lite": "validator_gemini_lite",
     "none": "validator_nosearch",
   }[searchModel];
-  const model = config.system_models[key];
+  const model = getSystemModelCredential(key);
   if (!model)
     throw new Error(`缺少系统校验模型配置: ${key}`);
   return {

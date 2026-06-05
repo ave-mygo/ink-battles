@@ -120,4 +120,6 @@ export async function ensureBackendIndexes() {
   await ensureIndex("excellent_sentences", { uid: 1, createdAt: -1 }, { name: "idx_excellent_sentences_uid_createdAt" });
   await ensureIndex("excellent_sentences", { sourceArticleId: 1, uid: 1 }, { name: "idx_excellent_sentences_sourceArticleId_uid" });
   await ensureIndex("excellent_sentences", { reviewStatus: 1, recommendationStatus: 1, createdAt: -1 }, { name: "idx_excellent_sentences_public_workflow_v2" });
+  await ensureIndex("sentence_vectors", { sentenceId: 1, modelId: 1 }, { unique: true, name: "uniq_sentence_vectors_sentence_model" });
+  await ensureIndex("sentence_vectors", { modelId: 1, status: 1, updatedAt: -1 }, { name: "idx_sentence_vectors_model_status" });
 }

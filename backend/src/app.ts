@@ -19,6 +19,7 @@ import { publicModule } from "./modules/public";
 import { quotesModule } from "./modules/quotes";
 import { ensureSiteSettingsInitialized, siteSettingsModule } from "./modules/site-settings";
 import { statusModule } from "./modules/status";
+import { vectorSearchModule } from "./modules/vector-search";
 
 /**
  * 判断请求路径是否需要代理到前端
@@ -75,6 +76,7 @@ function createTypedApp() {
     .use(accountsModule)
     .use(dashboardModule)
     .use(excellentSentencesModule)
+    .use(vectorSearchModule)
     .use(siteSettingsModule)
     .use(statusModule)
     .all("/*", ({ request }) => shouldProxy(new URL(request.url).pathname) ? proxyToFrontend(request) : Response.json({ success: false, message: "Not found" }, { status: 404 }));

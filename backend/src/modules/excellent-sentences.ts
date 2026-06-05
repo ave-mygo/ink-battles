@@ -6,6 +6,7 @@ import { requireExcellentSentenceReviewer, requireUser } from "../middleware/aut
 import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { ok } from "../utils/response";
+import { upsertExcellentSentenceVector } from "./vector-search";
 
 const NORMALIZE_SENTENCE_REGEX = /[\s\p{P}\p{S}]/gu;
 const MAX_SOURCE_FIELD_LENGTH = 80;
@@ -126,7 +127,7 @@ export const excellentSentencesModule = new Elysia()
       return { success: false, message: "句子记录不存在" };
 
     const now = new Date().toISOString();
-    const recommendationStatus = body.reviewStatus === "approved" ? body.recommendationStatus : "none";
+    const recommendationStatus: DatabaseExcellentSentence["recommendationStatus"] = body.reviewStatus === "approved" ? body.recommendationStatus as DatabaseExcellentSentence["recommendationStatus"] : "none";
 
     await updateOne<ExcellentSentenceDocument>(COLLECTIONS.excellentSentences, { _id: objectId(params.id) }, {
       reviewStatus: body.reviewStatus,
@@ -135,6 +136,17 @@ export const excellentSentencesModule = new Elysia()
       reviewedAt: now,
       updatedAt: now,
     });
+
+    if (body.reviewStatus === "approved") {
+      await upsertExcellentSentenceVector({
+        ...before,
+        reviewStatus: body.reviewStatus,
+        recommendationStatus,
+        reviewerUid: reviewer.uid,
+        reviewedAt: now,
+        updatedAt: now,
+      });
+    }
 
     writeAuditLog({
       event: "excellent_sentence_reviewed",

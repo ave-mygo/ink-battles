@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { buildSystemPrompt, getModeInstructions } from "../constants/other/prompts";
-import { getCachedEffectiveGradingModelById, getCachedSiteSettingValue } from "../modules/site-settings";
+import { getCachedEffectiveGradingModelById, getCachedPublicGradingModels, getCachedSiteSettingValue } from "../modules/site-settings";
 
 export interface AnalysisStreamInput {
   articleText: string;
@@ -86,4 +86,4 @@ export function calculateScorePercentile(score: number) {
  * 获取所有已启用的公开评分模型列表
  * @returns 已启用的评分模型数组
  */
-export const publicModels = () => getCachedSiteSettingValue("ai.gradingModels").filter(model => model.enabled);
+export const publicModels = () => getCachedPublicGradingModels();

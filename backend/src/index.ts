@@ -1,6 +1,7 @@
+import "@sinclair/typebox/compiler";
+
 import { createApp } from "./app";
 import { env } from "./env";
-import "@sinclair/typebox/compiler";
 
 /**
  * 启动服务器

@@ -10,8 +10,9 @@ import type {
   HonoraryWriterUserSummary,
   SiteSettingKey,
   SiteSettingMeta,
+  VectorSearchSetting,
 } from "@ink-battles/shared/types/common";
-import { Plus, Save, Search, ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { Database, Plus, Save, Search, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -233,6 +234,80 @@ export function GradingModelsEditor({ value, onChange }: { value: GradingModelAd
   );
 }
 
+export function VectorSearchEditor({ value, onChange, onRebuild, rebuilding }: {
+  value: VectorSearchSetting;
+  onChange: (value: VectorSearchSetting) => void;
+  onRebuild: () => void;
+  rebuilding: boolean;
+}) {
+  const embeddingModel = value.models[0];
+  const rerankModel = value.rerankModels[0];
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-4 rounded-md border p-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="text-sm font-medium">向量</div>
+            <p className="mt-1 text-xs text-slate-500">同一个向量模型用于句子入库、以文搜句和以图搜句；图片能力取决于模型 capability。</p>
+          </div>
+          <Button type="button" variant="outline" className="cursor-pointer disabled:cursor-not-allowed" disabled={rebuilding} onClick={onRebuild}>
+            <Database className="mr-2 h-4 w-4" />
+            {rebuilding ? "重建中" : "重建索引"}
+          </Button>
+        </div>
+        <BooleanField
+          id="vector-search-enabled"
+          label="启用向量检索"
+          description="关闭后不会生成新向量，搜索接口也会拒绝请求。"
+          checked={value.enabled}
+          onChange={enabled => onChange({ ...value, enabled })}
+        />
+        {embeddingModel
+          ? <ModelSummary model={embeddingModel} />
+          : (
+              <div className="rounded-md border border-dashed p-4 text-sm text-slate-500">
+                config.toml 还没有配置 system_models.embedding，保存后台配置不会创建真实模型凭证。
+              </div>
+            )}
+        <div className="grid gap-4 md:grid-cols-2">
+          <NumberField label="返回数量" description="搜索默认返回的候选句数量。" value={value.topK} onChange={topK => onChange({ ...value, topK })} />
+          <NumberField label="最低相似度" description="低于该相似度的候选会被过滤。" value={value.minSimilarity} step={0.05} onChange={minSimilarity => onChange({ ...value, minSimilarity })} />
+          <NumberField label="相似度权重" description="语义向量相似度在最终排序中的基础权重。" value={value.similarityWeight} step={0.05} onChange={similarityWeight => onChange({ ...value, similarityWeight })} />
+          <NumberField label="推荐加权" description="推荐句子的额外排序加分。" value={value.recommendationWeight} step={0.01} onChange={recommendationWeight => onChange({ ...value, recommendationWeight })} />
+          <NumberField label="荣誉作者加权" description="荣誉作者句子的额外排序加分。" value={value.honoraryWriterWeight} step={0.01} onChange={honoraryWriterWeight => onChange({ ...value, honoraryWriterWeight })} />
+          <NumberField label="元数据加权" description="标签、作者、作品命中时的额外排序加分。" value={value.metadataWeight} step={0.01} onChange={metadataWeight => onChange({ ...value, metadataWeight })} />
+        </div>
+      </div>
+
+      <div className="space-y-4 rounded-md border p-3">
+        <div>
+          <div className="text-sm font-medium">重排</div>
+          <p className="mt-1 text-xs text-slate-500">以文搜句会先向量召回，再用重排模型精排候选；以图搜句只使用向量召回和业务加权。</p>
+        </div>
+        <BooleanField
+          id="vector-rerank-enabled"
+          label="启用文本重排"
+          description="重排模型需要支持 /rerank 接口，输入为 query 和 documents。"
+          checked={value.rerankEnabled}
+          onChange={rerankEnabled => onChange({ ...value, rerankEnabled })}
+        />
+        {rerankModel
+          ? <ModelSummary model={rerankModel} />
+          : (
+              <div className="rounded-md border border-dashed p-4 text-sm text-slate-500">
+                config.toml 还没有配置 system_models.rerank，文本重排会保持关闭。
+              </div>
+            )}
+        <div className="grid gap-4 md:grid-cols-2">
+          <NumberField label="重排候选数量" description="进入重排模型的向量召回候选数量。" value={value.rerankCandidateLimit} onChange={rerankCandidateLimit => onChange({ ...value, rerankCandidateLimit })} />
+          <NumberField label="重排权重" description="重排相关性分数在最终排序中的加权值。" value={value.rerankWeight} step={0.05} onChange={rerankWeight => onChange({ ...value, rerankWeight })} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function JsonEditor({ keyName, draft, onChange }: { keyName: SiteSettingKey; draft: string; onChange: (value: string) => void }) {
   const isValidJson = (() => {
     try {
@@ -253,6 +328,30 @@ export function JsonEditor({ keyName, draft, onChange }: { keyName: SiteSettingK
         <Badge variant={isValidJson ? "outline" : "destructive"}>{isValidJson ? "JSON 有效" : "JSON 错误"}</Badge>
       </div>
       <Textarea id={`json-${keyName}`} className="min-h-36 font-mono text-xs" value={draft} onChange={event => onChange(event.target.value)} />
+    </div>
+  );
+}
+
+function ModelSummary({ model }: { model: VectorSearchSetting["models"][number] | VectorSearchSetting["rerankModels"][number] }) {
+  const capabilities = "capabilities" in model ? model.capabilities : [];
+
+  return (
+    <div className="rounded-md border p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium">{model.name || model.id}</div>
+          <div className="mt-1 text-xs text-slate-500">
+            {model.model}
+            {model.provider ? ` · ${model.provider}` : ""}
+            {"dimensions" in model && model.dimensions ? ` · ${model.dimensions} 维` : ""}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {capabilities.map(capability => <Badge key={capability} variant="outline">{capability}</Badge>)}
+          <Badge variant={model.enabled ? "default" : "secondary"}>{model.enabled ? "启用" : "停用"}</Badge>
+        </div>
+      </div>
+      {model.description && <p className="mt-2 text-xs leading-5 text-slate-500">{model.description}</p>}
     </div>
   );
 }
@@ -355,10 +454,10 @@ function StringListField({ label, description, value, onChange }: { label: strin
 }
 
 function getUserInitials(displayName: string) {
-  return displayName
+  const initials = displayName
     .split(/\s+/u)
-    .map(item => item[0])
+    .map(item => Array.from(item)[0] ?? "")
     .join("")
-    .toUpperCase()
-    .slice(0, 2) || "U";
+    .toUpperCase();
+  return Array.from(initials).slice(0, 2).join("") || "U";
 }

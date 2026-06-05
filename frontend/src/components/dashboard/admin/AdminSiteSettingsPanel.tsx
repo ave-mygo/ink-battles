@@ -28,6 +28,7 @@ import {
   ScoringPolicyEditor,
   SettingMeta,
   TextField,
+  VectorSearchEditor,
 } from "./AdminSiteSettingsEditors";
 
 interface AdminSiteSettingsPanelProps {
@@ -57,6 +58,7 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory, initia
   const [settings, setSettings] = useState(initialSettings);
   const [history, setHistory] = useState(initialHistory);
   const [savingKey, setSavingKey] = useState<SiteSettingKey | null>(null);
+  const [rebuildingVectors, setRebuildingVectors] = useState(false);
   const [drafts, setDrafts] = useState<DraftValues>(() => Object.fromEntries(
     initialSettings.map(setting => [setting.key, stringifyValue(setting.value)]),
   ) as DraftValues);
@@ -113,6 +115,25 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory, initia
     }
   };
 
+  const rebuildVectorIndex = async () => {
+    setRebuildingVectors(true);
+    try {
+      const response = await createClientEden().api.v2.admin["vector-search"].rebuild.post({ limit: 500 });
+      const result = await normalizeEdenResult<{ success: boolean; message?: string; data?: { total: number; succeeded: number; failed: number } }>(
+        response.data,
+        response.error,
+        "重建失败",
+      );
+      if (!result.success) {
+        toast.error(result.message ?? "重建失败");
+        return;
+      }
+      toast.success(`重建完成：成功 ${result.data?.succeeded ?? 0} 条，失败 ${result.data?.failed ?? 0} 条`);
+    } finally {
+      setRebuildingVectors(false);
+    }
+  };
+
   const renderCard = (key: SiteSettingKey, children: React.ReactNode) => {
     const setting = settingsByKey.get(key);
     if (!setting)
@@ -147,6 +168,7 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory, initia
   const scoringPolicy = getDraftValue("analysis.scoringPolicy");
   const generation = getDraftValue("ai.generation");
   const gradingModels = getDraftValue("ai.gradingModels");
+  const vectorSearch = getDraftValue("ai.vectorSearch");
   const honoraryWriters = getDraftValue("content.honoraryWriters");
 
   return (
@@ -212,6 +234,16 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory, initia
         {generation && renderCard("ai.generation", (<AiGenerationEditor value={generation} onChange={value => updateDraftValue("ai.generation", value)} />))}
 
         {gradingModels && renderCard("ai.gradingModels", (<GradingModelsEditor value={gradingModels} onChange={value => updateDraftValue("ai.gradingModels", value)} />))}
+
+        {vectorSearch && renderCard(
+          "ai.vectorSearch",
+          <VectorSearchEditor
+            value={vectorSearch}
+            onChange={value => updateDraftValue("ai.vectorSearch", value)}
+            onRebuild={rebuildVectorIndex}
+            rebuilding={rebuildingVectors}
+          />,
+        )}
       </div>
 
       <Card>

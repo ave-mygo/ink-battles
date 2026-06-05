@@ -46,6 +46,21 @@ model = "glm-4.7"
 default_model = 0
 
 # -------------------------------------------------------------
+# 向量检索系统模型配置
+# -------------------------------------------------------------
+# 这里只保存模型调用所需的凭证、地址和真实模型名。
+# 启用状态、展示名称、capability、召回/重排数量和排序权重由后台站点配置维护。
+[system_models.embedding]
+base_url = "https://api.example.com/v1"
+api_key = "YOUR_EMBEDDING_API_KEY"
+model = "text-embedding-3-small"
+
+[system_models.rerank]
+base_url = "https://api.example.com/v1"
+api_key = "YOUR_RERANK_API_KEY"
+model = "bge-reranker-v2-m3"
+
+# -------------------------------------------------------------
 # 服务端运行参数
 # -------------------------------------------------------------
 [server]

@@ -7,6 +7,7 @@ import type {
   SiteSettingKey,
   SiteSettingMeta,
   SiteSettingValueMap,
+  VectorSearchSetting,
 } from "@ink-battles/shared/types/common";
 import type { Document } from "mongodb";
 import { getConfig } from "../../config";
@@ -83,6 +84,12 @@ export const SETTING_DEFINITIONS: Array<Pick<SiteSettingMeta, "key" | "label" | 
     category: "content",
   },
   {
+    key: "ai.vectorSearch",
+    label: "向量检索配置",
+    description: "优秀文句语义检索的嵌入模型、索引开关和相似度排序权重；模型凭证仍来自 config.toml。",
+    category: "content",
+  },
+  {
     key: "content.honoraryWriters",
     label: "荣誉作家管理",
     description: "授予指定用户亮点句子审核、通过和驳回权限，不包含站点配置等系统级管理能力。",
@@ -100,6 +107,8 @@ const numericValue = (input: unknown, fallback: number) => {
  */
 export function getDefaultSettingValue<Key extends SiteSettingKey>(key: Key): SiteSettingValueMap[Key] {
   const config = getConfig();
+  const embeddingModel = config.system_models.embedding;
+  const rerankModel = config.system_models.rerank;
   const defaults: SiteSettingValueMap = {
     "site.notice": config.app.notice,
     "site.friends": config.friends ?? [],
@@ -141,6 +150,33 @@ export function getDefaultSettingValue<Key extends SiteSettingKey>(key: Key): Si
       warning: model.warning,
       supports_json_mode: model.supports_json_mode,
     })),
+    "ai.vectorSearch": {
+      enabled: false,
+      activeEmbeddingModelId: embeddingModel?.model ?? "",
+      rerankEnabled: false,
+      activeRerankModelId: rerankModel?.model ?? "",
+      rerankCandidateLimit: 30,
+      topK: 8,
+      minSimilarity: 0.2,
+      similarityWeight: 1,
+      rerankWeight: 0.7,
+      recommendationWeight: 0.08,
+      honoraryWriterWeight: 0.18,
+      metadataWeight: 0.12,
+      models: embeddingModel ? [{
+        id: embeddingModel.model,
+        name: embeddingModel.model,
+        model: embeddingModel.model,
+        capabilities: ["text"],
+        enabled: true,
+      }] : [],
+      rerankModels: rerankModel ? [{
+        id: rerankModel.model,
+        name: rerankModel.model,
+        model: rerankModel.model,
+        enabled: true,
+      }] : [],
+    },
     "content.honoraryWriters": {
       uids: [],
     },
@@ -236,6 +272,58 @@ export function normalizeSettingValue<Key extends SiteSettingKey>(key: Key, valu
     const uids = Array.isArray(record.uids) ? record.uids : [];
     return {
       uids: Array.from(new Set(uids.map(uid => Number(uid)).filter(uid => Number.isInteger(uid) && uid > 0))).slice(0, 200),
+    } as SiteSettingValueMap[Key];
+  }
+
+  if (key === "ai.vectorSearch") {
+    const fallback = getDefaultSettingValue("ai.vectorSearch");
+    const record = value as Partial<VectorSearchSetting> & {
+      activeTextModelId?: string;
+      activeImageModelId?: string;
+    };
+    const modelList = Array.isArray(record.models) ? record.models : fallback.models;
+    const activeEmbeddingModelId = record.activeEmbeddingModelId
+      ?? record.activeTextModelId
+      ?? record.activeImageModelId
+      ?? fallback.activeEmbeddingModelId;
+    return {
+      enabled: record.enabled === true,
+      activeEmbeddingModelId: String(activeEmbeddingModelId).slice(0, 128),
+      rerankEnabled: record.rerankEnabled === true,
+      activeRerankModelId: String(record.activeRerankModelId ?? fallback.activeRerankModelId).slice(0, 128),
+      rerankCandidateLimit: numericValue(record.rerankCandidateLimit, fallback.rerankCandidateLimit),
+      topK: numericValue(record.topK, fallback.topK),
+      minSimilarity: Number.isFinite(Number(record.minSimilarity)) ? Math.max(0, Math.min(1, Number(record.minSimilarity))) : fallback.minSimilarity,
+      similarityWeight: Number.isFinite(Number(record.similarityWeight)) ? Number(record.similarityWeight) : fallback.similarityWeight,
+      rerankWeight: Number.isFinite(Number(record.rerankWeight)) ? Number(record.rerankWeight) : fallback.rerankWeight,
+      recommendationWeight: Number.isFinite(Number(record.recommendationWeight)) ? Number(record.recommendationWeight) : fallback.recommendationWeight,
+      honoraryWriterWeight: Number.isFinite(Number(record.honoraryWriterWeight)) ? Number(record.honoraryWriterWeight) : fallback.honoraryWriterWeight,
+      metadataWeight: Number.isFinite(Number(record.metadataWeight)) ? Number(record.metadataWeight) : fallback.metadataWeight,
+      models: modelList.map((item) => {
+        const model = item as Partial<VectorSearchSetting["models"][number]>;
+        const capabilities = Array.isArray(model.capabilities) ? model.capabilities.filter(capability => capability === "text" || capability === "image") : [];
+        return {
+          id: String(model.id ?? model.model ?? "").slice(0, 128),
+          name: String(model.name ?? model.model ?? "").slice(0, 80),
+          model: String(model.model ?? model.id ?? "").slice(0, 128),
+          provider: model.provider ? String(model.provider).slice(0, 80) : undefined,
+          dimensions: Number.isInteger(Number(model.dimensions)) && Number(model.dimensions) > 0 ? Number(model.dimensions) : undefined,
+          capabilities: capabilities.length ? capabilities : ["text"],
+          enabled: model.enabled !== false,
+          description: model.description ? String(model.description).slice(0, 500) : undefined,
+        };
+      }).filter(model => model.id && model.model),
+      rerankModels: (Array.isArray(record.rerankModels) ? record.rerankModels : fallback.rerankModels).map((item) => {
+        const model = item as Partial<VectorSearchSetting["rerankModels"][number]>;
+        return {
+          id: String(model.id ?? model.model ?? "").slice(0, 128),
+          name: String(model.name ?? model.model ?? "").slice(0, 80),
+          model: String(model.model ?? model.id ?? "").slice(0, 128),
+          provider: model.provider ? String(model.provider).slice(0, 80) : undefined,
+          enabled: model.enabled !== false,
+          description: model.description ? String(model.description).slice(0, 500) : undefined,
+        };
+      }).filter(model => model.id && model.model),
     } as SiteSettingValueMap[Key];
   }
 
