@@ -204,7 +204,7 @@ function SentenceReviewCard({ sentence, saving, onUpdate }: {
           <div className="min-w-0 space-y-2">
             <CardTitle className="flex flex-wrap items-center gap-2 text-base">
               <BookOpen className="h-4 w-4 text-slate-500" />
-              <span className="break-words">{workName}</span>
+              <span className="wrap-break-word">{workName}</span>
             </CardTitle>
             <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="inline-flex items-center gap-1">

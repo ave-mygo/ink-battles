@@ -98,7 +98,7 @@ export const excellentSentencesModule = new Elysia()
     if (reviewStatus)
       filter.reviewStatus = reviewStatus;
     if (query.recommendationStatus === "not_recommended")
-      filter.recommendationStatus = "none";
+      filter.recommendationStatus = { $ne: "recommended" };
     else if (query.recommendationStatus)
       filter.recommendationStatus = query.recommendationStatus;
 
