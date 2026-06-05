@@ -1,5 +1,5 @@
 import type { AuthUser } from "@ink-battles/shared/types/users/user";
-import { randomUUID } from "node:crypto";
+import { constants, createHash, generateKeyPairSync, privateDecrypt, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { Elysia, t } from "elysia";
 import { COLLECTIONS, findMany, findOne, findOneAndUpdate, insertOne, updateOne } from "../db/mongo";
@@ -17,6 +17,12 @@ import { getSiteSettingValue } from "./site-settings";
 
 const MINIMUM_PASSWORD_MESSAGE = "密码不符合要求。密码必须：至少10位字符、包含任意 3 种字符类型";
 const RESET_SESSION_TTL_MS = 10 * 60 * 1000;
+const PASSWORD_KEY_PAIR = generateKeyPairSync("rsa", {
+  modulusLength: 2048,
+  publicKeyEncoding: { type: "spki", format: "pem" },
+  privateKeyEncoding: { type: "pkcs8", format: "pem" },
+});
+const PASSWORD_PUBLIC_KEY_ID = createHash("sha256").update(PASSWORD_KEY_PAIR.publicKey).digest("hex");
 
 /**
  * 延迟指定毫秒数
@@ -24,6 +30,25 @@ const RESET_SESSION_TTL_MS = 10 * 60 * 1000;
  * @returns 延迟结束的 Promise
  */
 const sleep = (milliseconds: number) => new Promise(resolve => setTimeout(resolve, milliseconds));
+
+/**
+ * 解密登录请求中的密码密文。
+ *
+ * 前端只提交 RSA-OAEP 密文，后端解密后继续使用数据库中的 bcrypt hash 校验。
+ */
+function decryptLoginPassword(encryptedPassword: string, keyId: string): string | null {
+  if (keyId !== PASSWORD_PUBLIC_KEY_ID)
+    return null;
+  try {
+    return privateDecrypt({
+      key: PASSWORD_KEY_PAIR.privateKey,
+      padding: constants.RSA_PKCS1_OAEP_PADDING,
+      oaepHash: "sha256",
+    }, Buffer.from(encryptedPassword, "base64")).toString("utf8");
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 创建密码重置会话
@@ -128,6 +153,11 @@ export async function issueLoginResponse(uid: number, data: Record<string, unkno
 }
 
 export const authModule = new Elysia()
+  .get("/api/v2/auth/password-key", () => ({
+    keyId: PASSWORD_PUBLIC_KEY_ID,
+    algorithm: "RSA-OAEP-256",
+    publicKey: PASSWORD_KEY_PAIR.publicKey,
+  }), { detail: { tags: ["REST: Auth"] } })
   .get("/api/v2/auth/me", async ({ request }) => {
     const user = await getCurrentUser(request.headers);
     const safe = safeUser(user as Record<string, unknown> | null);
@@ -147,7 +177,7 @@ export const authModule = new Elysia()
   }, { detail: { tags: ["REST: Auth"] } })
   .post("/api/v2/rpc/auth.login", async ({ request, body }) => {
     const email = normalizeEmail(body.email);
-    const password = typeof body.password === "string" ? body.password : "";
+    const password = decryptLoginPassword(body.encryptedPassword, body.keyId) ?? "";
     if (!email || !password) {
       writeAuditLog({ event: "login_failed", email, ip: getRequestIp(request), userAgent: getRequestUserAgent(request) });
       return { success: false, message: "邮箱或密码错误" };
@@ -159,7 +189,7 @@ export const authModule = new Elysia()
     }
     writeAuditLog({ event: "login_success", uid: user.uid, email, ip: getRequestIp(request), userAgent: getRequestUserAgent(request) });
     return issueLoginResponse(user.uid, {}, request);
-  }, { body: t.Object({ email: t.String(), password: t.String() }), detail: { tags: ["RPC: Auth"] } })
+  }, { body: t.Object({ email: t.String(), encryptedPassword: t.String(), keyId: t.String() }), detail: { tags: ["RPC: Auth"] } })
   .post("/api/v2/rpc/auth.logout", async ({ request }) => {
     const token = getCookie(request.headers, "auth-token");
     const payload = await verifyAuthTokenPayload(token);

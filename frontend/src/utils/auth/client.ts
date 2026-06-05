@@ -4,6 +4,7 @@ import type { AuthUserInfoSafe, UserStore } from "@ink-battles/shared/types/user
 import { clearAuthStore, syncAuthStoreAfterLogin } from "@/store";
 import { createClientEden } from "@/utils/api/eden-client";
 import { normalizeEdenResult } from "@/utils/api/eden-response";
+import { encryptPasswordForTransport, isPasswordTransportKey } from "./password-transport";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -12,6 +13,17 @@ interface ApiResponse<T> {
 }
 
 type VerificationType = "register" | "login" | "reset-password";
+
+const getPasswordTransportKey = async () => {
+  const keyResponse = await getAuthApi().auth["password-key"].get();
+  const transportKey = keyResponse.data ?? keyResponse.error;
+
+  if (!isPasswordTransportKey(transportKey)) {
+    throw new Error("登录密钥获取失败，请刷新页面后重试");
+  }
+
+  return transportKey;
+};
 
 const mapAuthToUserStore = (user: AuthUserInfoSafe): UserStore => ({
   uid: String(user.uid),
@@ -29,7 +41,10 @@ const unwrapAuthResponse = <T>(data: unknown, error: unknown): ApiResponse<T> =>
  * 使用 Eden 调用登录接口。
  */
 export const loginWithPassword = async (email: string, password: string) => {
-  const { data, error } = await getAuthApi().rpc["auth.login"].post({ email, password });
+  const authApi = getAuthApi();
+  const transportKey = await getPasswordTransportKey();
+  const encryptedPasswordPayload = await encryptPasswordForTransport(password, transportKey);
+  const { data, error } = await authApi.rpc["auth.login"].post({ email, ...encryptedPasswordPayload });
   return normalizeEdenResult<{ success: boolean; message: string }>(data, error, "登录失败");
 };
 
