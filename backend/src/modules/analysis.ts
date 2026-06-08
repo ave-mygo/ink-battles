@@ -69,12 +69,8 @@ export const analysisModule = new Elysia()
 
     const user = await getCurrentUser(request.headers);
     const isSponsor = user ? await hasDonatedAccount(user.uid) : false;
-    if (model.premium) {
-      if (!user)
-        return { success: false, error: "会员模型需要登录后使用，请先登录" };
-      if (!isSponsor)
-        return { success: false, error: "会员模型仅限赞助会员使用，请先开通会员后再提交分析" };
-    }
+    if (model.premium && !user)
+      return { success: false, error: "会员模型需要登录后使用，请先登录" };
     const pool: AnalysisTaskPool = isSponsor ? "sponsor" : "standard";
     const sha1 = sha1Article(body.articleText);
     const modelName = cleanModelName(model.model);
