@@ -11,6 +11,7 @@ import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { redirectWithMessage } from "../utils/response";
 import { issueLoginResponse } from "./auth";
 import { initializeUserBilling } from "./billing";
+import { getSiteSettingValue } from "./site-settings";
 
 interface OAuthState { method: "signin" | "signup" | "bind"; inviteCode?: string }
 
@@ -124,7 +125,8 @@ function parseState(value: string | null): OAuthState | null {
  * @returns 包含操作结果、错误消息及是否需要邀请码的对象
  */
 async function consumeInviteIfNeeded(inviteCode: string | undefined, uid: number) {
-  if (!getConfig().registration.invite_code_required)
+  const registrationPolicy = await getSiteSettingValue("registration.policy");
+  if (!registrationPolicy.invite_code_required)
     return { success: true };
   if (!inviteCode)
     return { success: false, message: "当前注册需要邀请码", needInviteCode: true };
