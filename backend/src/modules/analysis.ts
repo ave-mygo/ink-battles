@@ -68,9 +68,14 @@ export const analysisModule = new Elysia()
       return { success: false, error: "无效的评分模型" };
 
     const user = await getCurrentUser(request.headers);
-    if (model.premium && !user)
-      return { success: false, error: "高级模型需要登录后使用，请先登录" };
-    const pool: AnalysisTaskPool = user && await hasDonatedAccount(user.uid) ? "sponsor" : "standard";
+    const isSponsor = user ? await hasDonatedAccount(user.uid) : false;
+    if (model.premium) {
+      if (!user)
+        return { success: false, error: "会员模型需要登录后使用，请先登录" };
+      if (!isSponsor)
+        return { success: false, error: "会员模型仅限赞助会员使用，请先开通会员后再提交分析" };
+    }
+    const pool: AnalysisTaskPool = isSponsor ? "sponsor" : "standard";
     const sha1 = sha1Article(body.articleText);
     const modelName = cleanModelName(model.model);
     const normalizedSearchModel = normalizeSearchModel(body.searchModel);
