@@ -132,7 +132,7 @@ export function ExcellentSentencesCard({ sentences = [], sourceArticleId, allowC
             文句高光
           </CardTitle>
           <CardDescription>
-            AI 只保留最值得被看见的 1 到 2 句，收录后进入站内展示与推荐候选库。
+            AI 为你提炼文中精华 1-2 句，佳作将被选入站内推荐。
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-0 p-4 space-y-3 sm:p-5 sm:pt-0">
