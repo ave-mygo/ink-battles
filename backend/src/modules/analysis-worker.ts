@@ -141,7 +141,7 @@ async function executeAnalysisTask(taskId: ObjectId, options: AnalysisTaskOption
         onProgress: progress,
       }));
 
-    await logTaskProgress(taskId, createProgress("finalizing", "正在解析结果并写入数据库", 95), "processing");
+    await logTaskProgress(taskId, createProgress("finalizing", "正在解析报告并匹配作者风格", 95), "processing");
     await saveAnalysisResult({ taskId, uid: options.uid, accumulatedContent, search, ensureTaskActive });
     if (verification.session) {
       await deleteOne(COLLECTIONS.sessions, { session: verification.session });

@@ -1,4 +1,5 @@
 import type { FriendLink, PublicAppNotice, PublicUploadLimits } from "./public-config";
+import type { AuthorStyleSetting } from "./author-styles";
 import type { GradingModelConfig } from "./config";
 
 export type SiteSettingKey
@@ -11,6 +12,7 @@ export type SiteSettingKey
 		| "ai.generation"
 		| "ai.gradingModels"
 		| "ai.vectorSearch"
+		| "ai.authorStyle"
 		| "content.honoraryWriters";
 
 export type SiteSettingSource = "config" | "database";
@@ -140,6 +142,7 @@ export interface SiteSettingValueMap {
 	"ai.generation": AiGenerationSetting;
 	"ai.gradingModels": GradingModelAdminConfig[];
 	"ai.vectorSearch": VectorSearchSetting;
+	"ai.authorStyle": AuthorStyleSetting;
 	"content.honoraryWriters": HonoraryWriterSetting;
 }
 

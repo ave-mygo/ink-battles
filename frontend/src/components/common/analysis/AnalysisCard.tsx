@@ -2,6 +2,7 @@
 
 import type { AnalysisResult } from "@ink-battles/shared/types/ai";
 import { BadgeCheck, BookOpen, Lightbulb, Star, Target } from "lucide-react";
+import { ArticleStyleProfileCard } from "@/components/common/analysis/ArticleStyleProfileCard";
 import { AuthorMatchCard } from "@/components/common/analysis/AuthorMatchCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -12,6 +13,7 @@ interface AnalysisCardProps {
   improvements: string[];
   overallAssessment?: string;
   tags: string[];
+  articleStyleProfile?: AnalysisResult["articleStyleProfile"];
   authorMatches?: AnalysisResult["authorMatches"];
 }
 
@@ -25,9 +27,10 @@ export function AnalysisCard({
   improvements,
   overallAssessment,
   tags,
+  articleStyleProfile,
   authorMatches,
 }: AnalysisCardProps) {
-  const hasContent = summary || strengths.length > 0 || improvements.length > 0 || overallAssessment || tags.length > 0 || authorMatches?.length;
+  const hasContent = summary || strengths.length > 0 || improvements.length > 0 || overallAssessment || tags.length > 0 || articleStyleProfile || authorMatches?.length;
 
   if (!hasContent) {
     return null;
@@ -73,6 +76,13 @@ export function AnalysisCard({
                 ))}
               </div>
             </div>
+          </>
+        )}
+
+        {articleStyleProfile && (
+          <>
+            <Separator />
+            <ArticleStyleProfileCard profile={articleStyleProfile} />
           </>
         )}
 

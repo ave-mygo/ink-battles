@@ -6,7 +6,7 @@ import {
   calculatePaidCallPrice as calculatePaidCallPriceByBillingPlan,
   getBillingTierInfo,
 } from "@ink-battles/shared/constants/billing";
-import { CreditCard, History, Link as LinkIcon, Quote, Settings, User } from "lucide-react";
+import { CreditCard, Feather, History, Link as LinkIcon, Quote, Settings, User } from "lucide-react";
 
 export const db_name = "ink_battles";
 export const db_table = "analysis_requests";
@@ -90,6 +90,7 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
 /** 管理员专属仪表盘导航配置 */
 export const DASHBOARD_ADMIN_NAV_ITEMS: DashboardNavItem[] = [
   { label: "站点配置", href: "/dashboard/admin/site-settings", icon: Settings },
+  { label: "作者风格库", href: "/dashboard/admin/author-styles", icon: Feather },
 ];
 
 /** 内容审核者仪表盘导航配置 */

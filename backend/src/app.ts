@@ -10,6 +10,7 @@ import { assertRateLimit } from "./middleware/rate-limit";
 import { accountsModule } from "./modules/accounts";
 import { analysisModule } from "./modules/analysis";
 import { recoverInterruptedAnalysisTasks } from "./modules/analysis-worker";
+import { authorStylesModule } from "./modules/author-styles";
 import { authModule } from "./modules/auth";
 import { billingModule } from "./modules/billing";
 import { dashboardModule } from "./modules/dashboard";
@@ -72,6 +73,7 @@ function createTypedApp() {
     .use(authModule)
     .use(oauthModule)
     .use(analysisModule)
+    .use(authorStylesModule)
     .use(billingModule)
     .use(accountsModule)
     .use(dashboardModule)

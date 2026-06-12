@@ -23,7 +23,19 @@ export interface AnalysisResult {
   dimensions: Array<{ name: string; score: number; description?: string }>;
   strengths: unknown[];
   improvements: unknown[];
-  authorMatches?: Array<{ name: string; styleLabel: string; description: string; confidence: number; reasons: string[] }>;
+  articleStyleProfile?: {
+    languageHabits: string[];
+    sentenceStructures: string[];
+    expressionRhythm: string;
+    imageryPreferences: string[];
+    emotionalTendency: string;
+    narrativeMode: string;
+    spiritualCore: string;
+    styleLabel: string;
+    summary: string;
+    keywords: string[];
+  };
+  authorMatches?: Array<{ authorId?: string; name: string; styleLabel: string; description: string; confidence: number; similarity?: number; source?: "library" | "model"; reasons: string[] }>;
   excellentSentences?: Array<{ content: string; reason: string }>;
 }
 

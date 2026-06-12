@@ -18,6 +18,7 @@ import { normalizeEdenResult, unwrapEdenPayload } from "@/utils/api/eden-respons
 import {
   AiGenerationEditor,
   AnalysisRuntimeEditor,
+  AuthorStyleSettingEditor,
   BooleanField,
   FriendLinksEditor,
   GradingModelsEditor,
@@ -169,6 +170,7 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory, initia
   const generation = getDraftValue("ai.generation");
   const gradingModels = getDraftValue("ai.gradingModels");
   const vectorSearch = getDraftValue("ai.vectorSearch");
+  const authorStyle = getDraftValue("ai.authorStyle");
   const honoraryWriters = getDraftValue("content.honoraryWriters");
 
   return (
@@ -244,6 +246,8 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory, initia
             rebuilding={rebuildingVectors}
           />,
         )}
+
+        {authorStyle && renderCard("ai.authorStyle", (<AuthorStyleSettingEditor value={authorStyle} onChange={value => updateDraftValue("ai.authorStyle", value)} />))}
       </div>
 
       <Card>

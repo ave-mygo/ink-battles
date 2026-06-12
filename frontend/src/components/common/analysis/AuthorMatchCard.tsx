@@ -8,9 +8,9 @@ interface AuthorMatchCardProps {
 }
 
 /**
- * 展示 AI 返回的作者风格参照结果。
+ * 展示作者风格库返回的相似作者结果。
  *
- * 这里不在前端重新推断作者，避免 UI 逻辑覆盖模型基于原文和完整报告做出的判断。
+ * 这里不在前端重新推断作者，避免 UI 逻辑覆盖后端基于风格特征与向量相似度做出的判断。
  */
 export function AuthorMatchCard({ matches = [] }: AuthorMatchCardProps) {
   const visibleMatches = normalizeAuthorMatches(matches);
@@ -26,7 +26,7 @@ export function AuthorMatchCard({ matches = [] }: AuthorMatchCardProps) {
         你的创作最像哪位作者
       </h4>
       <p className="text-xs text-slate-500 mb-3 dark:text-slate-400">
-        由 AI 基于原文风格和完整评测生成，只作为风格参照，不代表作者归属判断。
+        优先展示作者风格库向量匹配结果；未命中时保留模型基于文本分析生成的作者参照，只作为创作倾向参考。
       </p>
       <div className="space-y-3">
         {visibleMatches.map(match => (
@@ -36,9 +36,14 @@ export function AuthorMatchCard({ matches = [] }: AuthorMatchCardProps) {
                 <h5 className="text-sm text-slate-900 font-semibold dark:text-slate-100">{match.name}</h5>
                 <p className="text-xs text-emerald-700 font-medium dark:text-emerald-300">{match.styleLabel}</p>
               </div>
-              <div className="text-xs text-slate-600 px-2 py-1 border border-slate-200 rounded-md bg-white shrink-0 dark:text-slate-300 dark:border-slate-700 dark:bg-slate-800">
-                {clampConfidence(match.confidence)}
-                %
+              <div className="flex flex-col gap-1 items-end shrink-0">
+                <span className="text-[11px] text-emerald-700 px-2 py-0.5 border border-emerald-200 rounded-md bg-emerald-50 dark:text-emerald-300 dark:border-emerald-900 dark:bg-emerald-950/30">
+                  {match.source === "library" ? "风格库匹配" : "模型参照"}
+                </span>
+                <span className="text-xs text-slate-600 px-2 py-1 border border-slate-200 rounded-md bg-white dark:text-slate-300 dark:border-slate-700 dark:bg-slate-800">
+                  {clampConfidence(match.confidence)}
+                  %
+                </span>
               </div>
             </div>
             {match.description && (
@@ -47,7 +52,7 @@ export function AuthorMatchCard({ matches = [] }: AuthorMatchCardProps) {
             <div className="space-y-1">
               <div className="text-xs text-slate-500 font-medium flex gap-1.5 items-center dark:text-slate-400">
                 <Scale className="h-3.5 w-3.5" />
-                AI 选择依据
+                相似依据
               </div>
               <ul className="space-y-1">
                 {match.reasons.slice(0, 3).map(reason => (
@@ -75,6 +80,7 @@ function normalizeAuthorMatches(matches: unknown): AuthorStyleMatch[] {
 
   return matches
     .filter(isAuthorStyleMatch)
+    .map(match => ({ ...match, source: match.source ?? "model" }))
     .slice(0, 3);
 }
 

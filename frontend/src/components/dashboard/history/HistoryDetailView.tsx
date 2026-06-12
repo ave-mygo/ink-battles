@@ -4,7 +4,7 @@ import type { ScorePercentileResult } from "@ink-battles/shared/types/ai";
 import type { DatabaseAnalysisRecord } from "@ink-battles/shared/types/database/analysis_requests";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { Check, Copy, Globe, Lock, ShieldAlert } from "lucide-react";
+import { Check, Copy, Feather, Globe, Lock, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnalysisResults } from "@/components/common/analysis/AnalysisResults";
@@ -54,6 +54,7 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
       ? getRemainingMinutes(record.privacy.expiresAt)
       : null,
   );
+  const authorStyleStatus = record.article.output.authorStyleStatus;
 
   const shareUrl = typeof window !== "undefined"
     ? `${window.location.origin}/share/${record._id}`
@@ -238,6 +239,15 @@ export function HistoryDetailView({ record, showShareControls, showOriginalText 
             <div className="text-slate-800 p-4 rounded-lg bg-slate-50 whitespace-pre-wrap dark:text-slate-200 dark:bg-slate-900">
               {record.article.input.articleText}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {authorStyleStatus === "failed" && (
+        <Card className="border-0 rounded-2xl bg-white/80 shadow-md backdrop-blur-sm dark:bg-slate-900/80">
+          <CardContent className="p-4 text-sm text-amber-700 flex gap-3 items-center dark:text-amber-300">
+            <Feather className="h-4 w-4" />
+            <span>作者风格匹配暂时不可用，基础分析结果不受影响。</span>
           </CardContent>
         </Card>
       )}

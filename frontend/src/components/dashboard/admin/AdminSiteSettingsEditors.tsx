@@ -4,6 +4,7 @@ import type {
   AiGenerationSetting,
   AnalysisRuntimeSetting,
   AnalysisScoringPolicySetting,
+  AuthorStyleSetting,
   FriendLink,
   GradingModelAdminConfig,
   HonoraryWriterSetting,
@@ -197,6 +198,33 @@ export function AiGenerationEditor({ value, onChange }: { value: AiGenerationSet
       <NumberField label="GPT-5 nano temperature" description="针对 gpt-5-nano 的特殊温度。" value={value.gpt5_nano_temperature} step={0.1} onChange={gpt5_nano_temperature => onChange({ ...value, gpt5_nano_temperature })} />
       <BooleanField id="ai-seed" label="启用 seed" description="启用后会用 fingerprint 作为 seed，提升同输入稳定性。" checked={value.enable_seed} onChange={enable_seed => onChange({ ...value, enable_seed })} />
       <BooleanField id="ai-json-mode" label="启用 JSON mode" description="模型支持时请求 JSON object，提升解析稳定性。" checked={value.enable_json_mode_when_supported} onChange={enable_json_mode_when_supported => onChange({ ...value, enable_json_mode_when_supported })} />
+    </div>
+  );
+}
+
+export function AuthorStyleSettingEditor({ value, onChange }: { value: AuthorStyleSetting; onChange: (value: AuthorStyleSetting) => void }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <BooleanField
+        id="author-style-enabled"
+        label="启用作者风格匹配"
+        description="开启后，分析完成时会抽取待分析文本的风格特征并匹配作者风格库。"
+        checked={value.enabled}
+        onChange={enabled => onChange({ ...value, enabled })}
+      />
+      <NumberField
+        label="相似度阈值"
+        description="低于该阈值时不展示作者匹配模块，建议保持偏保守。"
+        value={value.similarityThreshold}
+        step={0.01}
+        onChange={similarityThreshold => onChange({ ...value, similarityThreshold })}
+      />
+      <NumberField
+        label="最多返回作者数"
+        description="分析结果中最多展示的相似作者数量。"
+        value={value.topK}
+        onChange={topK => onChange({ ...value, topK })}
+      />
     </div>
   );
 }

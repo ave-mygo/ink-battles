@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { COLLECTIONS, findOne, insertOne, updateOne } from "../../db/mongo";
 import { parseModelOutput } from "../../utils/json-parser";
 import { createProgress } from "../analysis-progress";
+import { matchAuthorStyleForArticle } from "../author-styles";
 import { getCachedSiteSettingValue } from "../site-settings";
 
 /**
@@ -53,6 +54,10 @@ export async function saveAnalysisResult(input: {
     throw new Error("返回结果格式无效");
 
   parseResult.data.excellentSentences = normalizeExcellentSentences(parseResult.data.excellentSentences);
+  const modelAuthorMatches = normalizeAuthorMatches(parseResult.data.authorMatches);
+  const authorStyleResult = await resolveAuthorStyleMatches(task.input.articleText);
+  parseResult.data.articleStyleProfile = authorStyleResult.articleProfile ?? parseResult.data.articleStyleProfile;
+  parseResult.data.authorMatches = mergeAuthorMatches(authorStyleResult.matches, modelAuthorMatches);
   const overallScore = calculateFinalScore(parseResult.data);
   const resultId = new ObjectId();
   await insertOne(COLLECTIONS.analysisRequests, {
@@ -69,6 +74,9 @@ export async function saveAnalysisResult(input: {
         result: JSON.stringify(parseResult.data),
         overallScore,
         tags: parseResult.data.tags || [],
+        authorStyleStatus: authorStyleResult.status,
+        ...(authorStyleResult.error ? { authorStyleError: authorStyleResult.error } : {}),
+        authorStyleMatchedAt: new Date().toISOString(),
       },
     },
     metadata: task.metadata,
@@ -87,6 +95,77 @@ export async function saveAnalysisResult(input: {
       "billing.completedAt": new Date().toISOString(),
     },
   });
+}
+
+/**
+ * 在任务完成前完成作者风格匹配，保证分析页和历史页看到的是同一份完整结果。
+ */
+async function resolveAuthorStyleMatches(articleText: string): Promise<{
+  articleProfile: AnalysisResult["articleStyleProfile"] | null;
+  matches: NonNullable<AnalysisResult["authorMatches"]>;
+  status: "ready" | "failed";
+  error?: string;
+}> {
+  try {
+    const result = await matchAuthorStyleForArticle(articleText);
+    return {
+      articleProfile: result.articleProfile,
+      matches: result.matches,
+      status: "ready",
+    };
+  } catch (error) {
+    console.warn("[analysis] author style match failed", error);
+    return {
+      articleProfile: null,
+      matches: [],
+      status: "failed",
+      error: error instanceof Error ? error.message : "UNKNOWN_AUTHOR_STYLE_MATCH_ERROR",
+    };
+  }
+}
+
+/**
+ * 保留模型原生作者参照，并把作者风格库命中的结果放在前面作为增强信息。
+ */
+function mergeAuthorMatches(
+  libraryMatches: NonNullable<AnalysisResult["authorMatches"]>,
+  modelMatches: NonNullable<AnalysisResult["authorMatches"]>,
+): NonNullable<AnalysisResult["authorMatches"]> {
+  const seen = new Set<string>();
+  const merged: NonNullable<AnalysisResult["authorMatches"]> = [];
+  for (const match of [...libraryMatches, ...modelMatches]) {
+    const key = match.name.trim().toLowerCase();
+    if (!key || seen.has(key))
+      continue;
+    seen.add(key);
+    merged.push(match);
+    if (merged.length >= 3)
+      break;
+  }
+  return merged;
+}
+
+/**
+ * 归一化模型直接生成的作者参照，避免向量增强流程覆盖原本结果。
+ */
+function normalizeAuthorMatches(matches: AnalysisResult["authorMatches"]): NonNullable<AnalysisResult["authorMatches"]> {
+  if (!Array.isArray(matches))
+    return [];
+
+  return matches
+    .filter(match => match
+      && typeof match.name === "string"
+      && typeof match.styleLabel === "string"
+      && typeof match.description === "string"
+      && typeof match.confidence === "number"
+      && Array.isArray(match.reasons))
+    .map(match => ({
+      ...match,
+      source: match.source ?? "model",
+      reasons: match.reasons.map(reason => String(reason).trim()).filter(Boolean).slice(0, 4),
+    }))
+    .filter(match => match.reasons.length > 0)
+    .slice(0, 3);
 }
 
 /**
@@ -129,6 +208,7 @@ function isValidAnalysisResult(result: AnalysisResult) {
     && result.dimensions.every(item => typeof item.name === "string" && typeof item.score === "number" && item.score >= 0 && item.score <= 5 && typeof item.description === "string")
     && Array.isArray(result.strengths)
     && Array.isArray(result.improvements)
+    && (result.articleStyleProfile === undefined || isValidStyleProfile(result.articleStyleProfile))
     && (result.authorMatches === undefined || result.authorMatches.every(item =>
       typeof item.name === "string"
       && typeof item.styleLabel === "string"
@@ -140,6 +220,25 @@ function isValidAnalysisResult(result: AnalysisResult) {
       && item.content.trim().length > 0
       && typeof item.reason === "string"
       && item.reason.trim().length > 0));
+}
+
+/**
+ * 校验当前作品文风画像结构，兼容旧报告中不存在该字段的情况。
+ */
+function isValidStyleProfile(profile: AnalysisResult["articleStyleProfile"]): boolean {
+  if (!profile)
+    return false;
+
+  return Array.isArray(profile.languageHabits)
+    && Array.isArray(profile.sentenceStructures)
+    && typeof profile.expressionRhythm === "string"
+    && Array.isArray(profile.imageryPreferences)
+    && typeof profile.emotionalTendency === "string"
+    && typeof profile.narrativeMode === "string"
+    && typeof profile.spiritualCore === "string"
+    && typeof profile.styleLabel === "string"
+    && typeof profile.summary === "string"
+    && Array.isArray(profile.keywords);
 }
 
 /**

@@ -11,6 +11,8 @@ export const DB_NAME = "ink_battles";
 export const COLLECTIONS = {
   analysisRequests: "analysis_requests",
   analysisTasks: "analysis_tasks",
+  authorStyles: "author_styles",
+  authorStyleVectors: "author_style_vectors",
   excellentSentences: "excellent_sentences",
   sentenceVectors: "sentence_vectors",
   userBilling: "user_billing",

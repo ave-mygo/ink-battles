@@ -53,6 +53,7 @@ export function AnalysisResults({
     dimensions: Dimension[];
     strengths: string[];
     improvements: string[];
+    articleStyleProfile?: AnalysisResult["articleStyleProfile"];
     authorMatches?: AnalysisResult["authorMatches"];
     excellentSentences?: AnalysisResult["excellentSentences"];
     mermaid_diagrams?: Array<{ type: string; title: string; code: string }>;
@@ -246,6 +247,7 @@ export function AnalysisResults({
           improvements={improvements}
           overallAssessment={data.overallAssessment}
           tags={tags}
+          articleStyleProfile={data.articleStyleProfile}
           authorMatches={data.authorMatches}
         />
 

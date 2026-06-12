@@ -2,6 +2,7 @@ import type {
   AiGenerationSetting,
   AnalysisRuntimeSetting,
   AnalysisScoringPolicySetting,
+  AuthorStyleSetting,
   FriendLink,
   GradingModelAdminConfig,
   SiteSettingKey,
@@ -87,6 +88,12 @@ export const SETTING_DEFINITIONS: Array<Pick<SiteSettingMeta, "key" | "label" | 
     key: "ai.vectorSearch",
     label: "向量检索配置",
     description: "优秀文句语义检索的嵌入模型、索引开关和相似度排序权重；模型凭证仍来自 config.toml。",
+    category: "content",
+  },
+  {
+    key: "ai.authorStyle",
+    label: "作者风格匹配",
+    description: "控制分析结果中作者风格库相似度匹配的启用状态、阈值和候选数量。",
     category: "content",
   },
   {
@@ -176,6 +183,11 @@ export function getDefaultSettingValue<Key extends SiteSettingKey>(key: Key): Si
         model: rerankModel.model,
         enabled: true,
       }] : [],
+    },
+    "ai.authorStyle": {
+      enabled: false,
+      similarityThreshold: 0.72,
+      topK: 1,
     },
     "content.honoraryWriters": {
       uids: [],
@@ -324,6 +336,16 @@ export function normalizeSettingValue<Key extends SiteSettingKey>(key: Key, valu
           description: model.description ? String(model.description).slice(0, 500) : undefined,
         };
       }).filter(model => model.id && model.model),
+    } as SiteSettingValueMap[Key];
+  }
+
+  if (key === "ai.authorStyle") {
+    const fallback = getDefaultSettingValue("ai.authorStyle");
+    const record = value as Partial<AuthorStyleSetting>;
+    return {
+      enabled: record.enabled === true,
+      similarityThreshold: Number.isFinite(Number(record.similarityThreshold)) ? Math.max(0, Math.min(1, Number(record.similarityThreshold))) : fallback.similarityThreshold,
+      topK: Math.min(Math.max(numericValue(record.topK, fallback.topK), 1), 3),
     } as SiteSettingValueMap[Key];
   }
 

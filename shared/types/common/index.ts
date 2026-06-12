@@ -1,4 +1,5 @@
 export * from "./accounts";
+export * from "./author-styles";
 export * from "./billing";
 export * from "./config";
 export * from "./history";

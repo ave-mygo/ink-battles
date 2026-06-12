@@ -116,6 +116,10 @@ export async function ensureBackendIndexes() {
     name: "idx_analysis_requests_settings_public_timestamp_desc",
     partialFilterExpression: { "settings.public": true },
   });
+  await ensureIndex("author_styles", { authorName: 1 }, { name: "idx_author_styles_authorName" });
+  await ensureIndex("author_styles", { vectorStatus: 1, updatedAt: -1 }, { name: "idx_author_styles_vectorStatus_updatedAt" });
+  await ensureIndex("author_style_vectors", { authorStyleId: 1, modelId: 1 }, { unique: true, name: "uniq_author_style_vectors_author_model" });
+  await ensureIndex("author_style_vectors", { modelId: 1, status: 1, updatedAt: -1 }, { name: "idx_author_style_vectors_model_status" });
   await ensureIndex("excellent_sentences", { normalizedContent: 1 }, { unique: true, name: "uniq_excellent_sentences_normalizedContent" });
   await ensureIndex("excellent_sentences", { uid: 1, createdAt: -1 }, { name: "idx_excellent_sentences_uid_createdAt" });
   await ensureIndex("excellent_sentences", { sourceArticleId: 1, uid: 1 }, { name: "idx_excellent_sentences_sourceArticleId_uid" });
