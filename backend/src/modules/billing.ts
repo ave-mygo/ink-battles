@@ -1,3 +1,9 @@
+import type {
+  OrderRedemptionCalculationPreview,
+  OrderRedemptionOrderPreview,
+  OrderRedemptionPromoCodePreview,
+} from "@ink-battles/shared/types/common/billing";
+import type { AfdOrder } from "@ink-battles/shared/types/database/afd_order";
 import type { BillingPromotionSnapshot, PromoCode, PromoCodeRedemption } from "@ink-battles/shared/types/database/promo_code";
 import type { UserBilling } from "@ink-battles/shared/types/database/user_billing";
 import type { AuthUser } from "@ink-battles/shared/types/users/user";
@@ -14,7 +20,7 @@ import {
 } from "../constants/billing";
 import { collection, COLLECTIONS, findOneAndUpdate, insertOne, updateOne, withTransaction } from "../db/mongo";
 import { getUserBilling } from "../db/repositories";
-import { verifyOrderOwnership } from "../integrations/afdian";
+import { queryAfdianOrder, verifyOrderOwnership } from "../integrations/afdian";
 import { requireUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
@@ -43,6 +49,29 @@ async function ensureUserBilling(uid: number) {
  */
 function isDuplicateKeyError(error: unknown) {
   return typeof error === "object" && error !== null && "code" in error && (error as { code?: number }).code === 11000;
+}
+
+/**
+ * 判断未知值是否为普通对象记录。
+ * @param value - 待判断的未知值
+ * @returns 是否可按对象字段读取
+ */
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/**
+ * 从爱发电订单查询结果中安全读取首个订单。
+ * @param data - 爱发电 API 原始响应
+ * @returns 订单记录，无记录时返回 null
+ */
+function getFirstAfdianOrder(data: unknown): Record<string, unknown> | null {
+  if (!isObjectRecord(data) || !isObjectRecord(data.data) || !Array.isArray(data.data.list)) {
+    return null;
+  }
+
+  const [order] = data.data.list;
+  return isObjectRecord(order) ? order : null;
 }
 
 /**
@@ -88,6 +117,142 @@ function getActiveOrderPromotion(billing: UserBilling | null, now = new Date()):
  */
 function getOrderPromotionDiscountMultiplier(billing: UserBilling | null) {
   return getActiveOrderPromotion(billing)?.discountMultiplier ?? 1;
+}
+
+/**
+ * 构建空优惠码预览结果。
+ * @returns 未填写优惠码时的稳定预览结构
+ */
+function createEmptyPromoCodePreview(): OrderRedemptionPromoCodePreview {
+  return {
+    checked: false,
+    valid: true,
+    code: null,
+    message: "未填写优惠码",
+    description: null,
+    discountMultiplier: null,
+    discountPercent: null,
+    maxRedemptions: null,
+    redeemedCount: null,
+    perUserMaxRedemptions: null,
+    userRedemptionCount: null,
+    startsAt: null,
+    endsAt: null,
+  };
+}
+
+/**
+ * 只读校验订单兑换优惠码，不写入兑换记录。
+ * @param code - 标准化后的优惠码
+ * @param uid - 当前用户 ID
+ * @param now - 当前时间
+ * @returns 优惠码预览信息
+ */
+async function previewPromoCode(code: string | null, uid: number, now: Date): Promise<OrderRedemptionPromoCodePreview> {
+  if (!code) {
+    return createEmptyPromoCodePreview();
+  }
+
+  const promoCodeDoc = await (await collection<PromoCode>(COLLECTIONS.promoCodes)).findOne({
+    code,
+    active: true,
+    scope: "order_redemption",
+    startsAt: { $lte: now },
+    endsAt: { $gt: now },
+  });
+
+  if (!promoCodeDoc) {
+    return {
+      ...createEmptyPromoCodePreview(),
+      checked: true,
+      valid: false,
+      code,
+      message: "优惠码不存在、未启用或不在有效期内",
+    };
+  }
+
+  const perUserMaxRedemptions = promoCodeDoc.perUserMaxRedemptions ?? 1;
+  const userRedemptionCount = await (await collection<PromoCodeRedemption>(COLLECTIONS.promoCodeRedemptions)).countDocuments({ code, uid });
+  const discountPercent = Math.round((1 - promoCodeDoc.discountMultiplier) * 100);
+  const basePreview: OrderRedemptionPromoCodePreview = {
+    checked: true,
+    valid: true,
+    code,
+    message: "优惠码可用",
+    description: promoCodeDoc.description ?? null,
+    discountMultiplier: promoCodeDoc.discountMultiplier,
+    discountPercent,
+    maxRedemptions: promoCodeDoc.maxRedemptions,
+    redeemedCount: promoCodeDoc.redeemedCount,
+    perUserMaxRedemptions,
+    userRedemptionCount,
+    startsAt: promoCodeDoc.startsAt.toISOString(),
+    endsAt: promoCodeDoc.endsAt.toISOString(),
+  };
+
+  if (promoCodeDoc.redeemedCount >= promoCodeDoc.maxRedemptions) {
+    return { ...basePreview, valid: false, message: "优惠码使用次数已耗尽" };
+  }
+
+  if (perUserMaxRedemptions <= 0) {
+    return { ...basePreview, valid: false, message: "优惠码单用户使用次数配置无效" };
+  }
+
+  if (userRedemptionCount >= perUserMaxRedemptions) {
+    return { ...basePreview, valid: false, message: "当前账户已达到该优惠码的使用次数上限" };
+  }
+
+  if (promoCodeDoc.discountMultiplier <= 0 || promoCodeDoc.discountMultiplier > 1) {
+    return { ...basePreview, valid: false, message: "优惠码折扣配置无效" };
+  }
+
+  return basePreview;
+}
+
+/**
+ * 根据订单金额、用户权益和优惠码折扣计算兑换预览。
+ * @param amount - 订单金额
+ * @param billing - 用户计费信息
+ * @param promoCodePreview - 优惠码校验结果
+ * @returns 兑换次数和权益变化预览
+ */
+function createOrderRedemptionCalculationPreview(
+  amount: number,
+  billing: UserBilling,
+  promoCodePreview: OrderRedemptionPromoCodePreview,
+): OrderRedemptionCalculationPreview {
+  const discountMultiplier = promoCodePreview.checked && promoCodePreview.valid && promoCodePreview.discountMultiplier
+    ? promoCodePreview.discountMultiplier
+    : 1;
+  const memberBefore = getBillingTierInfo(billing.totalAmount);
+  const nextTotalAmount = billing.totalAmount + amount;
+  const memberAfter = getBillingTierInfo(nextTotalAmount);
+  const paidCallPriceBeforePromo = calculatePaidCallPrice(billing.totalAmount, 1);
+  const paidCallPriceAfterPromo = calculatePaidCallPrice(billing.totalAmount, discountMultiplier);
+  const paidCallsBeforePromo = calculatePaidCallsFromOrder(amount, billing.totalAmount, 1);
+  const paidCallsAfterPromo = calculatePaidCallsFromOrder(amount, billing.totalAmount, discountMultiplier);
+  const grantCallsAdded = calculateInitialGrantCalls(billing.totalAmount);
+
+  return {
+    canRedeem: true,
+    orderAmount: amount,
+    currentTotalAmount: billing.totalAmount,
+    totalAmountAfterRedemption: nextTotalAmount,
+    paidCallPriceBeforePromo,
+    paidCallPriceAfterPromo,
+    paidCallsBeforePromo,
+    paidCallsAfterPromo,
+    extraPaidCallsFromPromo: paidCallsAfterPromo - paidCallsBeforePromo,
+    grantCallsAdded,
+    totalCallsAddedBeforePromo: paidCallsBeforePromo + grantCallsAdded,
+    totalCallsAddedAfterPromo: paidCallsAfterPromo + grantCallsAdded,
+    memberNameBefore: memberBefore.name,
+    memberNameAfter: memberAfter.name,
+    memberDiscountBefore: memberBefore.discount,
+    memberDiscountAfter: memberAfter.discount,
+    monthlyGrantCallsBefore: billing.totalAmount > 0 ? calculateMonthlyGrantCalls(billing.totalAmount) : 0,
+    monthlyGrantCallsAfter: calculateMonthlyGrantCalls(nextTotalAmount),
+  };
 }
 
 /**
@@ -235,11 +400,117 @@ export const billingModule = new Elysia()
     const billing = await ensureUserBilling(user.uid);
     return ok({ grantCalls: billing?.grantCallsBalance ?? 0, paidCalls: billing?.paidCallsBalance ?? 0, totalCalls: (billing?.grantCallsBalance ?? 0) + (billing?.paidCallsBalance ?? 0) });
   }, { detail: { tags: ["REST: Billing"] } })
+  .post("/api/v2/rpc/billing.previewOrderRedemption", async ({ request, body }) => {
+    const user = await requireUser(request.headers) as AuthUser;
+    const orderNo = body.orderNo.trim();
+
+    if (orderNo.length !== BILLING_CONSTANTS.ORDER_NO_LENGTH) {
+      return ok({
+        orderNo,
+        order: {
+          valid: false,
+          paid: false,
+          redeemed: false,
+          accountMatched: false,
+          amount: null,
+          message: `订单号需要 ${BILLING_CONSTANTS.ORDER_NO_LENGTH} 位`,
+        } satisfies OrderRedemptionOrderPreview,
+        promoCode: createEmptyPromoCodePreview(),
+        calculation: null,
+      });
+    }
+
+    const code = body.promoCode ? normalizePromoCode(body.promoCode) : null;
+    const promoCodePreview = await previewPromoCode(code, user.uid, new Date());
+
+    if (!user.afdId) {
+      return ok({
+        orderNo,
+        order: {
+          valid: false,
+          paid: false,
+          redeemed: false,
+          accountMatched: false,
+          amount: null,
+          message: "请先绑定爱发电账户",
+        } satisfies OrderRedemptionOrderPreview,
+        promoCode: promoCodePreview,
+        calculation: null,
+      });
+    }
+
+    const redeemedOrder = await (await collection<AfdOrder>(COLLECTIONS.afdOrders)).findOne({ orderNo });
+    if (redeemedOrder) {
+      return ok({
+        orderNo,
+        order: {
+          valid: false,
+          paid: true,
+          redeemed: true,
+          accountMatched: redeemedOrder.afdId === user.afdId,
+          amount: redeemedOrder.amount,
+          message: "该订单已被兑换，请勿重复使用",
+        } satisfies OrderRedemptionOrderPreview,
+        promoCode: promoCodePreview,
+        calculation: null,
+      });
+    }
+
+    const order = getFirstAfdianOrder(await queryAfdianOrder(orderNo));
+    if (!order) {
+      return ok({
+        orderNo,
+        order: {
+          valid: false,
+          paid: false,
+          redeemed: false,
+          accountMatched: false,
+          amount: null,
+          message: "订单不存在",
+        } satisfies OrderRedemptionOrderPreview,
+        promoCode: promoCodePreview,
+        calculation: null,
+      });
+    }
+
+    const amount = Number(order.total_amount) || 0;
+    const paid = order.status === 2;
+    const accountMatched = order.user_id === user.afdId;
+    const orderPreview: OrderRedemptionOrderPreview = {
+      valid: paid && accountMatched,
+      paid,
+      redeemed: false,
+      accountMatched,
+      amount,
+      message: !accountMatched
+        ? "订单不属于当前绑定的爱发电账号"
+        : paid
+          ? "订单可兑换"
+          : "订单未支付完成",
+    };
+
+    const billing = await ensureUserBilling(user.uid);
+    const calculation = billing && orderPreview.valid && promoCodePreview.valid
+      ? createOrderRedemptionCalculationPreview(amount, billing, promoCodePreview)
+      : null;
+
+    return ok({
+      orderNo,
+      order: orderPreview,
+      promoCode: promoCodePreview,
+      calculation,
+    });
+  }, { body: t.Object({ orderNo: t.String(), promoCode: t.Optional(t.String()) }), detail: { tags: ["RPC: Billing"] } })
   .post("/api/v2/rpc/billing.redeemOrder", async ({ request, body }) => {
     const user = await requireUser(request.headers) as AuthUser;
     if (!user.afdId)
       return { success: false, message: "请先绑定爱发电账户" };
     const orderNo = body.orderNo.trim();
+    if (orderNo.length !== BILLING_CONSTANTS.ORDER_NO_LENGTH)
+      return { success: false, message: `订单号需要 ${BILLING_CONSTANTS.ORDER_NO_LENGTH} 位` };
+    const redeemedOrder = await (await collection<AfdOrder>(COLLECTIONS.afdOrders)).findOne({ orderNo });
+    if (redeemedOrder)
+      return { success: false, message: "该订单已被兑换，请勿重复使用" };
     const verification = await verifyOrderOwnership(orderNo, user.afdId);
     if (!verification.valid)
       return { success: false, message: verification.message };

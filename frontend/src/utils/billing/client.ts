@@ -1,6 +1,6 @@
 "use client";
 
-import type { AvailableCallsResult, BillingSummaryResult } from "@ink-battles/shared/types/common/billing";
+import type { AvailableCallsResult, BillingSummaryResult, OrderRedemptionPreviewResult } from "@ink-battles/shared/types/common/billing";
 import { createClientEden } from "@/utils/api/eden-client";
 import { normalizeEdenResult } from "@/utils/api/eden-response";
 
@@ -20,6 +20,11 @@ export async function getBillingInfo() {
 export async function redeemOrder(orderNo: string, promoCode?: string) {
   const response = await createClientEden().api.v2.rpc["billing.redeemOrder"].post({ orderNo, promoCode });
   return normalizeEdenResult<{ success: boolean; message: string }>(response.data, response.error, "兑换失败");
+}
+
+export async function previewOrderRedemption(orderNo: string, promoCode?: string) {
+  const response = await createClientEden().api.v2.rpc["billing.previewOrderRedemption"].post({ orderNo, promoCode });
+  return normalizeEdenResult<OrderRedemptionPreviewResult>(response.data, response.error, "校验订单失败");
 }
 
 export async function getAvailableCalls(options: { force?: boolean } = {}) {

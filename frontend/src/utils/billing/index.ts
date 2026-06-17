@@ -6,5 +6,6 @@ export {
 export {
   getAvailableCalls,
   getBillingInfo,
+  previewOrderRedemption,
   redeemOrder,
 } from "./client";
