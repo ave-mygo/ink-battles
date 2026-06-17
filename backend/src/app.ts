@@ -10,12 +10,13 @@ import { assertRateLimit } from "./middleware/rate-limit";
 import { accountsModule } from "./modules/accounts";
 import { analysisModule } from "./modules/analysis";
 import { recoverInterruptedAnalysisTasks } from "./modules/analysis-worker";
-import { authorStylesModule } from "./modules/author-styles";
 import { authModule } from "./modules/auth";
+import { authorStylesModule } from "./modules/author-styles";
 import { billingModule } from "./modules/billing";
 import { dashboardModule } from "./modules/dashboard";
 import { excellentSentencesModule } from "./modules/excellent-sentences";
 import { oauthModule } from "./modules/oauth";
+import { promoCodesModule } from "./modules/promo-codes";
 import { publicModule } from "./modules/public";
 import { quotesModule } from "./modules/quotes";
 import { ensureSiteSettingsInitialized, siteSettingsModule } from "./modules/site-settings";
@@ -72,6 +73,7 @@ function createTypedApp() {
     .use(quotesModule)
     .use(authModule)
     .use(oauthModule)
+    .use(promoCodesModule)
     .use(analysisModule)
     .use(authorStylesModule)
     .use(billingModule)
