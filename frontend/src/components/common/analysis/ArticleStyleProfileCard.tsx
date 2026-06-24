@@ -2,7 +2,7 @@
 
 import type { AuthorStyleFeatureProfile } from "@ink-battles/shared/types/common";
 import type { ComponentType } from "react";
-import { Brush, Flame, Milestone, Orbit, PenLine, ScrollText, Sparkles } from "lucide-react";
+import { BookOpenText, Brush, MessageSquareQuote, Milestone, PenLine, ScrollText, Sparkles, Tags } from "lucide-react";
 
 interface ArticleStyleProfileCardProps {
   profile?: AuthorStyleFeatureProfile | null;
@@ -22,16 +22,19 @@ export function ArticleStyleProfileCard({ profile }: ArticleStyleProfileCardProp
     return null;
   }
 
+  const coreExpression = profile.coreExpression || profile.spiritualCore || profile.emotionalTendency || "";
+  const storyContent = profile.storyContent || profile.narrativeMode || "";
   const profileItems: StyleProfileItem[] = [
+    { label: "故事内容", value: storyContent, icon: BookOpenText },
+    { label: "核心表达", value: coreExpression, icon: MessageSquareQuote },
+    { label: "体裁/类型", value: profile.genreType || "", icon: Tags },
     { label: "语言习惯", value: profile.languageHabits.join("、"), icon: PenLine },
     { label: "句式结构", value: profile.sentenceStructures.join("、"), icon: ScrollText },
     { label: "表达节奏", value: profile.expressionRhythm, icon: Milestone },
     { label: "意象偏好", value: profile.imageryPreferences.join("、"), icon: Sparkles },
-    { label: "情感倾向", value: profile.emotionalTendency, icon: Flame },
-    { label: "叙事方式", value: profile.narrativeMode, icon: Orbit },
   ].filter(item => item.value.trim());
 
-  const hasContent = profile.summary || profile.styleLabel || profile.spiritualCore || profile.keywords.length > 0 || profileItems.length > 0;
+  const hasContent = profile.summary || profile.styleLabel || coreExpression || profile.keywords.length > 0 || profileItems.length > 0;
   if (!hasContent) {
     return null;
   }
@@ -68,13 +71,6 @@ export function ArticleStyleProfileCard({ profile }: ArticleStyleProfileCardProp
             );
           })}
         </div>
-
-        {profile.spiritualCore && (
-          <div className="text-xs text-slate-600 p-3 border border-slate-200 rounded-lg bg-white leading-relaxed dark:text-slate-300 dark:border-slate-800 dark:bg-slate-900/60">
-            <span className="font-medium text-slate-800 dark:text-slate-100">精神内核：</span>
-            {profile.spiritualCore}
-          </div>
-        )}
 
         {profile.keywords.length > 0 && (
           <div className="flex flex-wrap gap-2">

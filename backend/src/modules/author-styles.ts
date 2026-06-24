@@ -157,14 +157,15 @@ function normalizeFeatureProfile(input: Partial<AuthorStyleFeatureProfile>): Aut
   const toList = (value: unknown, limit: number) => Array.isArray(value)
     ? value.map(item => String(item).trim()).filter(Boolean).slice(0, limit)
     : [];
+  const legacyCoreExpression = input.spiritualCore ?? input.emotionalTendency ?? "";
   return {
+    storyContent: String(input.storyContent ?? input.narrativeMode ?? "").slice(0, 400),
+    coreExpression: String(input.coreExpression ?? legacyCoreExpression).slice(0, 400),
+    genreType: String(input.genreType ?? "").slice(0, 160),
     languageHabits: toList(input.languageHabits, 8),
     sentenceStructures: toList(input.sentenceStructures, 8),
     expressionRhythm: String(input.expressionRhythm ?? "").slice(0, 300),
     imageryPreferences: toList(input.imageryPreferences, 8),
-    emotionalTendency: String(input.emotionalTendency ?? "").slice(0, 300),
-    narrativeMode: String(input.narrativeMode ?? "").slice(0, 300),
-    spiritualCore: String(input.spiritualCore ?? "").slice(0, 300),
     styleLabel: String(input.styleLabel ?? "").slice(0, 80),
     summary: String(input.summary ?? "").slice(0, 700),
     keywords: toList(input.keywords, 12),
@@ -184,7 +185,7 @@ function buildStyleSourceText(input: AuthorStyleLibrarySaveInput): string {
 }
 
 /**
- * 调用评分模型抽取风格特征，维度覆盖语言习惯、句式、节奏、意象、情绪、叙事和精神内核。
+ * 调用评分模型抽取风格特征，维度覆盖故事内容、核心表达、体裁类型与语言层面的稳定特征。
  */
 async function extractStyleFeatures(input: AuthorStyleLibrarySaveInput): Promise<AuthorStyleFeatureProfile> {
   const model = getStyleAnalysisModel();
@@ -202,7 +203,8 @@ async function extractStyleFeatures(input: AuthorStyleLibrarySaveInput): Promise
         role: "system",
         content: [
           "你是文学风格分析师。请仅输出 JSON 对象。",
-          "字段必须包含 languageHabits, sentenceStructures, expressionRhythm, imageryPreferences, emotionalTendency, narrativeMode, spiritualCore, styleLabel, summary, keywords。",
+          "字段必须包含 storyContent, coreExpression, genreType, languageHabits, sentenceStructures, expressionRhythm, imageryPreferences, styleLabel, summary, keywords。",
+          "storyContent 用于概括故事写了什么、主要关系和冲突；coreExpression 用于概括作品想表达什么；genreType 用于标注体裁、题材或类型。",
           "languageHabits、sentenceStructures、imageryPreferences、keywords 必须是字符串数组，其余字段为中文字符串。",
         ].join("\n"),
       },
@@ -226,13 +228,13 @@ function buildFeatureEmbeddingText(authorName: string, profile: AuthorStyleFeatu
   return [
     `作者：${authorName}`,
     `风格标签：${profile.styleLabel}`,
+    `故事内容：${profile.storyContent}`,
+    `核心表达：${profile.coreExpression}`,
+    `体裁类型：${profile.genreType}`,
     `语言习惯：${profile.languageHabits.join("；")}`,
     `句式结构：${profile.sentenceStructures.join("；")}`,
     `表达节奏：${profile.expressionRhythm}`,
     `意象偏好：${profile.imageryPreferences.join("；")}`,
-    `情感倾向：${profile.emotionalTendency}`,
-    `叙事方式：${profile.narrativeMode}`,
-    `精神内核：${profile.spiritualCore}`,
     `关键词：${profile.keywords.join("；")}`,
     `简介：${profile.summary}`,
   ].filter(Boolean).join("\n");
@@ -400,9 +402,11 @@ async function listAuthorStyleCandidates(modelId: string): Promise<AuthorStyleCa
  */
 function buildMatchReasons(articleProfile: AuthorStyleFeatureProfile, authorProfile: AuthorStyleFeatureProfile): string[] {
   const reasons = [
-    `语言习惯接近：${authorProfile.languageHabits.slice(0, 2).join("、") || authorProfile.summary}`,
+    `故事内容接近：${authorProfile.storyContent || authorProfile.summary}`,
+    `核心表达相近：${authorProfile.coreExpression || authorProfile.summary}`,
+    `体裁类型相近：${authorProfile.genreType || "未标注"}`,
     `表达节奏相似：${authorProfile.expressionRhythm}`,
-    `创作倾向相近：${authorProfile.spiritualCore || authorProfile.emotionalTendency}`,
+    `语言习惯接近：${authorProfile.languageHabits.slice(0, 2).join("、") || authorProfile.summary}`,
   ];
   const sharedKeywords = articleProfile.keywords.filter(keyword => authorProfile.keywords.includes(keyword)).slice(0, 3);
   if (sharedKeywords.length > 0)

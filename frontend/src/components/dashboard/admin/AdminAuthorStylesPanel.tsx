@@ -371,12 +371,13 @@ function AuthorStyleCard({
         {item.bio && <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">{item.bio}</p>}
         {profile && (
           <div className="grid gap-3 md:grid-cols-2">
+            <FeatureBlock title="故事内容" value={profile.storyContent || profile.narrativeMode || ""} />
+            <FeatureBlock title="核心表达" value={profile.coreExpression || profile.spiritualCore || profile.emotionalTendency || ""} />
+            <FeatureBlock title="体裁/类型" value={profile.genreType || ""} />
             <FeatureBlock title="语言习惯" value={profile.languageHabits.join("、")} />
             <FeatureBlock title="句式结构" value={profile.sentenceStructures.join("、")} />
             <FeatureBlock title="表达节奏" value={profile.expressionRhythm} />
             <FeatureBlock title="意象偏好" value={profile.imageryPreferences.join("、")} />
-            <FeatureBlock title="情感倾向" value={profile.emotionalTendency} />
-            <FeatureBlock title="精神内核" value={profile.spiritualCore} />
           </div>
         )}
         {item.vectorError && (

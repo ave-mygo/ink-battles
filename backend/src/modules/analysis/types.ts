@@ -24,13 +24,16 @@ export interface AnalysisResult {
   strengths: unknown[];
   improvements: unknown[];
   articleStyleProfile?: {
+    storyContent: string;
+    coreExpression: string;
+    genreType: string;
     languageHabits: string[];
     sentenceStructures: string[];
     expressionRhythm: string;
     imageryPreferences: string[];
-    emotionalTendency: string;
-    narrativeMode: string;
-    spiritualCore: string;
+    emotionalTendency?: string;
+    narrativeMode?: string;
+    spiritualCore?: string;
     styleLabel: string;
     summary: string;
     keywords: string[];

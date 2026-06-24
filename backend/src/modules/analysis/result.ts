@@ -229,13 +229,18 @@ function isValidStyleProfile(profile: AnalysisResult["articleStyleProfile"]): bo
   if (!profile)
     return false;
 
-  return Array.isArray(profile.languageHabits)
+  const hasCurrentProfileFields = typeof profile.storyContent === "string"
+    && typeof profile.coreExpression === "string"
+    && typeof profile.genreType === "string";
+  const hasLegacyProfileFields = typeof profile.emotionalTendency === "string"
+    && typeof profile.narrativeMode === "string"
+    && typeof profile.spiritualCore === "string";
+
+  return (hasCurrentProfileFields || hasLegacyProfileFields)
+    && Array.isArray(profile.languageHabits)
     && Array.isArray(profile.sentenceStructures)
     && typeof profile.expressionRhythm === "string"
     && Array.isArray(profile.imageryPreferences)
-    && typeof profile.emotionalTendency === "string"
-    && typeof profile.narrativeMode === "string"
-    && typeof profile.spiritualCore === "string"
     && typeof profile.styleLabel === "string"
     && typeof profile.summary === "string"
     && Array.isArray(profile.keywords);
