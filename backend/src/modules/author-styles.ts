@@ -13,6 +13,7 @@ import { getCachedEffectiveGradingModelById, getCachedEffectiveVectorSearchSetti
 
 const MAX_REPRESENTATIVE_TEXTS = 8;
 const MAX_REPRESENTATIVE_WORKS = 12;
+const MAX_REPRESENTATIVE_WORK_CHARS = 1000;
 const MAX_REBUILD_BATCH_SIZE = 200;
 const MAX_STYLE_TEXT_CHARS = 12000;
 
@@ -268,7 +269,7 @@ function normalizeAuthorStyleInput(input: AuthorStyleLibrarySaveInput): AuthorSt
   return {
     authorName: input.authorName.trim().slice(0, 80),
     bio: String(input.bio ?? "").trim().slice(0, 1000),
-    representativeWorks: (input.representativeWorks ?? []).map(item => item.trim()).filter(Boolean).slice(0, MAX_REPRESENTATIVE_WORKS),
+    representativeWorks: (input.representativeWorks ?? []).map(item => item.trim().slice(0, MAX_REPRESENTATIVE_WORK_CHARS)).filter(Boolean).slice(0, MAX_REPRESENTATIVE_WORKS),
     representativeTexts: input.representativeTexts.map(item => item.trim()).filter(Boolean).slice(0, MAX_REPRESENTATIVE_TEXTS),
     styleIntro: String(input.styleIntro ?? "").trim().slice(0, 2000),
   };
@@ -511,7 +512,7 @@ export const authorStylesModule = new Elysia()
     body: t.Object({
       authorName: t.String({ minLength: 1, maxLength: 80 }),
       bio: t.Optional(t.String({ maxLength: 1000 })),
-      representativeWorks: t.Optional(t.Array(t.String({ maxLength: 120 }), { maxItems: MAX_REPRESENTATIVE_WORKS })),
+      representativeWorks: t.Optional(t.Array(t.String({ maxLength: MAX_REPRESENTATIVE_WORK_CHARS }), { maxItems: MAX_REPRESENTATIVE_WORKS })),
       representativeTexts: t.Array(t.String({ minLength: 1, maxLength: MAX_STYLE_TEXT_CHARS }), { minItems: 1, maxItems: MAX_REPRESENTATIVE_TEXTS }),
       styleIntro: t.Optional(t.String({ maxLength: 2000 })),
     }),
@@ -548,7 +549,7 @@ export const authorStylesModule = new Elysia()
     body: t.Object({
       authorName: t.String({ minLength: 1, maxLength: 80 }),
       bio: t.Optional(t.String({ maxLength: 1000 })),
-      representativeWorks: t.Optional(t.Array(t.String({ maxLength: 120 }), { maxItems: MAX_REPRESENTATIVE_WORKS })),
+      representativeWorks: t.Optional(t.Array(t.String({ maxLength: MAX_REPRESENTATIVE_WORK_CHARS }), { maxItems: MAX_REPRESENTATIVE_WORKS })),
       representativeTexts: t.Array(t.String({ minLength: 1, maxLength: MAX_STYLE_TEXT_CHARS }), { minItems: 1, maxItems: MAX_REPRESENTATIVE_TEXTS }),
       styleIntro: t.Optional(t.String({ maxLength: 2000 })),
     }),

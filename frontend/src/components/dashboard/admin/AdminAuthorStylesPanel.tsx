@@ -250,7 +250,7 @@ export function AdminAuthorStylesPanel({ initialItems, initialSetting }: AdminAu
               {isEditing ? <Edit3 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {isEditing ? "编辑作者" : "新增作者"}
             </CardTitle>
-            <CardDescription>代表性文案按空行拆分为多段样本，保存后会进入后台队列生成风格向量。</CardDescription>
+            <CardDescription>请摘选个人风格明显的特征文本，代表性文案按空行拆分为多段样本；不建议直接粘贴整篇全文。</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Field label="作者名称（必填）">
@@ -260,7 +260,7 @@ export function AdminAuthorStylesPanel({ initialItems, initialSetting }: AdminAu
               <Textarea className="min-h-24" value={form.bio} onChange={event => updateForm("bio", event.target.value)} placeholder="可留空；用于管理端辅助识别作者背景。" />
             </Field>
             <Field label="代表作品（选填）">
-              <Textarea className="min-h-20" value={form.representativeWorks} onChange={event => updateForm("representativeWorks", event.target.value)} placeholder="每行一个作品名" />
+              <Textarea className="min-h-20" value={form.representativeWorks} onChange={event => updateForm("representativeWorks", event.target.value)} placeholder="每行一个作品名，可附简短说明" />
             </Field>
             <Field label="补充说明（可选）">
               <Textarea
@@ -271,7 +271,7 @@ export function AdminAuthorStylesPanel({ initialItems, initialSetting }: AdminAu
               />
             </Field>
             <Field label="代表性文案（必填）">
-              <Textarea className="field-sizing-fixed min-h-44 max-h-80 resize-y overflow-y-auto" value={form.representativeTexts} onChange={event => updateForm("representativeTexts", event.target.value)} placeholder="多段样本文案之间空一行" />
+              <Textarea className="field-sizing-fixed min-h-44 max-h-80 resize-y overflow-y-auto" value={form.representativeTexts} onChange={event => updateForm("representativeTexts", event.target.value)} placeholder="摘选风格特征明显的片段，多段样本文案之间空一行；不要直接粘贴整篇全文" />
             </Field>
             <div className="flex flex-wrap gap-2">
               <Button type="button" className="cursor-pointer disabled:cursor-not-allowed" disabled={saving} onClick={saveAuthorStyle}>
