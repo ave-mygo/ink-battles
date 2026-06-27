@@ -10,7 +10,6 @@ import { upsertExcellentSentenceVector } from "./vector-search";
 
 const NORMALIZE_SENTENCE_REGEX = /[\s\p{P}\p{S}]/gu;
 const MAX_SOURCE_FIELD_LENGTH = 80;
-const MAX_CUSTOM_SENTENCE_LENGTH = 500;
 const CUSTOM_UPLOAD_SOURCE_ARTICLE_ID = "custom-upload";
 
 interface AnalysisRecordDocument extends Record<string, unknown> {
@@ -312,7 +311,7 @@ export const excellentSentencesModule = new Elysia()
     return { success: true, message: "句子已提交，审核通过后可用于站内展示" };
   }, {
     body: t.Object({
-      content: t.String({ minLength: 1, maxLength: MAX_CUSTOM_SENTENCE_LENGTH }),
+      content: t.String({ minLength: 1 }),
       authorName: t.Optional(t.String({ maxLength: MAX_SOURCE_FIELD_LENGTH })),
       workName: t.Optional(t.String({ maxLength: MAX_SOURCE_FIELD_LENGTH })),
       reason: t.Optional(t.String({ maxLength: 200 })),

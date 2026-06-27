@@ -13,7 +13,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadCustomExcellentSentence } from "@/utils/analysis/excellent-sentences";
 
-const MAX_SENTENCE_LENGTH = 500;
 const MAX_REASON_LENGTH = 200;
 
 interface CustomSentenceUploadContentProps {
@@ -109,14 +108,11 @@ export function CustomSentenceUploadContent({
                   <Label htmlFor="custom-sentence-content">句子内容</Label>
                   <span className="text-xs text-muted-foreground">
                     {content.length}
-                    /
-                    {MAX_SENTENCE_LENGTH}
                   </span>
                 </div>
                 <Textarea
                   id="custom-sentence-content"
                   value={content}
-                  maxLength={MAX_SENTENCE_LENGTH}
                   disabled={!isAuthenticated || isSubmitting}
                   placeholder="请输入一个完整、有独立阅读价值的句子"
                   className="min-h-36 resize-y leading-7"
