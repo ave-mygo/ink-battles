@@ -476,8 +476,9 @@ export const billingModule = new Elysia()
     const amount = Number(order.total_amount) || 0;
     const paid = order.status === 2;
     const accountMatched = order.user_id === user.afdId;
+    const positiveAmount = amount > 0;
     const orderPreview: OrderRedemptionOrderPreview = {
-      valid: paid && accountMatched,
+      valid: paid && accountMatched && positiveAmount,
       paid,
       redeemed: false,
       accountMatched,
@@ -485,7 +486,7 @@ export const billingModule = new Elysia()
       message: !accountMatched
         ? "订单不属于当前绑定的爱发电账号"
         : paid
-          ? "订单可兑换"
+          ? positiveAmount ? "订单可兑换" : "订单金额无效，无法兑换"
           : "订单未支付完成",
     };
 
@@ -520,6 +521,8 @@ export const billingModule = new Elysia()
       return { success: false, message: "用户计费信息不存在" };
 
     const amount = verification.amount ?? 0;
+    if (amount <= 0)
+      return { success: false, message: "订单金额无效，无法兑换" };
     const now = new Date();
     const code = body.promoCode ? normalizePromoCode(body.promoCode) : null;
 
