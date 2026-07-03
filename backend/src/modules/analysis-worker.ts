@@ -255,6 +255,7 @@ export async function refundAnalysisTaskCallBalance(taskId: ObjectId, uid: numbe
     await withTransaction(async (session) => {
       const claimedTask = await findOneAndUpdate<AnalysisTaskBillingSnapshot>(COLLECTIONS.analysisTasks, {
         "_id": taskId,
+        "uid": uid,
         "billing.deducted": true,
         "billing.refunded": { $ne: true },
         "billing.completedAt": { $exists: false },

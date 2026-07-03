@@ -48,13 +48,22 @@ export async function getAnalysisStatus(taskId: string) {
   }>(response.data, response.error, "加载任务状态失败");
 }
 
-export async function deleteAnalysisTask(taskId: string) {
-  const response = await createClientEden().api.v2.analysis.tasks({ taskId }).delete();
-  return normalizeEdenResult<{ success: boolean; error?: string }>(response.data, response.error, "删除任务失败");
+export async function deleteAnalysisTask(taskId: string, fingerprint?: string) {
+  const url = new URL(`${getClientApiHost()}/api/v2/analysis/tasks/${taskId}`);
+  if (fingerprint) {
+    url.searchParams.set("fingerprint", fingerprint);
+  }
+
+  const response = await fetch(url, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  const data = await response.json().catch(() => null);
+  return normalizeEdenResult<{ success: boolean; error?: string }>(data, response.ok ? null : data, "删除任务失败");
 }
 
-export async function cancelAnalysisTask(taskId: string) {
-  const response = await createClientEden().api.v2.rpc["analysis.cancelTask"].post({ taskId });
+export async function cancelAnalysisTask(taskId: string, fingerprint?: string) {
+  const response = await createClientEden().api.v2.rpc["analysis.cancelTask"].post({ taskId, fingerprint });
   return normalizeEdenResult<{ success: boolean; status?: string; error?: string }>(response.data, response.error, "取消任务失败");
 }
 

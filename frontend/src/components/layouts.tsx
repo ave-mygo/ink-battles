@@ -352,6 +352,7 @@ export default function WriterAnalysisSystem() {
         modeName: modePayload,
         modelName: currentModelDisplayName,
         searchModelName: getSearchModelDisplayName(searchModel),
+        fingerprint,
         status: "pending",
         progress: res.progress,
       });

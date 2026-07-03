@@ -27,6 +27,14 @@ function normalizeSearchModel(value?: string): SearchModel {
 
 const activeTaskStatuses = ["pending", "processing"];
 
+interface AnalysisTaskMutationRecord {
+  uid?: unknown;
+  metadata?: {
+    fingerprint?: unknown;
+  };
+  status?: unknown;
+}
+
 /**
  * 统计提交者当前活跃的任务数量
  * @param uid - 用户 ID，null 表示游客
@@ -48,6 +56,21 @@ function getQueueFullMessage(pool: AnalysisTaskPool, analysisConfig: AnalysisRun
   return pool === "sponsor"
     ? `赞助者分析任务池已满，最多允许 ${analysisConfig.max_sponsor_queued_tasks} 个任务排队，请稍后再试`
     : `免费/游客分析任务池已满，最多允许 ${analysisConfig.max_queued_tasks} 个任务排队，请稍后再试`;
+}
+
+/**
+ * 校验任务变更权限。
+ *
+ * 付费/登录任务必须由任务所属用户操作；匿名任务只能由持有提交 fingerprint 的同一浏览器操作。
+ */
+async function canMutateAnalysisTask(request: Request, task: AnalysisTaskMutationRecord, fingerprint?: string): Promise<boolean> {
+  if (typeof task.uid === "number") {
+    const user = await getCurrentUser(request.headers);
+    return user?.uid === task.uid;
+  }
+
+  const taskFingerprint = typeof task.metadata?.fingerprint === "string" ? task.metadata.fingerprint : null;
+  return !!taskFingerprint && !!fingerprint && taskFingerprint === fingerprint;
 }
 
 export const analysisModule = new Elysia()
@@ -182,6 +205,8 @@ export const analysisModule = new Elysia()
           progress: createProgress("failed", "分析服务繁忙，请稍后重试", 100),
           updatedAt: new Date().toISOString(),
         });
+        if (user && deductedFrom)
+          await refundAnalysisTaskCallBalance(taskId, user.uid, "failed");
         throw new Error("SERVICE_BUSY");
       }
     } catch (error) {
@@ -230,17 +255,28 @@ export const analysisModule = new Elysia()
     const taskId = objectId(params.taskId);
     return createAnalysisTaskEventStream(taskId, request);
   }, { detail: { tags: ["REST: Analysis"] } })
-  .delete("/api/v2/analysis/tasks/:taskId", async ({ params }) => {
+  .delete("/api/v2/analysis/tasks/:taskId", async ({ params, request, query }) => {
     if (!isObjectId(params.taskId))
       return { success: false, error: "Invalid task ID" };
-    return { success: await deleteTask(params.taskId) };
-  }, { detail: { tags: ["REST: Analysis"] } })
-  .post("/api/v2/rpc/analysis.cancelTask", async ({ body }) => {
-    if (!isObjectId(body.taskId))
-      return { success: false, error: "Invalid task ID" };
-    const task = await findOne(COLLECTIONS.analysisTasks, { _id: objectId(body.taskId) });
+    const task = await findOne<AnalysisTaskMutationRecord>(COLLECTIONS.analysisTasks, { _id: objectId(params.taskId) });
     if (!task)
       return { success: false, error: "Task not found" };
+    const fingerprint = typeof query.fingerprint === "string" ? query.fingerprint : undefined;
+    if (!await canMutateAnalysisTask(request, task, fingerprint))
+      return { success: false, error: "FORBIDDEN" };
+    return { success: await deleteTask(params.taskId) };
+  }, {
+    query: t.Object({ fingerprint: t.Optional(t.String()) }),
+    detail: { tags: ["REST: Analysis"] },
+  })
+  .post("/api/v2/rpc/analysis.cancelTask", async ({ request, body }) => {
+    if (!isObjectId(body.taskId))
+      return { success: false, error: "Invalid task ID" };
+    const task = await findOne<AnalysisTaskMutationRecord>(COLLECTIONS.analysisTasks, { _id: objectId(body.taskId) });
+    if (!task)
+      return { success: false, error: "Task not found" };
+    if (!await canMutateAnalysisTask(request, task, body.fingerprint))
+      return { success: false, error: "FORBIDDEN" };
     if (task.status === "cancelled") {
       if (typeof task.uid === "number")
         await refundAnalysisTaskCallBalance(objectId(body.taskId), task.uid, "cancelled");
@@ -252,4 +288,4 @@ export const analysisModule = new Elysia()
     if (cancelled && typeof task.uid === "number")
       await refundAnalysisTaskCallBalance(objectId(body.taskId), task.uid, "cancelled");
     return { success: cancelled, status: cancelled ? "cancelled" : task.status };
-  }, { body: t.Object({ taskId: t.String() }), detail: { tags: ["RPC: Analysis"] } });
+  }, { body: t.Object({ taskId: t.String(), fingerprint: t.Optional(t.String()) }), detail: { tags: ["RPC: Analysis"] } });

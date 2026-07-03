@@ -331,11 +331,12 @@ export default function WriterAnalysisResultPlaceholder() {
     return () => clearInterval(timer);
   }, [refreshTaskStatuses, tasks]);
 
-  const cancelTask = async (taskId: string) => {
+  const cancelTask = async (task: LocalTask) => {
+    const { taskId } = task;
     setCancellingTaskId(taskId);
 
     try {
-      const result = await cancelAnalysisTask(taskId);
+      const result = await cancelAnalysisTask(taskId, task.fingerprint);
 
       if (!result.success) {
         throw new Error(result.error || "取消任务失败");
@@ -353,10 +354,11 @@ export default function WriterAnalysisResultPlaceholder() {
   };
 
   const removeTask = (taskId: string) => {
+    const targetTask = tasks.find(task => task.taskId === taskId);
     const newTasks = tasks.filter(t => t.taskId !== taskId);
     persistTasks(newTasks);
     // 失败任务和已取消任务可以安全删除服务端记录，避免历史任务表堆积。
-    deleteAnalysisTask(taskId).catch(console.error);
+    deleteAnalysisTask(taskId, targetTask?.fingerprint).catch(console.error);
   };
 
   /**

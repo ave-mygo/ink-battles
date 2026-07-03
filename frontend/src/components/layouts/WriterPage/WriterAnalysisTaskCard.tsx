@@ -13,6 +13,7 @@ export interface LocalTask {
   modeName?: string;
   modelName?: string;
   searchModelName?: string;
+  fingerprint?: string;
   status?: LocalTaskStatus;
   error?: string;
   resultId?: string;
@@ -27,7 +28,7 @@ interface WriterAnalysisTaskCardProps {
   cancellingTaskId: string | null;
   elapsedSeconds?: number;
   longAnalysisThreshold: number;
-  onCancel: (taskId: string) => void;
+  onCancel: (task: LocalTask) => void;
   onRemove: (taskId: string) => void;
   onViewResult: (task: LocalTask) => void;
 }
@@ -111,7 +112,7 @@ export function WriterAnalysisTaskCard({
             size="sm"
             variant="outline"
             className="text-xs h-7 cursor-pointer"
-            onClick={() => onCancel(task.taskId)}
+            onClick={() => onCancel(task)}
             disabled={cancellingTaskId === task.taskId}
           >
             <XCircle className="mr-1 h-3 w-3" />
