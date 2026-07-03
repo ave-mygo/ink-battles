@@ -61,7 +61,7 @@ export async function recoverInterruptedAnalysisTasks() {
 
   let refundedCount = 0;
   for (const task of interruptedBilledTasks) {
-    if (await refundTaskCallBalance(task._id, task.uid, "failed"))
+    if (await refundAnalysisTaskCallBalance(task._id, task.uid, "failed"))
       refundedCount++;
   }
   if (refundedCount > 0)
@@ -77,6 +77,34 @@ export async function recoverInterruptedAnalysisTasks() {
       updatedAt: now,
     },
   });
+}
+
+/**
+ * 补偿历史上已取消但未退还的扣费分析任务。
+ * 旧版排队任务取消后不会进入 worker，因此需要在启动恢复阶段统一补退。
+ * @returns 成功补退的任务数量
+ */
+export async function recoverCancelledUnrefundedAnalysisTasks() {
+  const cancelledBilledTasks = await findMany<{
+    _id: ObjectId;
+    uid?: unknown;
+    billing: { deductedFrom?: "grant" | "paid" | null };
+  }>(COLLECTIONS.analysisTasks, {
+    "status": "cancelled",
+    "billing.deducted": true,
+    "billing.refunded": { $ne: true },
+    "billing.completedAt": { $exists: false },
+  });
+
+  let refundedCount = 0;
+  for (const task of cancelledBilledTasks) {
+    if (typeof task.uid !== "number")
+      continue;
+    if (await refundAnalysisTaskCallBalance(task._id, task.uid, "cancelled"))
+      refundedCount++;
+  }
+
+  return refundedCount;
 }
 
 /**
@@ -151,11 +179,11 @@ async function executeAnalysisTask(taskId: ObjectId, options: AnalysisTaskOption
     if (await shouldTreatAsCancelled(taskId, normalizedError)) {
       await logTaskProgress(taskId, createProgress("cancelled", CANCELLED_MESSAGE, 100), "cancelled");
       if (options.uid)
-        await refundTaskCallBalance(taskId, options.uid, "cancelled");
+        await refundAnalysisTaskCallBalance(taskId, options.uid, "cancelled");
       return;
     }
     if (options.uid)
-      await refundTaskCallBalance(taskId, options.uid, "failed");
+      await refundAnalysisTaskCallBalance(taskId, options.uid, "failed");
     await logTaskProgress(taskId, createProgress("failed", formatAnalysisError(normalizedError), 100), "failed");
     await updateOne(COLLECTIONS.analysisTasks, { _id: taskId }, {
       error: formatAnalysisError(normalizedError),
@@ -220,7 +248,7 @@ async function accumulateStreamContent(taskId: ObjectId, fingerprint: string, ru
  * @param reason - 退款原因（失败或取消）
  * @returns 是否成功完成退款
  */
-async function refundTaskCallBalance(taskId: ObjectId, uid: number, reason: "failed" | "cancelled") {
+export async function refundAnalysisTaskCallBalance(taskId: ObjectId, uid: number, reason: "failed" | "cancelled") {
   const refundedAt = new Date().toISOString();
   let refunded = false;
   try {

@@ -9,7 +9,7 @@ import { proxyToFrontend } from "./middleware/proxy";
 import { assertRateLimit } from "./middleware/rate-limit";
 import { accountsModule } from "./modules/accounts";
 import { analysisModule } from "./modules/analysis";
-import { recoverInterruptedAnalysisTasks } from "./modules/analysis-worker";
+import { recoverCancelledUnrefundedAnalysisTasks, recoverInterruptedAnalysisTasks } from "./modules/analysis-worker";
 import { authModule } from "./modules/auth";
 import { authorStylesModule } from "./modules/author-styles";
 import { billingModule } from "./modules/billing";
@@ -99,6 +99,9 @@ export async function createApp() {
   const recoveredTasks = await recoverInterruptedAnalysisTasks();
   if (recoveredTasks > 0)
     console.warn(`[analysis] recovered ${recoveredTasks} interrupted tasks`);
+  const recoveredCancelledRefunds = await recoverCancelledUnrefundedAnalysisTasks();
+  if (recoveredCancelledRefunds > 0)
+    console.warn(`[analysis] refunded ${recoveredCancelledRefunds} cancelled tasks`);
 
   return createTypedApp();
 }

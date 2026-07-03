@@ -7,7 +7,7 @@ import { getCurrentUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { createProgress } from "./analysis-progress";
-import { canAcceptAnalysisTask, cancelRunningTask, deleteTask, getAnalysisBackpressure, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot, runAnalysisTask, sha1Article } from "./analysis-worker";
+import { canAcceptAnalysisTask, cancelRunningTask, deleteTask, getAnalysisBackpressure, refundAnalysisTaskCallBalance, releaseAnalysisTaskSlot, reserveAnalysisTaskSlot, runAnalysisTask, sha1Article } from "./analysis-worker";
 import { cleanModelName, createCachedTask, findCachedAnalysis } from "./analysis/cache";
 import { createAnalysisTaskEventStream } from "./analysis/events";
 import { createTaskSnapshot, getAnalysisTaskResult } from "./analysis/records";
@@ -241,8 +241,15 @@ export const analysisModule = new Elysia()
     const task = await findOne(COLLECTIONS.analysisTasks, { _id: objectId(body.taskId) });
     if (!task)
       return { success: false, error: "Task not found" };
-    if (["completed", "failed", "cancelled"].includes(task.status as string))
+    if (task.status === "cancelled") {
+      if (typeof task.uid === "number")
+        await refundAnalysisTaskCallBalance(objectId(body.taskId), task.uid, "cancelled");
+      return { success: true, status: task.status };
+    }
+    if (["completed", "failed"].includes(task.status as string))
       return { success: true, status: task.status };
     const cancelled = await cancelRunningTask(body.taskId);
+    if (cancelled && typeof task.uid === "number")
+      await refundAnalysisTaskCallBalance(objectId(body.taskId), task.uid, "cancelled");
     return { success: cancelled, status: cancelled ? "cancelled" : task.status };
   }, { body: t.Object({ taskId: t.String() }), detail: { tags: ["RPC: Analysis"] } });
