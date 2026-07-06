@@ -1,0 +1,283 @@
+"use client";
+
+import { Activity, Heart, Home, Info, LayoutDashboard, LogIn, LogOut, Quote, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+
+import { ThemeToggle } from "@/components/common/theme/toggle";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { cn } from "@/lib/utils";
+import { useAuthHydration, useAuthLoading, useIsAuthenticated } from "@/store";
+import { loginSetState, logoutSetState } from "@/utils/auth/client";
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon?: React.ReactNode;
+  variant?: "ghost" | "outline" | "default" | "secondary" | "destructive" | "link";
+  cta?: boolean;
+}
+
+const isProtectedPath = (pathname?: string | null) =>
+  !!pathname && (
+    pathname.startsWith("/dashboard")
+    || pathname.startsWith("/sentences/upload")
+  );
+
+/**
+ * 头部导航链接组（统一尺寸与间距，图标左侧对齐）
+ */
+export const HeaderNav = () => {
+  const pathname = usePathname();
+  const router = useRouter();
+  const isLoggedIn = useIsAuthenticated();
+  const loading = useAuthLoading();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // 确保客户端水合完成
+  useAuthHydration();
+
+  const syncAuthState = useCallback(async () => {
+    if (isLoggingOut)
+      return;
+    await loginSetState();
+  }, [isLoggingOut]);
+
+  // 水合完成和路由切换后，根据服务端 Cookie 同步登录状态，避免头部与页面身份不同步
+  useEffect(() => {
+    if (!loading) {
+      void syncAuthState();
+    }
+  }, [loading, pathname, syncAuthState]);
+
+  // 用户从其他标签页退出或 Cookie 过期后，窗口重新聚焦时也要校验一次
+  useEffect(() => {
+    if (loading)
+      return;
+
+    const handleFocus = () => {
+      void syncAuthState();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void syncAuthState();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [loading, syncAuthState]);
+
+  /**
+   * 处理登出逻辑
+   * 调用 logoutSetState 完成服务端登出和客户端状态清理
+   */
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logoutSetState();
+      if (isProtectedPath(pathname)) {
+        router.replace("/");
+      }
+      router.refresh();
+    } catch (error) {
+      console.error("登出失败:", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const baseBtn = (variant: NavItem["variant"] = "default") =>
+    buttonVariants({ size: "sm", variant });
+
+  // 根据路由动态挑选最多三个导航项：固定包含 首页 + 我的任务 + 另外一个
+  const leftItems = (() => {
+    type ItemKey = "home" | "sentences" | "about" | "sponsors" | "status";
+    const all: Record<ItemKey, { href: string; label: string; icon: React.ReactNode; variant?: NavItem["variant"]; className?: string }>
+      = {
+        home: {
+          href: "/",
+          label: "首页",
+          icon: <Home className="h-4 w-4" />,
+          variant: "ghost",
+        },
+        sentences: {
+          href: "/sentences",
+          label: "句子",
+          icon: <Quote className="h-4 w-4" />,
+          variant: "outline",
+        },
+        about: {
+          href: "/about",
+          label: "关于",
+          icon: <Info className="h-4 w-4" />,
+          variant: "outline",
+        },
+        sponsors: {
+          href: "/sponsors",
+          label: "赞助",
+          icon: <Heart className="h-4 w-4" />,
+          variant: "outline",
+        },
+        status: {
+          href: "/status",
+          label: "状态",
+          icon: <Activity className="h-4 w-4" />,
+          variant: "outline",
+        },
+      };
+
+    const order: ItemKey[] = ["sentences", "about", "sponsors", "status"]; // 优先级：句子 > 关于 > 赞助 > 状态
+    const currentKey: ItemKey | null = pathname === "/"
+      ? "home"
+      : pathname?.startsWith("/about")
+        ? "about"
+        : pathname?.startsWith("/sentences")
+          ? "sentences"
+          : pathname?.startsWith("/sponsors")
+            ? "sponsors"
+            : pathname?.startsWith("/status")
+              ? "status"
+              : null;
+
+    const result: ItemKey[] = ["home"]; // 固定包含首页和我的任务
+
+    // 补足一个（跳过当前所在项）
+    for (const key of order) {
+      if (result.length >= 3)
+        break;
+      if (key === currentKey)
+        continue;
+      result.push(key);
+    }
+
+    return result.map(key => all[key]);
+  })();
+
+  return (
+    <nav className="flex gap-2 items-center sm:gap-4">
+      {/* 左侧：主要导航（最多三个） */}
+      <div className="flex gap-1 items-center sm:gap-1.5">
+        {leftItems.map(item => (
+          <Button
+            key={item.href}
+            asChild
+            size="sm"
+            variant={item.variant ?? "ghost"}
+            className={cn(
+              baseBtn(item.variant ?? "ghost"),
+              "px-2 sm:px-3 rounded-full",
+              item.variant === "ghost"
+              && "hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-300 dark:hover:bg-slate-800/70 dark:focus-visible:ring-slate-700",
+              item.href === "/sponsors"
+              && "border-pink-300 text-pink-700 hover:bg-pink-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-pink-300 dark:border-pink-500/30 dark:text-pink-300 dark:hover:bg-pink-500/10 dark:focus-visible:ring-pink-800",
+              item.href === "/about"
+              && "border-blue-300 text-blue-700 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-300 dark:border-blue-500/30 dark:text-blue-300 dark:hover:bg-blue-500/10 dark:focus-visible:ring-blue-800",
+              item.href === "/status"
+              && "border-green-300 text-green-700 hover:bg-green-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-green-300 dark:border-green-500/30 dark:text-green-300 dark:hover:bg-green-500/10 dark:focus-visible:ring-green-800",
+              item.href === "/sentences"
+              && "border-violet-300 text-violet-700 hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-300 dark:border-violet-500/30 dark:text-violet-300 dark:hover:bg-violet-500/10 dark:focus-visible:ring-violet-800",
+              (pathname === item.href || (item.href === "/sentences" && pathname?.startsWith("/sentences"))) && "bg-secondary dark:bg-slate-800/60",
+            )}
+          >
+            <Link href={item.href} className="flex gap-1 items-center sm:gap-2">
+              {item.icon}
+              <span className="hidden sm:inline">{item.label}</span>
+            </Link>
+          </Button>
+        ))}
+      </div>
+
+      {/* 分隔线 */}
+      <div className="bg-border mx-0.5 h-6 w-px sm:mx-1" />
+
+      {/* 主题切换 */}
+      <ThemeToggle />
+
+      {/* 分隔线 */}
+      <div className="bg-border mx-0.5 h-6 w-px sm:mx-1" />
+
+      {/* 右侧：账户与入口 */}
+      <div className="flex gap-1 items-center sm:gap-1.5">
+        {loading
+          ? (
+              <div className="text-muted-foreground text-xs px-2 sm:px-3">加载中…</div>
+            )
+          : isLoggedIn
+            ? (
+                <>
+                  <Button
+                    asChild
+                    size="sm"
+                    className={cn(
+                      baseBtn("default"),
+                      "px-2 sm:px-3 rounded-full shadow-sm hover:bg-primary/90",
+                      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40",
+                      "dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-50 dark:focus-visible:ring-slate-600",
+                      pathname === "/dashboard" && "bg-primary/90 hover:bg-primary dark:bg-slate-600 dark:hover:bg-slate-500",
+                    )}
+                  >
+                    <Link href="/dashboard" className="flex gap-1 items-center sm:gap-2">
+                      <LayoutDashboard className="h-4 w-4" />
+                      <span className="hidden sm:inline">仪表盘</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isLoggingOut}
+                    className="text-red-600 px-2 border-red-200 rounded-full dark:text-red-300 sm:px-3 focus-visible:outline-none dark:border-red-700 hover:bg-red-50 focus-visible:ring-1 focus-visible:ring-red-300 dark:hover:bg-red-500/10 dark:focus-visible:ring-red-800"
+                    onClick={handleLogout}
+                  >
+                    <LogOut className="h-4 w-4 sm:mr-1" />
+                    <span className="hidden sm:inline">{isLoggingOut ? "退出中..." : "退出"}</span>
+                  </Button>
+                </>
+              )
+            : (
+                <>
+                  <Button
+                    asChild
+                    size="sm"
+                    variant="ghost"
+                    className={cn(
+                      baseBtn("ghost"),
+                      "px-2 sm:px-3 rounded-full hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-300",
+                      "dark:hover:bg-slate-800/70 dark:focus-visible:ring-slate-700",
+                      pathname === "/signin" && "bg-secondary dark:bg-slate-800/60",
+                    )}
+                  >
+                    <Link href="/signin" className="flex gap-1 items-center sm:gap-2">
+                      <LogIn className="h-4 w-4" />
+                      <span className="hidden sm:inline">登录</span>
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="sm"
+                    className={cn(
+                      baseBtn("default"),
+                      "px-2 sm:px-3 rounded-full shadow-sm hover:bg-primary/90",
+                      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40",
+                      "dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-50 dark:focus-visible:ring-slate-600",
+                      pathname === "/signup" && "bg-primary/90 hover:bg-primary dark:bg-slate-600 dark:hover:bg-slate-500",
+                    )}
+                  >
+                    <Link href="/signup" className="flex gap-1 items-center sm:gap-2">
+                      <UserPlus className="h-4 w-4" />
+                      <span className="hidden sm:inline">注册</span>
+                    </Link>
+                  </Button>
+                </>
+              )}
+      </div>
+    </nav>
+  );
+};
