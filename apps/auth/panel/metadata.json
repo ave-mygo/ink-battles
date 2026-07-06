@@ -1,0 +1,6 @@
+{
+  "name": "Ink Battles Auth Panel",
+  "description": "Static frontend panel for the Ink Battles unified authentication service.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

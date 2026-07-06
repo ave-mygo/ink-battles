@@ -1,11 +1,16 @@
 {
   "name": "ink-battles-workspace",
+  "type": "module",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.5.1+sha512.93f7b57422ea7068257235b4c16eb60762eb68e1dc23723199cc739043ea9be2c4143274a399d8c6defa2b1176226d9ca1c4b63482d6200c1a8fbaa78c1d1485",
   "scripts": {
     "dev": "turbo run dev --filter=@ink-battles/frontend --filter=@ink-battles/backend",
-    "dev:all": "turbo run dev --filter=@ink-battles/frontend --filter=@ink-battles/backend",
+    "dev:all": "turbo run dev --filter=@ink-battles/frontend --filter=@ink-battles/backend --filter=@ink-battles/auth-service",
+    "auth:dev": "turbo run dev --filter=@ink-battles/auth-service",
+    "auth:build": "turbo run build --filter=@ink-battles/auth-service",
+    "auth:panel:dev": "pnpm --filter @ink-battles/auth-panel dev",
+    "auth:panel:build": "turbo run build --filter=@ink-battles/auth-panel",
     "build": "turbo run build",
     "build:all": "turbo run build",
     "build:docker": "docker compose -f docker-compose.yml -f docker-compose.build.yml build",
@@ -17,7 +22,7 @@
     "frontend:dev": "pnpm --filter @ink-battles/frontend dev",
     "frontend:build": "pnpm --filter @ink-battles/frontend build",
     "frontend:start": "pnpm --filter @ink-battles/frontend start",
-    "frontend:lint": "eslint frontend",
+    "frontend:lint": "eslint apps/frontend",
     "frontend:typecheck": "pnpm --filter @ink-battles/frontend typecheck",
     "backend:dev": "pnpm --filter @ink-battles/backend dev",
     "backend:build": "pnpm --filter @ink-battles/backend build",
@@ -29,7 +34,8 @@
     "compose:down": "docker compose down",
     "compose:restart": "docker compose restart",
     "compose:logs": "docker compose logs -f",
-    "compose:ps": "docker compose ps"
+    "compose:ps": "docker compose ps",
+    "scripts:run": "NODE_PATH=apps/backend/node_modules node"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.3.0",

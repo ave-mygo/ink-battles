@@ -7,7 +7,19 @@
     },
     "build": {
       "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "@ink-battles/frontend#build": {
+      "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "@ink-battles/auth-panel#build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "out/**"]
+    },
+    "@ink-battles/auth-service#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["target/release/**"]
     },
     "lint": {
       "outputs": []

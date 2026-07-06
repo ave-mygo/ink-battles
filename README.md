@@ -111,7 +111,7 @@
 
 ```
 ink-battles/
-├── frontend/                  # Next.js 前端应用
+├── apps/frontend/                  # Next.js 前端应用
 │   ├── src/
 │   │   ├── app/               # App Router 路由与页面
 │   │   │   ├── analysis/[id]/ # 分析结果页（动态路由）
@@ -159,7 +159,7 @@ ink-battles/
 │   ├── unocss.config.ts       # UnoCSS 配置
 │   └── components.json        # shadcn/ui 配置
 │
-├── backend/                   # Elysia 后端服务
+├── apps/backend/                   # Elysia 后端服务
 │   └── src/
 │       ├── modules/           # 业务模块
 │       │   ├── analysis.ts    # 文本分析接口
@@ -182,7 +182,7 @@ ink-battles/
 │       │   └── prompts/       # System Prompts (Markdown)
 │       └── utils/             # 工具函数
 │
-├── shared/                    # 跨包共享代码
+├── apps/shared/                    # 跨包共享代码
 │   ├── types/                 # 共享 TypeScript 类型
 │   │   ├── ai/               # AI 分析/评分类型
 │   │   ├── auth/             # 认证/会话类型

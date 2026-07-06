@@ -25,9 +25,9 @@ user-invocable: false
 
 ```
 ink-battles/
-├── frontend/          # Next.js 16 (App Router), React 19, TypeScript
-├── backend/           # Elysia 1.4 (Bun 运行时), MongoDB
-├── shared/            # @ink-battles/shared 类型和常量
+├── apps/frontend/          # Next.js 16 (App Router), React 19, TypeScript
+├── apps/backend/           # Elysia 1.4 (Bun 运行时), MongoDB
+├── apps/shared/            # @ink-battles/shared 类型和常量
 ├── config.toml        # 运行时配置
 └── pnpm-workspace.yaml
 ```
@@ -38,7 +38,7 @@ ink-battles/
 - 共享包 `@ink-battles/shared` 通过 pnpm workspace 链接
 - 样式使用 **Tailwind CSS v4 + shadcn/ui**，禁止自定义 CSS
 - 状态管理使用 **Zustand**
-- 数据库操作统一通过 `backend/src/db/mongo.ts` 封装层
+- 数据库操作统一通过 `apps/backend/src/db/mongo.ts` 封装层
 
 ---
 
@@ -49,7 +49,7 @@ ink-battles/
 **1. 创建路由文件**
 
 ```
-frontend/src/app/<route-name>/
+apps/frontend/src/app/<route-name>/
 ├── page.tsx       # 页面编排者（仅获取数据 + 组装组件）
 ├── loading.tsx    # 加载骨架屏
 └── layout.tsx     # 可选：自定义布局
@@ -58,7 +58,7 @@ frontend/src/app/<route-name>/
 **2. page.tsx 规范**
 
 ```typescript
-// frontend/src/app/new-feature/page.tsx
+// apps/frontend/src/app/new-feature/page.tsx
 import type { Metadata } from "next";
 import { NewFeatureContent } from "@/components/layouts/NewFeature/NewFeatureContent";
 
@@ -80,7 +80,7 @@ export default async function NewFeaturePage() {
 **3. 组件文件组织**
 
 ```
-frontend/src/components/layouts/NewFeature/
+apps/frontend/src/components/layouts/NewFeature/
 ├── NewFeatureContent.tsx    # 主组件
 ├── NewFeatureHeader.tsx     # 头部区域
 └── NewFeatureCard.tsx       # 功能卡片
@@ -108,7 +108,7 @@ export default function Loading() {
 **1. 创建模块文件**
 
 ```typescript
-// backend/src/modules/new-feature.ts
+// apps/backend/src/modules/new-feature.ts
 import { Elysia, t } from "elysia";
 import { COLLECTIONS, findMany, insertOne } from "../db/mongo";
 import { requireUser } from "../middleware/auth";
@@ -142,7 +142,7 @@ export const newFeatureModule = new Elysia()
 **2. 注册模块到 app.ts**
 
 ```typescript
-// backend/src/app.ts - 添加导入和 .use()
+// apps/backend/src/app.ts - 添加导入和 .use()
 import { newFeatureModule } from "./modules/new-feature";
 
 // 在 createTypedApp() 中链式调用
@@ -152,7 +152,7 @@ import { newFeatureModule } from "./modules/new-feature";
 **3. 添加数据库集合常量**
 
 ```typescript
-// backend/src/db/mongo.ts - COLLECTIONS 对象中添加
+// apps/backend/src/db/mongo.ts - COLLECTIONS 对象中添加
 export const COLLECTIONS = {
   // ...existing
   newCollection: "new_collection",
@@ -162,7 +162,7 @@ export const COLLECTIONS = {
 **4. 创建索引（如需要）**
 
 ```typescript
-// backend/src/db/indexes.ts - ensureBackendIndexes() 中添加
+// apps/backend/src/db/indexes.ts - ensureBackendIndexes() 中添加
 await ensureIndex(COLLECTIONS.newCollection, { uid: 1, createdAt: -1 });
 ```
 
@@ -170,10 +170,10 @@ await ensureIndex(COLLECTIONS.newCollection, { uid: 1, createdAt: -1 });
 
 ### 流程三：添加共享类型
 
-**1. 在 shared/types/ 下创建类型文件**
+**1. 在 apps/shared/types/ 下创建类型文件**
 
 ```typescript
-// shared/types/common/new-feature.ts
+// apps/shared/types/common/new-feature.ts
 export interface NewFeatureItem {
   _id: string;
   uid: number;
@@ -191,11 +191,11 @@ export interface NewFeatureResponse {
 **2. 从 index.ts 导出**
 
 ```typescript
-// shared/types/common/index.ts - 添加导出
+// apps/shared/types/common/index.ts - 添加导出
 export * from "./new-feature";
 ```
 
-**3. 更新 shared/package.json exports（如新增子目录）**
+**3. 更新 apps/shared/package.json exports（如新增子目录）**
 
 ```json
 {
@@ -241,7 +241,7 @@ export function useNewFeature() {
 **1. 定义模式提示词**
 
 ```markdown
-<!-- backend/src/constants/prompts/system/system-prompt-XX.md -->
+<!-- apps/backend/src/constants/prompts/system/system-prompt-XX.md -->
 # 新模式名称
 
 你是一个[角色描述]...
@@ -257,7 +257,7 @@ export function useNewFeature() {
 
 **2. 在前端注册模式**
 
-模式列表定义在 `frontend/src/components/layouts/WriterPage/WriterAnalysisModes.tsx` 中：
+模式列表定义在 `apps/frontend/src/components/layouts/WriterPage/WriterAnalysisModes.tsx` 中：
 
 ```typescript
 const ANALYSIS_MODES = [
@@ -274,7 +274,7 @@ const ANALYSIS_MODES = [
 
 **3. 后端模式映射**
 
-在 `backend/src/modules/analysis-worker.ts` 中确保模式 ID 能映射到对应的 system prompt 文件。
+在 `apps/backend/src/modules/analysis-worker.ts` 中确保模式 ID 能映射到对应的 system prompt 文件。
 
 ---
 
@@ -283,7 +283,7 @@ const ANALYSIS_MODES = [
 **1. 后端 OAuth 模块**
 
 ```typescript
-// backend/src/modules/oauth.ts - 添加新的 OAuth 路由
+// apps/backend/src/modules/oauth.ts - 添加新的 OAuth 路由
 .get("/api/v2/oauth/new-provider/callback", async ({ request, query }) => {
   const { code, state } = query;
   // 1. 用 code 换取 access_token
@@ -296,7 +296,7 @@ const ANALYSIS_MODES = [
 **2. 前端 OAuth 回调页**
 
 ```
-frontend/src/app/oauth/new-provider/page.tsx
+apps/frontend/src/app/oauth/new-provider/page.tsx
 ```
 
 **3. 配置项**
@@ -310,14 +310,14 @@ frontend/src/app/oauth/new-provider/page.tsx
 **1. 创建路由**
 
 ```
-frontend/src/app/dashboard/new-section/
+apps/frontend/src/app/dashboard/new-section/
 ├── page.tsx
 └── loading.tsx
 ```
 
 **2. 注册导航项**
 
-在 `frontend/src/lib/constants.ts` 的 `DASHBOARD_NAV_ITEMS` 中添加：
+在 `apps/frontend/src/lib/constants.ts` 的 `DASHBOARD_NAV_ITEMS` 中添加：
 
 ```typescript
 export const DASHBOARD_NAV_ITEMS = [
@@ -328,7 +328,7 @@ export const DASHBOARD_NAV_ITEMS = [
 
 **3. 创建业务组件**
 
-放置在 `frontend/src/components/dashboard/` 目录下。
+放置在 `apps/frontend/src/components/dashboard/` 目录下。
 
 ---
 
@@ -424,7 +424,7 @@ export function FeatureCard({ title, description, onAction, loading }: FeatureCa
 ### Zustand Store 模板
 
 ```typescript
-// frontend/src/store/new-feature.ts
+// apps/frontend/src/store/new-feature.ts
 import { create } from "zustand";
 
 interface NewFeatureState {
@@ -445,12 +445,12 @@ export const useNewFeatureStore = create<NewFeatureState>(set => ({
 ### 工具函数模板
 
 ```typescript
-// frontend/src/utils/new-feature/index.ts
+// apps/frontend/src/utils/new-feature/index.ts
 export { fetchFeatureData, submitFeatureAction } from "./client";
 ```
 
 ```typescript
-// frontend/src/utils/new-feature/client.ts
+// apps/frontend/src/utils/new-feature/client.ts
 "use client";
 
 import { createClientEden } from "@/utils/api/eden-client";
@@ -495,7 +495,7 @@ api_key = "your-api-key-here"
 **2. 更新 RuntimeConfig 接口**
 
 ```typescript
-// backend/src/config.ts
+// apps/backend/src/config.ts
 export interface RuntimeConfig {
   // ...existing
   new_feature?: {
@@ -509,7 +509,7 @@ export interface RuntimeConfig {
 **3. 添加配置读取函数**
 
 ```typescript
-// backend/src/config.ts
+// apps/backend/src/config.ts
 export function getNewFeatureConfig() {
   const config = getConfig();
   return config.new_feature ?? { enabled: false, max_items: 100, api_key: "" };
@@ -549,7 +549,7 @@ export function getNewFeatureConfig() {
 
 添加新功能后，确认以下事项：
 
-- [ ] 类型定义在 `shared/types/` 中（如需跨前后端共享）
+- [ ] 类型定义在 `apps/shared/types/` 中（如需跨前后端共享）
 - [ ] 后端模块已在 `app.ts` 中 `.use()` 注册
 - [ ] 数据库集合已在 `COLLECTIONS` 中注册
 - [ ] 必要的索引已在 `indexes.ts` 中定义

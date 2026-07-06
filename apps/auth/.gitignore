@@ -1,0 +1,12 @@
+node_modules/
+.turbo/
+target/
+panel/node_modules/
+panel/.next/
+panel/.turbo/
+panel/out/*
+!panel/out/.gitkeep
+*.log
+*.tsbuildinfo
+.env*
+!.env.example

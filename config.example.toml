@@ -73,6 +73,26 @@ allowed_origins = [
   "http://localhost:3001"
 ]
 
+# -------------------------------------------------------------
+# Auth 服务配置
+# -------------------------------------------------------------
+[auth]
+host = "0.0.0.0"
+port = 3100
+mongodb_database = "ink_battles"
+app_base_url = "http://localhost:3100"
+default_return_url = "http://localhost:3000/dashboard"
+allowed_return_origins = [ "http://localhost:3000" ]
+allowed_origins = [
+  "http://localhost:3000",
+  "http://localhost:3101"
+]
+cookie_name = "auth-sso-token"
+site_cookie_name = "auth-token"
+cookie_domain = ""
+cookie_secure = false
+smtp_from_name = "Ink Battles"
+
 [[grading_models]]
 id = "gemini-3-pro-preview"
 name = "Gemini 3 Pro"
@@ -118,7 +138,7 @@ api_token = "YOUR_AFDIAN_API_TOKEN"
 user_id = "YOUR_AFDIAN_USER_ID"
 client_id = "YOUR_CLIENT_ID"
 client_secret = "YOUR_CLIENT_SECRET"
-redirect_uri = "https://your-domain.com/oauth/afdian/callback"
+redirect_uri = "https://auth.your-domain.com/api/auth/oauth/afdian/callback"
 
 # -------------------------------------------------------------
 # 内部 API 配置

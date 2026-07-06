@@ -25,11 +25,14 @@ jobs:
       matrix:
         include:
           - service: frontend
-            dockerfile: frontend/Dockerfile
+            dockerfile: apps/frontend/Dockerfile
             image: ghcr.io/ave-mygo/ink-battles-frontend
           - service: backend
-            dockerfile: backend/Dockerfile
+            dockerfile: apps/backend/Dockerfile
             image: ghcr.io/ave-mygo/ink-battles-backend
+          - service: auth
+            dockerfile: apps/auth/Dockerfile
+            image: ghcr.io/ave-mygo/ink-battles-auth
 
     steps:
       - name: Checkout repository

@@ -1,5 +1,4 @@
 allowBuilds:
-  "@google/genai": false
   esbuild: true
   protobufjs: true
   sharp: true
@@ -8,6 +7,8 @@ shellEmulator: true
 
 trustPolicy: no-downgrade
 packages:
-  - frontend
-  - backend
-  - shared
+  - apps/frontend
+  - apps/backend
+  - apps/shared
+  - apps/auth
+  - apps/auth/panel

@@ -21,19 +21,25 @@
  */
 
 import fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { MongoClient } from "mongodb";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// 从 apps/backend/node_modules 解析 CJS 依赖（NODE_PATH 对 ESM 无效）
+const backendRequire = createRequire(
+  path.join(__dirname, "../apps/backend/node_modules/toml/package.json"),
+);
+const { MongoClient } = backendRequire("mongodb");
+const toml = backendRequire("toml");
 
 // 配置读取
 let config = null;
 try {
   const configPath = path.join(__dirname, "../config.toml");
-  const toml = await import("toml");
   const configContent = await fs.readFile(configPath, "utf-8");
   config = toml.parse(configContent);
 } catch (error) {
