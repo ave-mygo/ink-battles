@@ -15,6 +15,8 @@ pnpm --filter @ink-battles/auth-panel build
 pnpm --filter @ink-battles/frontend build
 pnpm --filter @ink-battles/backend build
 pnpm --filter @ink-battles/backend exec bun build src/index.ts --target=bun --outdir dist
+rm -rf apps/backend/dist/prompts
+cp -R apps/backend/src/constants/other/prompts apps/backend/dist/prompts
 
 (
   cd apps/auth

@@ -9,6 +9,7 @@ ENV HOSTNAME=0.0.0.0
 RUN addgroup -S app && adduser -S -G app app
 
 COPY --chown=app:app apps/backend/dist/index.js ./dist/index.js
+COPY --chown=app:app apps/backend/src/constants/other/prompts ./dist/prompts
 COPY config.example.toml /app/config.example.toml
 
 USER app
