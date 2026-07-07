@@ -3,6 +3,7 @@
 import type { AuthUserInfoSafe, UserStore } from "@ink-battles/shared/types/users";
 import { clearAuthStore, syncAuthStoreAfterLogin } from "@/store";
 import { createClientEden } from "@/utils/api/eden-client";
+import { mapAuthUserToStore } from "@/utils/auth/user-store";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -10,12 +11,7 @@ interface ApiResponse<T> {
   data?: T;
 }
 
-const mapAuthToUserStore = (user: AuthUserInfoSafe): UserStore => ({
-  uid: String(user.uid),
-  nickname: user.nickname || user.email?.split("@")[0] || "用户",
-  avatar: (user as AuthUserInfoSafe & { avatar?: string }).avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`,
-  isLoggedIn: true,
-});
+const mapAuthToUserStore = (user: AuthUserInfoSafe): UserStore => mapAuthUserToStore(user);
 
 const getAuthApi = () => createClientEden().api.v2;
 

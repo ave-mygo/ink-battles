@@ -1,5 +1,6 @@
 "use client";
 
+import type { UserStore } from "@ink-battles/shared/types/users";
 import { Activity, Heart, Home, Info, LayoutDashboard, LogIn, LogOut, Quote, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ const isProtectedPath = (pathname?: string | null) =>
 /**
  * 头部导航链接组（统一尺寸与间距，图标左侧对齐）
  */
-export const HeaderNav = () => {
+export const HeaderNav = ({ initialUser }: { initialUser?: UserStore | null }) => {
   const pathname = usePathname();
   const router = useRouter();
   const isLoggedIn = useIsAuthenticated();
@@ -37,7 +38,7 @@ export const HeaderNav = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // 确保客户端水合完成
-  useAuthHydration();
+  useAuthHydration(initialUser);
 
   const syncAuthState = useCallback(async () => {
     if (isLoggingOut)

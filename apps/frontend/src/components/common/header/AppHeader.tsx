@@ -1,5 +1,6 @@
 "use client";
 
+import type { UserStore } from "@ink-battles/shared/types/users";
 import { Menu } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,7 +13,7 @@ import { HeaderNav } from "./HeaderNav";
  * - 固定顶栏，半透明毛玻璃
  * - 提供首页、赞助、登录、注册入口
  */
-export const AppHeader = () => {
+export const AppHeader = ({ initialUser }: { initialUser?: UserStore | null }) => {
   const pathname = usePathname();
   const { toggle } = useDashboardSidebarActions();
 
@@ -45,7 +46,7 @@ export const AppHeader = () => {
             <span className="hidden sm:inline">作家战力分析</span>
           </Link>
         </div>
-        <HeaderNav />
+        <HeaderNav initialUser={initialUser} />
       </div>
     </div>
   );

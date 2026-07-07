@@ -67,10 +67,15 @@ export const clearAuthStore = () => {
  * 客户端水合 hook
  * 确保持久化存储的数据在客户端正确加载
  */
-export const useAuthHydration = () => {
-  const { setLoading } = useAuthActions();
+export const useAuthHydration = (initialUser?: UserStore | null) => {
+  const { setLoading, setUser } = useAuthActions();
 
   useEffect(() => {
+    if (initialUser) {
+      setUser(initialUser);
+      return;
+    }
+
     // 手动触发持久化状态的水合（因启用了 skipHydration）
     const anyStore = useAuthStore as unknown as { persist?: { rehydrate?: () => void } };
     try {
@@ -79,5 +84,5 @@ export const useAuthHydration = () => {
       // 结束加载态（即使本地没有持久化数据，也要结束加载）
       setLoading(false);
     }
-  }, [setLoading]);
+  }, [initialUser, setLoading, setUser]);
 };

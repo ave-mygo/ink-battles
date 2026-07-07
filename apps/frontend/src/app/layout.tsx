@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import process from "node:process";
 import { JetBrains_Mono, Noto_Sans_SC } from "next/font/google";
+import { cookies } from "next/headers";
 
 import { AppHeader } from "@/components/common/header/AppHeader";
 import { ThemeProvider } from "@/components/common/theme/provider";
 import { Toaster } from "@/components/ui/sonner";
+import { getCurrentUserInfo } from "@/utils/auth/server";
+import { mapAuthUserToStore } from "@/utils/auth/user-store";
 
 import "./globals.css";
 
@@ -19,6 +22,24 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.APP_BASE_URL || "http://localhost:3001";
+
+/**
+ * 安全读取首屏导航登录态，避免认证接口短暂不可用时拖垮整站布局。
+ */
+const getInitialHeaderUser = async () => {
+  const cookieStore = await cookies();
+  if (!cookieStore.has("auth-token")) {
+    return null;
+  }
+
+  try {
+    const currentUser = await getCurrentUserInfo();
+    return currentUser ? mapAuthUserToStore(currentUser) : null;
+  } catch (error) {
+    console.error("读取导航登录态失败:", error);
+    return null;
+  }
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -92,6 +113,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialHeaderUser = await getInitialHeaderUser();
+
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head>
@@ -109,7 +132,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AppHeader />
+          <AppHeader initialUser={initialHeaderUser} />
           {children}
           <Toaster />
         </ThemeProvider>
