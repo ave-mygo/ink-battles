@@ -8,6 +8,8 @@ export interface SystemModelCredential {
   api_key: string;
   base_url: string;
   model?: string;
+  enabled?: boolean;
+  name?: string;
 }
 
 export interface SystemEmbeddingModelConfig extends Omit<SystemModelCredential, "model"> {

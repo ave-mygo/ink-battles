@@ -1,7 +1,7 @@
 "use client";
 
 import type { GradingModelConfig } from "@ink-battles/shared/types/common/config";
-import type { PublicUploadLimits } from "@ink-battles/shared/types/common/public-config";
+import type { PublicUploadLimits, PublicValidatorModelConfig } from "@ink-battles/shared/types/common/public-config";
 import { useRef } from "react";
 import {
   createWriterConfigStore,
@@ -11,6 +11,7 @@ import {
 interface WriterConfigProviderProps {
   initialAvailableGradingModels: GradingModelConfig[];
   initialUploadLimits?: PublicUploadLimits;
+  initialValidatorModels: PublicValidatorModelConfig[];
   children: React.ReactNode;
 }
 
@@ -20,6 +21,7 @@ interface WriterConfigProviderProps {
 export function WriterConfigProvider({
   initialAvailableGradingModels,
   initialUploadLimits,
+  initialValidatorModels,
   children,
 }: WriterConfigProviderProps) {
   const storeRef = useRef<ReturnType<typeof createWriterConfigStore> | null>(null);
@@ -28,6 +30,7 @@ export function WriterConfigProvider({
     storeRef.current = createWriterConfigStore({
       availableGradingModels: initialAvailableGradingModels,
       uploadLimits: initialUploadLimits,
+      validatorModels: initialValidatorModels,
     });
   }
 

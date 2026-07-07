@@ -25,6 +25,12 @@ interface ParsedValidation {
   searchSummary?: string;
 }
 
+interface ValidatorModelConfig {
+  apiKey: string;
+  baseUrl: string;
+  modelName: string;
+}
+
 /**
  * 验证文章内容的有效性
  * 通过AI模型判断文章是否为有效内容，支持可选的搜索增强
@@ -48,13 +54,16 @@ export async function verifyArticleValue(input: {
   signal?: AbortSignal;
 }): Promise<ValidationResult> {
   const searchModel = input.searchModel ?? "none";
+  const modelConfig = selectValidatorModel(searchModel);
+  if (!modelConfig)
+    return { success: true };
+
   const normalizedText = input.articleText.replace(NORMALIZE_TEXT_REGEX, "");
   const sha1 = crypto.SHA1(normalizedText).toString();
   const cached = await findCachedAnalysis(sha1, input.mode, input.modelId, input.modelName);
   if (cached)
     return { success: true };
 
-  const modelConfig = selectValidatorModel(searchModel);
   const validatorModelName = modelConfig.modelName;
   const systemInstruction = buildSystemInstruction(searchModel !== "none");
 
@@ -123,20 +132,38 @@ async function findCachedAnalysis(sha1: string, mode: string, modelId: string, m
  * @returns 模型配置，包含API密钥、基础URL和模型名称
  */
 function selectValidatorModel(searchModel: SearchModel) {
-  const key = {
-    "ds-search": "validator_deepseek_search",
-    "gemini": "validator_gemini",
-    "gemini-lite": "validator_gemini_lite",
-    "none": "validator_nosearch",
-  }[searchModel];
+  const key = getValidatorModelKey(searchModel);
   const model = getSystemModelCredential(key);
   if (!model)
     throw new Error(`缺少系统校验模型配置: ${key}`);
+  if (model.enabled === false)
+    return null;
+  const validatorSetting = getCachedSiteSettingValue("ai.validator");
+  if ("enabled" in validatorSetting && validatorSetting.enabled === false)
+    return null;
+  const dynamicModels = Array.isArray(validatorSetting.models) ? validatorSetting.models : [];
+  const dynamicModel = dynamicModels.find(item => item.id === key || item.model === model.model);
+  if (dynamicModel?.enabled === false)
+    return null;
   return {
     apiKey: model.api_key,
     baseUrl: model.base_url,
     modelName: model.model ?? (searchModel === "none" ? "glm-4.7" : searchModel),
   };
+}
+
+/**
+ * 根据搜索模式映射到 config.toml 中的系统校验模型段。
+ * @param searchModel - 搜索模型类型
+ * @returns system_models 下的校验模型 key
+ */
+function getValidatorModelKey(searchModel: SearchModel) {
+  return {
+    "ds-search": "validator_deepseek_search",
+    "gemini": "validator_gemini",
+    "gemini-lite": "validator_gemini_lite",
+    "none": "validator_nosearch",
+  }[searchModel];
 }
 
 /**
@@ -154,7 +181,7 @@ function selectValidatorModel(searchModel: SearchModel) {
 async function validateWithGemini(input: {
   articleText: string;
   fingerprint: string;
-  modelConfig: ReturnType<typeof selectValidatorModel>;
+  modelConfig: ValidatorModelConfig;
   modelName: string;
   sha1: string;
   signal?: AbortSignal;
@@ -200,7 +227,7 @@ async function validateWithGemini(input: {
 async function validateWithOpenAI(input: {
   articleText: string;
   fingerprint: string;
-  modelConfig: ReturnType<typeof selectValidatorModel>;
+  modelConfig: ValidatorModelConfig;
   modelName: string;
   sha1: string;
   signal?: AbortSignal;

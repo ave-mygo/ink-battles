@@ -17,6 +17,7 @@ import { createClientEden } from "@/utils/api/eden-client";
 import { normalizeEdenResult, unwrapEdenPayload } from "@/utils/api/eden-response";
 import {
   AiGenerationEditor,
+  AiValidatorEditor,
   AnalysisRuntimeEditor,
   AuthorStyleSettingEditor,
   BooleanField,
@@ -168,6 +169,7 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory, initia
   const runtime = getDraftValue("analysis.runtime");
   const scoringPolicy = getDraftValue("analysis.scoringPolicy");
   const generation = getDraftValue("ai.generation");
+  const validator = getDraftValue("ai.validator");
   const gradingModels = getDraftValue("ai.gradingModels");
   const vectorSearch = getDraftValue("ai.vectorSearch");
   const authorStyle = getDraftValue("ai.authorStyle");
@@ -234,6 +236,8 @@ export function AdminSiteSettingsPanel({ initialSettings, initialHistory, initia
         {scoringPolicy && renderCard("analysis.scoringPolicy", (<ScoringPolicyEditor value={scoringPolicy} onChange={value => updateDraftValue("analysis.scoringPolicy", value)} />))}
 
         {generation && renderCard("ai.generation", (<AiGenerationEditor value={generation} onChange={value => updateDraftValue("ai.generation", value)} />))}
+
+        {validator && renderCard("ai.validator", (<AiValidatorEditor value={validator} onChange={value => updateDraftValue("ai.validator", value)} />))}
 
         {gradingModels && renderCard("ai.gradingModels", (<GradingModelsEditor value={gradingModels} onChange={value => updateDraftValue("ai.gradingModels", value)} />))}
 

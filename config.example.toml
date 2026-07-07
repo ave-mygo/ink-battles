@@ -15,6 +15,8 @@
 api_key = "YOUR_VALIDATOR_API_KEY"
 base_url = "https://api.openai.com/v1"
 model = "gemini-3-flash-preview"
+enabled = true
+name = "Gemini 搜索校验"
 
 # -------------------------------------------------------------
 # 带搜索的校验模型 (Gemini Lite, Google GenAI SDK 原生调用)
@@ -22,6 +24,8 @@ model = "gemini-3-flash-preview"
 api_key = "YOUR_VALIDATOR_API_KEY"
 base_url = "https://api.openai.com/v1"
 model = "gemini-2.5-flash"
+enabled = true
+name = "Gemini Lite 搜索校验"
 
 # -------------------------------------------------------------
 # 带搜索的校验模型 (DeepSeek, OpenAI 兼容 SDK 普通调用)
@@ -29,6 +33,8 @@ model = "gemini-2.5-flash"
 api_key = "YOUR_VALIDATOR_API_KEY"
 base_url = "https://api.openai.com/v1"
 model = "deepseek-v4-flash-search"
+enabled = true
+name = "DeepSeek 搜索校验"
 
 # -------------------------------------------------------------
 # 关闭搜索的校验模型 (GLM, OpenAI 兼容 SDK)
@@ -36,6 +42,8 @@ model = "deepseek-v4-flash-search"
 api_key = "YOUR_VALIDATOR_API_KEY"
 base_url = "https://api.openai.com/v1"
 model = "glm-4.7"
+enabled = true
+name = "无搜索文本校验"
 
 # -------------------------------------------------------------
 # 评分模型凭证配置

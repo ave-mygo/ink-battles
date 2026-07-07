@@ -18,6 +18,14 @@ export interface PublicUploadLimits {
 	guestDailyChars?: number;
 }
 
+export type PublicValidatorModelId = "none" | "gemini" | "gemini-lite" | "ds-search";
+
+export interface PublicValidatorModelConfig {
+	id: PublicValidatorModelId;
+	name: string;
+	enabled: boolean;
+}
+
 export interface PublicAppConfig {
 	app_name?: string;
 	notice?: PublicAppNotice;
@@ -30,6 +38,7 @@ export interface PublicConfigResponse {
 	};
 	uploadLimits?: PublicUploadLimits;
 	gradingModels?: GradingModelConfig[];
+	validatorModels?: PublicValidatorModelConfig[];
 	friends?: FriendLink[];
 }
 
@@ -45,5 +54,6 @@ export const DEFAULT_PUBLIC_CONFIG: PublicConfigResponse = {
 		invite_code_required: false,
 	},
 	gradingModels: [],
+	validatorModels: [],
 	friends: [],
 };

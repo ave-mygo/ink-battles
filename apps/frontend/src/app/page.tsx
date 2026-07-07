@@ -59,6 +59,7 @@ export default async function Home() {
   const siteUrl = getSiteUrl();
   const availableGradingModels = publicConfig.gradingModels ?? [];
   const uploadLimits = publicConfig.uploadLimits;
+  const validatorModels = publicConfig.validatorModels ?? [];
 
   return (
     <>
@@ -106,7 +107,7 @@ export default async function Home() {
         })}
       />
 
-      <WriterConfigProvider initialAvailableGradingModels={availableGradingModels} initialUploadLimits={uploadLimits}>
+      <WriterConfigProvider initialAvailableGradingModels={availableGradingModels} initialUploadLimits={uploadLimits} initialValidatorModels={validatorModels}>
         <WriterAnalysisSystem />
       </WriterConfigProvider>
     </>

@@ -10,6 +10,7 @@ export type SiteSettingKey
 		| "analysis.runtime"
 		| "analysis.scoringPolicy"
 		| "ai.generation"
+		| "ai.validator"
 		| "ai.gradingModels"
 		| "ai.vectorSearch"
 		| "ai.authorStyle"
@@ -49,6 +50,17 @@ export interface AiGenerationSetting {
 	gpt5_nano_temperature: number;
 	enable_seed: boolean;
 	enable_json_mode_when_supported: boolean;
+}
+
+export interface AiValidatorModelAdminConfig {
+	id: string;
+	name: string;
+	model: string;
+	enabled: boolean;
+}
+
+export interface AiValidatorSetting {
+	models: AiValidatorModelAdminConfig[];
 }
 
 export interface HonoraryWriterSetting {
@@ -140,6 +152,7 @@ export interface SiteSettingValueMap {
 	"analysis.runtime": AnalysisRuntimeSetting;
 	"analysis.scoringPolicy": AnalysisScoringPolicySetting;
 	"ai.generation": AiGenerationSetting;
+	"ai.validator": AiValidatorSetting;
 	"ai.gradingModels": GradingModelAdminConfig[];
 	"ai.vectorSearch": VectorSearchSetting;
 	"ai.authorStyle": AuthorStyleSetting;

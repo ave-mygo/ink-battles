@@ -1,6 +1,7 @@
 "use client";
 
 import type { GradingModelConfig } from "@ink-battles/shared/types/common/config";
+import type { PublicValidatorModelConfig, PublicValidatorModelId } from "@ink-battles/shared/types/common/public-config";
 import { AlertTriangle, Brain, Clock, Crown, Globe, Lightbulb, Settings, Sparkles, Target, Zap } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ interface WriterModelSelectorProps {
   disabled?: boolean;
   searchModel?: "none" | "gemini" | "gemini-lite" | "ds-search";
   onSearchModelChange?: (model: "none" | "gemini" | "gemini-lite" | "ds-search") => void;
+  validatorModels: PublicValidatorModelConfig[];
 }
 
 // 特性图标映射
@@ -33,8 +35,12 @@ export default function WriterModelSelector({
   disabled = false,
   searchModel = "none",
   onSearchModelChange,
+  validatorModels,
 }: WriterModelSelectorProps) {
   const selectedModel = availableModels.find(model => model.id === selectedModelId);
+  const displayedValidatorModels = validatorModels.length > 0
+    ? validatorModels
+    : [{ id: "none", name: "关闭搜索", enabled: true } satisfies PublicValidatorModelConfig];
 
   return (
     <Card className="border-0 bg-white/80 flex flex-col h-full shadow-lg backdrop-blur-sm dark:bg-slate-900/40">
@@ -200,28 +206,29 @@ export default function WriterModelSelector({
             <div className="flex flex-col gap-1">
               <div className="text-sm text-slate-700 font-medium flex gap-1.5 items-center dark:text-slate-200">
                 <Globe className="text-blue-500 h-4 w-4 dark:text-blue-400" />
-                <span>联网搜索校验模型</span>
+                <span>联网搜索/校验模型</span>
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">
                 允许模型在分析时获取网络最新资料
               </div>
               <div className="text-xs text-amber-600 mt-1 dark:text-amber-400">
-                若多次校验失败，建议选择不使用搜索，或切换不同的搜索模型
+                若多次校验失败，建议切换不同的搜索模型
               </div>
             </div>
             <Select
               value={searchModel}
-              onValueChange={(value: "none" | "gemini" | "gemini-lite" | "ds-search") => onSearchModelChange?.(value)}
+              onValueChange={(value: PublicValidatorModelId) => onSearchModelChange?.(value)}
               disabled={disabled}
             >
               <SelectTrigger className="bg-slate-50/50 w-full">
                 <SelectValue placeholder="选择搜索模型" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gemini">Gemini 搜索</SelectItem>
-                <SelectItem value="gemini-lite">Gemini Lite 搜索</SelectItem>
-                <SelectItem value="ds-search">DeepSeek V4 Flash 搜索</SelectItem>
-                <SelectItem value="none">关闭搜索</SelectItem>
+                {displayedValidatorModels.map(model => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

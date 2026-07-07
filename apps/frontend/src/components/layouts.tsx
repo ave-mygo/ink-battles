@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnalysisResult, ScorePercentileResult } from "@ink-battles/shared/types/ai";
+import type { PublicValidatorModelConfig } from "@ink-battles/shared/types/common/public-config";
 import { BarChart3, BookOpen, Brain, Heart, PenTool, RefreshCw, Shield, Star, Target, Zap } from "lucide-react";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
@@ -13,7 +14,7 @@ import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/Wri
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
 import { Button } from "@/components/ui/button";
 import { getFingerprintId } from "@/lib/fingerprint";
-import { useAvailableGradingModels } from "@/store/writer-config-context";
+import { useAvailableGradingModels, useValidatorModels } from "@/store/writer-config-context";
 import { submitAnalysis } from "@/utils/analysis";
 import { notifyBillingBalanceUpdated } from "@/utils/billing/client";
 
@@ -26,20 +27,17 @@ const DEFAULT_MODE_NAME = "标准模式";
  */
 type SearchModel = "none" | "gemini" | "gemini-lite" | "ds-search";
 
-const getSearchModelDisplayName = (searchModel: SearchModel) => {
-  if (searchModel === "gemini") {
-    return "Gemini 搜索";
-  }
+const getSearchModelDisplayName = (searchModel: SearchModel, validatorModels: PublicValidatorModelConfig[]) => {
+  const configuredModel = validatorModels.find(model => model.id === searchModel);
+  if (configuredModel)
+    return configuredModel.name;
 
-  if (searchModel === "gemini-lite") {
-    return "Gemini Lite 搜索";
-  }
-
-  if (searchModel === "ds-search") {
-    return "DeepSeek V4 Flash 搜索";
-  }
-
-  return "关闭搜索";
+  return {
+    gemini: "Gemini 搜索",
+    "gemini-lite": "Gemini Lite 搜索",
+    "ds-search": "DeepSeek V4 Flash 搜索",
+    none: "关闭搜索",
+  }[searchModel];
 };
 
 /**
@@ -133,6 +131,7 @@ const evaluationModes = [
 
 export default function WriterAnalysisSystem() {
   const availableGradingModels = useAvailableGradingModels();
+  const validatorModels = useValidatorModels();
   const [articleText, setArticleText] = useState("");
   const [selectedMode, setSelectedMode] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -148,7 +147,13 @@ export default function WriterAnalysisSystem() {
   const [percentileData, setPercentileData] = useState<ScorePercentileResult | null>(null);
   const SEARCH_STORAGE_KEY = "writer.searchModel";
   const SEARCH_MODEL_DEFAULT = "none" as const;
-  const validSearchModels = new Set<SearchModel>(["none", "gemini", "gemini-lite", "ds-search"]);
+  const availableSearchModels = validatorModels.length > 0
+    ? validatorModels.map(model => model.id as SearchModel)
+    : [SEARCH_MODEL_DEFAULT];
+  const fallbackSearchModel = availableSearchModels.includes(SEARCH_MODEL_DEFAULT)
+    ? SEARCH_MODEL_DEFAULT
+    : availableSearchModels[0] ?? SEARCH_MODEL_DEFAULT;
+  const validSearchModels = new Set<SearchModel>(availableSearchModels);
 
   const searchModelSubscribe = (callback: () => void) => {
     if (typeof window === "undefined")
@@ -173,9 +178,9 @@ export default function WriterAnalysisSystem() {
           return saved as SearchModel;
       }
     } catch {}
-    return SEARCH_MODEL_DEFAULT;
+    return fallbackSearchModel;
   };
-  const searchModelServerSnapshot = () => SEARCH_MODEL_DEFAULT;
+  const searchModelServerSnapshot = () => fallbackSearchModel;
   const searchModel = useSyncExternalStore(searchModelSubscribe, searchModelSnapshot, searchModelServerSnapshot);
 
   const setSearchModel = (model: SearchModel) => {
@@ -208,7 +213,7 @@ export default function WriterAnalysisSystem() {
         ? window.localStorage.getItem(SEARCH_STORAGE_KEY)
         : SEARCH_MODEL_DEFAULT;
       if (articleText.length > TEXT_LIMIT && storedSearchModel !== "none") {
-        setSearchModel("none");
+        setSearchModel(validSearchModels.has("none") ? "none" : fallbackSearchModel);
         toast.info("文本长度超过3万字，已自动关闭联网搜索校验");
       }
     }, 500);
@@ -351,7 +356,7 @@ export default function WriterAnalysisSystem() {
         createdAt: Date.now(),
         modeName: modePayload,
         modelName: currentModelDisplayName,
-        searchModelName: getSearchModelDisplayName(searchModel),
+        searchModelName: getSearchModelDisplayName(searchModel, validatorModels),
         fingerprint,
         status: "pending",
         progress: res.progress,
@@ -389,6 +394,7 @@ export default function WriterAnalysisSystem() {
               disabled={isAnalyzing}
               searchModel={searchModel}
               onSearchModelChange={setSearchModel}
+              validatorModels={validatorModels}
             />
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import type {
   AiGenerationSetting,
+  AiValidatorSetting,
   AnalysisRuntimeSetting,
   AnalysisScoringPolicySetting,
   AuthorStyleSetting,
@@ -198,6 +199,44 @@ export function AiGenerationEditor({ value, onChange }: { value: AiGenerationSet
       <NumberField label="GPT-5 nano temperature" description="针对 gpt-5-nano 的特殊温度。" value={value.gpt5_nano_temperature} step={0.1} onChange={gpt5_nano_temperature => onChange({ ...value, gpt5_nano_temperature })} />
       <BooleanField id="ai-seed" label="启用 seed" description="启用后会用 fingerprint 作为 seed，提升同输入稳定性。" checked={value.enable_seed} onChange={enable_seed => onChange({ ...value, enable_seed })} />
       <BooleanField id="ai-json-mode" label="启用 JSON mode" description="模型支持时请求 JSON object，提升解析稳定性。" checked={value.enable_json_mode_when_supported} onChange={enable_json_mode_when_supported => onChange({ ...value, enable_json_mode_when_supported })} />
+    </div>
+  );
+}
+
+export function AiValidatorEditor({ value, onChange }: { value: AiValidatorSetting; onChange: (value: AiValidatorSetting) => void }) {
+  const updateItem = (index: number, enabled: boolean) => {
+    onChange({
+      models: value.models.map((model, itemIndex) => itemIndex === index ? { ...model, enabled } : model),
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      {value.models.map((model, index) => (
+        <div key={model.id || index} className="space-y-3 rounded-md border p-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="text-sm font-medium">{model.name || model.id}</div>
+                <Badge variant="outline">{model.id}</Badge>
+              </div>
+              <div className="mt-1 text-xs text-slate-500">{model.model}</div>
+            </div>
+            <BooleanField
+              id={`validator-enabled-${model.id || index}`}
+              label="启用"
+              checked={model.enabled}
+              onChange={enabled => updateItem(index, enabled)}
+              compact
+            />
+          </div>
+        </div>
+      ))}
+      {value.models.length === 0 && (
+        <div className="rounded-md border border-dashed p-4 text-sm text-slate-500">
+          config.toml 还没有配置 validator 模型。
+        </div>
+      )}
     </div>
   );
 }

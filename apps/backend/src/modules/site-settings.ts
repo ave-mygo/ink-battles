@@ -1,5 +1,6 @@
 import type {
   HonoraryWriterUserSummary,
+  PublicValidatorModelId,
   PublicConfigResponse,
   SiteSettingHistoryItem,
   SiteSettingKey,
@@ -18,6 +19,7 @@ import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { ok, serializeDate } from "../utils/response";
 import {
   getDefaultSettingValue,
+  mergeValidatorSetting,
   normalizeSettingValue,
   SETTING_DEFINITIONS,
   type EffectiveGradingModelConfig,
@@ -30,6 +32,13 @@ export type { EffectiveGradingModelConfig };
 let cachedSettings: Map<SiteSettingKey, SiteSettingDocument> | null = null;
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
+
+const PUBLIC_VALIDATOR_MODEL_IDS: Record<string, PublicValidatorModelId> = {
+  validator_gemini: "gemini",
+  validator_gemini_lite: "gemini-lite",
+  validator_deepseek_search: "ds-search",
+  validator_nosearch: "none",
+};
 
 
 /**
@@ -214,6 +223,7 @@ export async function getMergedPublicConfig(): Promise<PublicConfigResponse> {
     getSiteSettingValue("content.uploadLimits"),
   ]);
   const gradingModels = mergeGradingModels();
+  const validatorModels = mergeValidatorSetting(getCachedSiteSettingValue("ai.validator"));
 
   return {
     app: {
@@ -233,6 +243,13 @@ export async function getMergedPublicConfig(): Promise<PublicConfigResponse> {
       usageScenario: model.usageScenario,
       warning: model.warning,
     })),
+    validatorModels: validatorModels.models
+      .filter(model => model.enabled)
+      .map(model => ({
+        id: PUBLIC_VALIDATOR_MODEL_IDS[model.id] ?? "none",
+        name: model.name,
+        enabled: true,
+      })),
   };
 }
 
@@ -246,6 +263,8 @@ async function listSiteSettings(): Promise<SiteSettingMeta[]> {
     const rawValue = setting?.value ?? getDefaultSettingValue(definition.key);
     const value = definition.key === "ai.gradingModels"
       ? mergeGradingModels()
+      : definition.key === "ai.validator"
+        ? mergeValidatorSetting(rawValue as SiteSettingValueMap["ai.validator"])
       : definition.key === "ai.vectorSearch"
         ? mergeVectorSearchSetting(rawValue as VectorSearchSetting)
         : rawValue;

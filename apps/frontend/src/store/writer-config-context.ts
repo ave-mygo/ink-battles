@@ -1,13 +1,14 @@
 "use client";
 
 import type { GradingModelConfig } from "@ink-battles/shared/types/common/config";
-import type { PublicUploadLimits } from "@ink-battles/shared/types/common/public-config";
+import type { PublicUploadLimits, PublicValidatorModelConfig } from "@ink-battles/shared/types/common/public-config";
 import { createContext, use } from "react";
 import { createStore, useStore } from "zustand";
 
 interface WriterConfigState {
   availableGradingModels: GradingModelConfig[];
   uploadLimits?: PublicUploadLimits;
+  validatorModels: PublicValidatorModelConfig[];
 }
 
 interface WriterConfigActions {
@@ -38,3 +39,6 @@ export const useAvailableGradingModels = () =>
 
 export const useWriterUploadLimits = () =>
   useWriterConfigStore(state => state.uploadLimits);
+
+export const useValidatorModels = () =>
+  useWriterConfigStore(state => state.validatorModels);

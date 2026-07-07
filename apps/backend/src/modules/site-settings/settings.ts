@@ -1,5 +1,6 @@
 import type {
   AiGenerationSetting,
+  AiValidatorSetting,
   AnalysisRuntimeSetting,
   AnalysisScoringPolicySetting,
   AuthorStyleSetting,
@@ -11,7 +12,7 @@ import type {
   VectorSearchSetting,
 } from "@ink-battles/shared/types/common";
 import type { Document } from "mongodb";
-import { getConfig } from "../../config";
+import { getConfig, getSystemModelCredential } from "../../config";
 
 export interface SiteSettingDocument extends Document {
   key: SiteSettingKey;
@@ -34,6 +35,20 @@ export interface SiteSettingChangeDocument extends Document {
 }
 
 export type EffectiveGradingModelConfig = ReturnType<typeof getConfig>["grading_models"][number];
+
+const VALIDATOR_MODEL_KEYS = [
+  "validator_gemini",
+  "validator_gemini_lite",
+  "validator_deepseek_search",
+  "validator_nosearch",
+] as const;
+
+const DEFAULT_VALIDATOR_LABELS: Record<typeof VALIDATOR_MODEL_KEYS[number], string> = {
+  validator_gemini: "Gemini 搜索校验",
+  validator_gemini_lite: "Gemini Lite 搜索校验",
+  validator_deepseek_search: "DeepSeek 搜索校验",
+  validator_nosearch: "无搜索文本校验",
+};
 
 export const SETTING_DEFINITIONS: Array<Pick<SiteSettingMeta, "key" | "label" | "description" | "category">> = [
   {
@@ -79,6 +94,12 @@ export const SETTING_DEFINITIONS: Array<Pick<SiteSettingMeta, "key" | "label" | 
     category: "limits",
   },
   {
+    key: "ai.validator",
+    label: "文本审核模型",
+    description: "控制分析前是否调用 validator 模型进行文本有效性校验；模型凭证仍来自 config.toml。",
+    category: "content",
+  },
+  {
     key: "ai.gradingModels",
     label: "评分模型运营信息",
     description: "模型展示名、启用状态、会员标记和公开说明；密钥与地址仍来自启动配置。",
@@ -108,6 +129,40 @@ const numericValue = (input: unknown, fallback: number) => {
   const nextValue = Number(input);
   return Number.isInteger(nextValue) && nextValue > 0 ? nextValue : fallback;
 };
+
+/**
+ * 从启动配置构造 validator 模型运营配置，文案和开关默认来自 config.toml。
+ */
+function getConfigValidatorModels(): AiValidatorSetting["models"] {
+  return VALIDATOR_MODEL_KEYS.map((key) => {
+    const credential = getSystemModelCredential(key);
+    const defaultLabel = DEFAULT_VALIDATOR_LABELS[key];
+    const modelName = credential?.model ?? key;
+    return {
+      id: key,
+      name: credential?.name ?? defaultLabel,
+      model: modelName,
+      enabled: credential?.enabled !== false,
+    };
+  });
+}
+
+/**
+ * 合并 config.toml 中的 validator 文案/凭证声明和数据库运营开关。
+ */
+export function mergeValidatorSetting(setting: AiValidatorSetting): AiValidatorSetting {
+  const dynamicModels = new Map((setting.models ?? []).flatMap(model => [[model.id, model], [model.model, model]]));
+  return {
+    models: getConfigValidatorModels().map((baseModel) => {
+      const dynamicModel = dynamicModels.get(baseModel.id) ?? dynamicModels.get(baseModel.model);
+      return {
+        ...baseModel,
+        enabled: dynamicModel?.enabled ?? baseModel.enabled,
+        name: baseModel.name,
+      };
+    }),
+  };
+}
 
 /**
  * 返回 config.toml 中可作为数据库站点配置初始值的安全默认值。
@@ -143,6 +198,9 @@ export function getDefaultSettingValue<Key extends SiteSettingKey>(key: Key): Si
       gpt5_nano_temperature: 1,
       enable_seed: true,
       enable_json_mode_when_supported: true,
+    },
+    "ai.validator": {
+      models: getConfigValidatorModels(),
     },
     "ai.gradingModels": config.grading_models.map(model => ({
       id: model.id ?? model.model,
@@ -277,6 +335,25 @@ export function normalizeSettingValue<Key extends SiteSettingKey>(key: Key, valu
       enable_seed: record.enable_seed !== false,
       enable_json_mode_when_supported: record.enable_json_mode_when_supported !== false,
     } as SiteSettingValueMap[Key];
+  }
+
+  if (key === "ai.validator") {
+    const fallback = getDefaultSettingValue("ai.validator");
+    const record = value as Partial<AiValidatorSetting> & { enabled?: boolean };
+    const rawModels = Array.isArray(record.models)
+      ? record.models
+      : fallback.models.map(model => ({ ...model, enabled: record.enabled !== false && model.enabled }));
+    return mergeValidatorSetting({
+      models: rawModels.map((item) => {
+        const model = item as Partial<AiValidatorSetting["models"][number]>;
+        return {
+          id: String(model.id ?? model.model ?? "").slice(0, 128),
+          name: String(model.name ?? model.model ?? "").slice(0, 80),
+          model: String(model.model ?? model.id ?? "").slice(0, 128),
+          enabled: model.enabled !== false,
+        };
+      }).filter(model => model.id && model.model),
+    }) as SiteSettingValueMap[Key];
   }
 
   if (key === "content.honoraryWriters") {
