@@ -17,6 +17,7 @@ mod fcaptcha;
 mod mail;
 mod models;
 mod oauth;
+mod password_crypto;
 mod response;
 mod session;
 mod state;
@@ -38,6 +39,7 @@ use state::{AppState, ensure_indexes};
 
 const SESSION_TTL_SECONDS: i64 = 7 * 24 * 60 * 60;
 const EMAIL_CODE_TTL_MINUTES: i64 = 5;
+const EMAIL_CODE_COOLDOWN_SECONDS: i64 = 60;
 const RESET_SESSION_TTL_MINUTES: i64 = 10;
 const NEW_USER_BONUS: i32 = 25;
 
@@ -63,7 +65,7 @@ async fn main() -> Result<()> {
     );
     let client = Client::with_options(ClientOptions::parse(&config.mongodb_uri).await?)?;
     let database = client.database(&config.database_name);
-    let state = AppState::new(Arc::clone(&config), database);
+    let state = AppState::new(Arc::clone(&config), database)?;
 
     ensure_indexes(&state).await?;
     tracing::info!("ink auth service database indexes ensured");
@@ -71,6 +73,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/api/health", get(health))
         .route("/api/auth/me", get(me))
+        .route("/api/auth/password-key", get(password_key))
         .route("/api/auth/profile", patch(update_profile))
         .route("/api/auth/login", post(login))
         .route("/api/auth/register", post(register))
@@ -132,4 +135,10 @@ async fn health() -> axum::Json<models::ApiResponse<serde_json::Value>> {
         "认证服务运行正常",
         serde_json::json!({ "service": "ink-auth-service" }),
     )
+}
+
+async fn password_key(
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> axum::Json<models::ApiResponse<password_crypto::PasswordKeyResponse>> {
+    ok("密码加密公钥", state.password_crypto.public_key_response())
 }

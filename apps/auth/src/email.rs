@@ -15,12 +15,13 @@ use rand::RngExt;
 use uuid::Uuid;
 
 use crate::{
-    EMAIL_CODE_TTL_MINUTES, RESET_SESSION_TTL_MINUTES,
+    EMAIL_CODE_COOLDOWN_SECONDS, EMAIL_CODE_TTL_MINUTES, RESET_SESSION_TTL_MINUTES,
     fcaptcha::verify_fcaptcha,
     mail::send_verification_email,
     models::{
         EmailPayload, ResetPasswordPayload, SendCodePayload, VerifyCodePayload, VerifyEmailQuery,
     },
+    password_crypto::resolve_password,
     response::{bad_request, internal_error, ok},
     state::AppState,
     utils::{
@@ -100,7 +101,9 @@ pub async fn forgot_password(
         .flatten()
         .is_some()
     {
-        let _ = create_email_code(&state, &email, "reset-password").await;
+        if let Err(error) = create_email_code(&state, &email, "reset-password").await {
+            return bad_request(&error.to_string()).into_response();
+        }
     }
     ok::<serde_json::Value>(
         "如果该邮箱已注册，您将收到重置密码验证码",
@@ -142,13 +145,31 @@ pub async fn reset_password(
     }
 
     let email = normalize_email(&payload.email);
-    if payload.password != payload.confirm_password {
+    let password = match resolve_password(
+        &state.password_crypto,
+        payload.password.as_deref(),
+        payload.password_ciphertext.as_deref(),
+        payload.password_key_id.as_deref(),
+    ) {
+        Ok(value) => value,
+        Err(error) => return bad_request(&error.to_string()).into_response(),
+    };
+    let confirm_password = match resolve_password(
+        &state.password_crypto,
+        payload.confirm_password.as_deref(),
+        payload.confirm_password_ciphertext.as_deref(),
+        payload.password_key_id.as_deref(),
+    ) {
+        Ok(value) => value,
+        Err(error) => return bad_request(&error.to_string()).into_response(),
+    };
+    if password != confirm_password {
         return bad_request("两次输入的密码不一致").into_response();
     }
     if let Err(message) = consume_password_reset_session(&state, &email, &payload.code).await {
         return bad_request(&message).into_response();
     }
-    let password_hash = match hash(&payload.password, DEFAULT_COST) {
+    let password_hash = match hash(&password, DEFAULT_COST) {
         Ok(value) => value,
         Err(error) => return internal_error(error).into_response(),
     };
@@ -179,6 +200,7 @@ async fn create_email_code(state: &AppState, email: &str, code_type: &str) -> Re
     if !is_valid_email(email) {
         anyhow::bail!("请输入有效的邮箱地址");
     }
+    ensure_email_code_cooldown(state, email, code_type).await?;
     let code = format!("{:06}", rand::rng().random_range(100000..=999999));
     let code_hash = hash(&code, DEFAULT_COST)?;
     let now = Utc::now();
@@ -209,6 +231,34 @@ async fn create_email_code(state: &AppState, email: &str, code_type: &str) -> Re
     );
     send_verification_email(&state.config, email, &code, code_type).await?;
     Ok(code)
+}
+
+async fn ensure_email_code_cooldown(state: &AppState, email: &str, code_type: &str) -> Result<()> {
+    let cooldown_started_at = Utc::now() - TimeDelta::seconds(EMAIL_CODE_COOLDOWN_SECONDS);
+    let recent_code = state
+        .email_codes
+        .find_one(doc! {
+            "email": email,
+            "type": code_type,
+            "used": false,
+            "createdAt": { "$gt": BsonDateTime::from_millis(cooldown_started_at.timestamp_millis()) },
+        })
+        .await?;
+
+    let Some(record) = recent_code else {
+        return Ok(());
+    };
+    let remaining_seconds = record
+        .get_datetime("createdAt")
+        .ok()
+        .map(|created_at| {
+            let elapsed_seconds =
+                (BsonDateTime::now().timestamp_millis() - created_at.timestamp_millis()) / 1000;
+            (EMAIL_CODE_COOLDOWN_SECONDS - elapsed_seconds).max(1)
+        })
+        .unwrap_or(EMAIL_CODE_COOLDOWN_SECONDS);
+
+    anyhow::bail!("验证码发送过于频繁，请 {remaining_seconds} 秒后再试");
 }
 
 pub async fn consume_email_code(

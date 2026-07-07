@@ -8,6 +8,7 @@ use crate::{
     email::consume_email_code,
     fcaptcha::verify_fcaptcha,
     models::{LoginPayload, RegisterPayload, UpdateProfilePayload},
+    password_crypto::resolve_password,
     response::{bad_request, internal_error, ok, unauthorized},
     session::{
         append_cookie, clear_auth_cookie, current_session, issue_login_response,
@@ -54,11 +55,20 @@ pub async fn login(
     }
 
     let email = normalize_email(&payload.email);
+    let password = match resolve_password(
+        &state.password_crypto,
+        payload.password.as_deref(),
+        payload.password_ciphertext.as_deref(),
+        payload.password_key_id.as_deref(),
+    ) {
+        Ok(value) => value,
+        Err(error) => return bad_request(&error.to_string()).into_response(),
+    };
     let Ok(Some(user)) = state.users.find_one(doc! { "email": &email }).await else {
         return bad_request("邮箱或密码错误").into_response();
     };
     let password_hash = user.get_str("passwordHash").unwrap_or_default();
-    if password_hash.is_empty() || !verify(&payload.password, password_hash).unwrap_or(false) {
+    if password_hash.is_empty() || !verify(&password, password_hash).unwrap_or(false) {
         return bad_request("邮箱或密码错误").into_response();
     }
     let uid = read_uid(&user);
@@ -84,13 +94,31 @@ pub async fn register(
     }
 
     let email = normalize_email(&payload.email);
+    let password = match resolve_password(
+        &state.password_crypto,
+        payload.password.as_deref(),
+        payload.password_ciphertext.as_deref(),
+        payload.password_key_id.as_deref(),
+    ) {
+        Ok(value) => value,
+        Err(error) => return bad_request(&error.to_string()).into_response(),
+    };
+    let confirm_password = match resolve_password(
+        &state.password_crypto,
+        payload.confirm_password.as_deref(),
+        payload.confirm_password_ciphertext.as_deref(),
+        payload.password_key_id.as_deref(),
+    ) {
+        Ok(value) => value,
+        Err(error) => return bad_request(&error.to_string()).into_response(),
+    };
     if !is_valid_email(&email) {
         return bad_request("请输入有效的邮箱地址").into_response();
     }
-    if payload.password != payload.confirm_password {
+    if password != confirm_password {
         return bad_request("两次输入的密码不一致").into_response();
     }
-    if !is_password_valid(&payload.password) {
+    if !is_password_valid(&password) {
         return bad_request("密码不符合要求。密码必须至少 10 位，并包含任意 3 种字符类型")
             .into_response();
     }
@@ -113,7 +141,7 @@ pub async fn register(
         Err(error) => return internal_error(error).into_response(),
     };
     let now = BsonDateTime::now();
-    let password_hash = match hash(&payload.password, DEFAULT_COST) {
+    let password_hash = match hash(&password, DEFAULT_COST) {
         Ok(value) => value,
         Err(error) => return internal_error(error).into_response(),
     };

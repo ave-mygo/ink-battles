@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::{
     models::{OAuthPendingActionPayload, OAuthPendingIdentity},
+    password_crypto::resolve_password,
     response::{bad_request, ok},
     session::issue_login_response_with_method,
     state::AppState,
@@ -141,14 +142,19 @@ async fn bind_existing_user(
     payload: &OAuthPendingActionPayload,
 ) -> Result<i64> {
     let email = normalize_email(payload.email.as_deref().unwrap_or_default());
-    let password = payload.password.as_deref().unwrap_or_default();
+    let password = resolve_password(
+        &state.password_crypto,
+        payload.password.as_deref(),
+        payload.password_ciphertext.as_deref(),
+        payload.password_key_id.as_deref(),
+    )?;
     let user = state
         .users
         .find_one(doc! { "email": &email })
         .await?
         .context("邮箱或密码错误")?;
     let password_hash = user.get_str("passwordHash").unwrap_or_default();
-    if password_hash.is_empty() || !verify(password, password_hash).unwrap_or(false) {
+    if password_hash.is_empty() || !verify(&password, password_hash).unwrap_or(false) {
         return Err(anyhow!("邮箱或密码错误"));
     }
     let uid = read_uid(&user);

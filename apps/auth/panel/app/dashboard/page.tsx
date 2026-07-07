@@ -20,6 +20,7 @@ import {
   type AuthUserInfo,
   type SessionInfo,
 } from "@/lib/auth-api"
+import { useCodeCooldown } from "@/hooks/use-code-cooldown"
 import { useFCaptcha } from "@/hooks/use-fcaptcha"
 
 import { BindingsSection } from "./_components/bindings-section"
@@ -36,6 +37,7 @@ const emptyBindings: AccountBindings = {
 export default function DashboardPage() {
   const router = useRouter()
   const fcaptcha = useFCaptcha()
+  const { cooldownActive, cooldownRemaining, startCooldown } = useCodeCooldown()
   const [user, setUser] = React.useState<AuthUserInfo | null>(null)
   const [bindings, setBindings] = React.useState<AccountBindings>(emptyBindings)
   const [sessions, setSessions] = React.useState<SessionInfo[]>([])
@@ -43,6 +45,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSaving, setIsSaving] = React.useState(false)
   const [savingAction, setSavingAction] = React.useState<"send-code" | "bind-email" | null>(null)
+  const [emailCodeSent, setEmailCodeSent] = React.useState(false)
   const [isEditingProfile, setIsEditingProfile] = React.useState(false)
   const [message, setMessage] = React.useState("")
   const [error, setError] = React.useState("")
@@ -118,6 +121,10 @@ export default function DashboardPage() {
   }
 
   const handleSendCode = async () => {
+    if (cooldownActive) {
+      return
+    }
+
     if (!emailForm.email) {
       setError("请先填写邮箱地址")
       return
@@ -129,6 +136,8 @@ export default function DashboardPage() {
       const fcaptchaToken = await fcaptcha.execute("send_verification_code")
       await sendVerificationCode(emailForm.email, "register", fcaptchaToken)
       setMessage("验证码已发送，请查收邮箱")
+      setEmailCodeSent(true)
+      startCooldown()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "验证码发送失败")
     } finally {
@@ -150,6 +159,7 @@ export default function DashboardPage() {
       const fcaptchaToken = await fcaptcha.execute("bind_email")
       await bindEmailAccount({ ...emailForm, fcaptchaToken })
       setEmailForm({ email: "", password: "", code: "" })
+      setEmailCodeSent(false)
       setMessage("邮箱绑定成功")
       await loadData()
     } catch (requestError) {
@@ -200,6 +210,9 @@ export default function DashboardPage() {
           <BindingsSection
             bindings={bindings}
             emailForm={emailForm}
+            codeSent={emailCodeSent}
+            codeCooldownActive={cooldownActive}
+            codeCooldownRemaining={cooldownRemaining}
             isSaving={isSaving}
             isCaptchaReady={fcaptcha.ready}
             savingAction={savingAction}

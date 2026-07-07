@@ -192,9 +192,7 @@ impl AppConfig {
                 .as_ref()
                 .map(|section| section.password.clone())
                 .filter(|value| !value.trim().is_empty()),
-            smtp_from_name: auth
-                .smtp_from_name
-                .unwrap_or_else(|| "Ink Battles".to_string()),
+            smtp_from_name: auth.smtp_from_name.unwrap_or_else(|| "Minato".to_string()),
             fcaptcha_enabled: auth.fcaptcha_enabled.unwrap_or_else(|| {
                 auth.fcaptcha_server_url
                     .as_ref()

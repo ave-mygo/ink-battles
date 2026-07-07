@@ -91,7 +91,7 @@ cookie_name = "auth-sso-token"
 site_cookie_name = "auth-token"
 cookie_domain = ""
 cookie_secure = false
-smtp_from_name = "Ink Battles"
+smtp_from_name = "Minato"
 # FCaptcha 未配置时本地开发保持关闭；生产环境配置齐全后会自动启用。
 fcaptcha_server_url = ""
 fcaptcha_site_key = ""

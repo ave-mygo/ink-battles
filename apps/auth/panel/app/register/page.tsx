@@ -10,11 +10,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordStrength } from "@/components/password-strength"
+import { useCodeCooldown } from "@/hooks/use-code-cooldown"
 import { useFCaptcha } from "@/hooks/use-fcaptcha"
 import { AUTH_PANEL_DASHBOARD_PATH, createAuthorizeUrl, createOAuthStartUrl, getReturnTo, registerWithEmail, sendVerificationCode } from "@/lib/auth-api"
 
 export default function RegisterPage() {
   const fcaptcha = useFCaptcha()
+  const { cooldownActive, cooldownRemaining, startCooldown } = useCodeCooldown()
   const [isLoading, setIsLoading] = React.useState(false)
   const [isSendingCode, setIsSendingCode] = React.useState(false)
   const [codeSent, setCodeSent] = React.useState(false)
@@ -42,6 +44,10 @@ export default function RegisterPage() {
   const handleSendCode = async () => {
     setError("")
 
+    if (cooldownActive) {
+      return
+    }
+
     if (!formData.email) {
       setError("请先填写邮箱地址")
       return
@@ -52,6 +58,7 @@ export default function RegisterPage() {
       const fcaptchaToken = await fcaptcha.execute("send_verification_code")
       await sendVerificationCode(formData.email, "register", fcaptchaToken)
       setCodeSent(true)
+      startCooldown()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "验证码发送失败，请稍后重试")
     } finally {
@@ -206,7 +213,7 @@ export default function RegisterPage() {
                       type="button"
                       variant="outline"
                       className="h-8 shrink-0 px-3 text-[11px]"
-                      disabled={isLoading || isSendingCode || !fcaptcha.ready}
+                      disabled={isLoading || isSendingCode || cooldownActive || !fcaptcha.ready}
                       onClick={handleSendCode}
                     >
                       {isSendingCode ? (
@@ -214,12 +221,12 @@ export default function RegisterPage() {
                           <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                           发送中...
                         </>
-                      ) : codeSent ? "重新发送" : fcaptcha.ready ? "发送验证码" : "加载中..."}
+                      ) : cooldownActive ? `${cooldownRemaining} 秒后重发` : codeSent ? "重新发送" : fcaptcha.ready ? "发送验证码" : "加载中..."}
                     </Button>
                   </div>
                   {codeSent && (
                     <p className="mt-2 text-[11px] text-zinc-500">
-                      验证码已发送，请在失效前完成注册。
+                      验证码已发送，请查收邮箱；{cooldownActive ? `${cooldownRemaining} 秒后可重新发送。` : "如未收到可重新发送。"}
                     </p>
                   )}
                 </div>

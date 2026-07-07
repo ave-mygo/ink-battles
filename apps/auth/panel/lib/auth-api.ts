@@ -10,6 +10,12 @@ interface LoginResult {
   returnTo: string
 }
 
+interface PasswordKeyResult {
+  keyId: string
+  publicKey: string
+  algorithm: "RSA-OAEP-256"
+}
+
 export const AUTH_PANEL_DASHBOARD_PATH = "/dashboard"
 
 export interface AuthUserInfo {
@@ -57,6 +63,15 @@ interface AuthRequestOptions {
 
 interface FCaptchaProtectedInput {
   fcaptchaToken?: string
+}
+
+interface EncryptedPasswordInput {
+  passwordCiphertext: string
+  passwordKeyId: string
+}
+
+interface EncryptedPasswordPairInput extends EncryptedPasswordInput {
+  confirmPasswordCiphertext: string
 }
 
 /**
@@ -127,11 +142,86 @@ export async function requestAuth<T>(
   return payload
 }
 
+async function getPasswordKey() {
+  const payload = await requestAuth<PasswordKeyResult>("/api/auth/password-key", {
+    method: "GET",
+  })
+  if (!payload.data) {
+    throw new Error("密码加密公钥不可用，请刷新页面后重试")
+  }
+  return payload.data
+}
+
+async function encryptPassword(password: string, passwordKey?: PasswordKeyResult): Promise<EncryptedPasswordInput> {
+  const key = passwordKey ?? await getPasswordKey()
+  const cryptoKey = await window.crypto.subtle.importKey(
+    "spki",
+    pemToArrayBuffer(key.publicKey),
+    {
+      name: "RSA-OAEP",
+      hash: "SHA-256",
+    },
+    false,
+    ["encrypt"]
+  )
+  const encrypted = await window.crypto.subtle.encrypt(
+    { name: "RSA-OAEP" },
+    cryptoKey,
+    new TextEncoder().encode(password)
+  )
+
+  return {
+    passwordCiphertext: arrayBufferToBase64(encrypted),
+    passwordKeyId: key.keyId,
+  }
+}
+
+async function encryptPasswordPair(password: string, confirmPassword: string): Promise<EncryptedPasswordPairInput> {
+  const key = await getPasswordKey()
+  const [passwordPayload, confirmPasswordPayload] = await Promise.all([
+    encryptPassword(password, key),
+    encryptPassword(confirmPassword, key),
+  ])
+
+  return {
+    passwordCiphertext: passwordPayload.passwordCiphertext,
+    confirmPasswordCiphertext: confirmPasswordPayload.passwordCiphertext,
+    passwordKeyId: key.keyId,
+  }
+}
+
+function pemToArrayBuffer(pem: string) {
+  const base64 = pem
+    .replace("-----BEGIN PUBLIC KEY-----", "")
+    .replace("-----END PUBLIC KEY-----", "")
+    .replace(/\s/g, "")
+  return base64ToArrayBuffer(base64)
+}
+
+function base64ToArrayBuffer(base64: string) {
+  const binary = window.atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index)
+  }
+  return bytes.buffer
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer)
+  let binary = ""
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte)
+  }
+  return window.btoa(binary)
+}
+
 export async function loginWithEmail(email: string, password: string, fcaptchaToken?: string) {
+  const passwordPayload = await encryptPassword(password)
   const payload = await requestAuth<LoginResult>("/api/auth/login", {
     body: {
       email,
-      password,
+      ...passwordPayload,
       fcaptchaToken,
       returnTo: getReturnTo(),
     },
@@ -189,8 +279,17 @@ export async function completeOAuthPendingIdentity(input: {
   password?: string
   returnTo?: string
 }) {
+  const passwordPayload = input.action === "bind" && input.password
+    ? await encryptPassword(input.password)
+    : undefined
   const payload = await requestAuth<LoginResult>("/api/auth/oauth/pending/complete", {
-    body: input,
+    body: {
+      ticket: input.ticket,
+      action: input.action,
+      email: input.email,
+      returnTo: input.returnTo,
+      ...passwordPayload,
+    },
   })
 
   return payload.data?.returnTo
@@ -205,8 +304,14 @@ export async function getAccountBindings() {
 }
 
 export async function bindEmailAccount(input: { email: string; password: string; code: string } & FCaptchaProtectedInput) {
+  const passwordPayload = await encryptPassword(input.password)
   await requestAuth("/api/auth/accounts/bind-email", {
-    body: input,
+    body: {
+      email: input.email,
+      code: input.code,
+      fcaptchaToken: input.fcaptchaToken,
+      ...passwordPayload,
+    },
   })
 }
 
@@ -224,9 +329,13 @@ export async function registerWithEmail(input: {
   confirmPassword: string
   code: string
 } & FCaptchaProtectedInput) {
+  const passwordPayload = await encryptPasswordPair(input.password, input.confirmPassword)
   const payload = await requestAuth<LoginResult>("/api/auth/register", {
     body: {
-      ...input,
+      email: input.email,
+      code: input.code,
+      fcaptchaToken: input.fcaptchaToken,
+      ...passwordPayload,
       returnTo: getReturnTo(),
     },
   })
@@ -268,8 +377,14 @@ export async function resetPassword(input: {
   password: string
   confirmPassword: string
 } & FCaptchaProtectedInput) {
+  const passwordPayload = await encryptPasswordPair(input.password, input.confirmPassword)
   await requestAuth("/api/auth/reset-password", {
-    body: input,
+    body: {
+      email: input.email,
+      code: input.code,
+      fcaptchaToken: input.fcaptchaToken,
+      ...passwordPayload,
+    },
   })
 }
 

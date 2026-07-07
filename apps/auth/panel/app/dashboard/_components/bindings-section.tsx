@@ -14,6 +14,9 @@ import { itemVariants } from "./dashboard-frame"
 interface BindingsSectionProps {
   bindings: AccountBindings
   emailForm: { email: string; password: string; code: string }
+  codeSent: boolean
+  codeCooldownActive: boolean
+  codeCooldownRemaining: number
   isSaving: boolean
   isCaptchaReady: boolean
   savingAction: "send-code" | "bind-email" | null
@@ -27,6 +30,9 @@ interface BindingsSectionProps {
 export function BindingsSection({
   bindings,
   emailForm,
+  codeSent,
+  codeCooldownActive,
+  codeCooldownRemaining,
   isSaving,
   isCaptchaReady,
   savingAction,
@@ -54,13 +60,13 @@ export function BindingsSection({
             <Field id="bind-code" label="验证码 / Code" value={emailForm.code} onChange={(value) => onEmailFormChange({ ...emailForm, code: value })} />
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={isSaving || !isCaptchaReady} onClick={onSendCode}>
+            <Button type="button" variant="outline" size="sm" disabled={isSaving || codeCooldownActive || !isCaptchaReady} onClick={onSendCode}>
               {savingAction === "send-code" ? (
                 <>
                   <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                   发送中...
                 </>
-              ) : isCaptchaReady ? "发送验证码" : "加载中..."}
+              ) : codeCooldownActive ? `${codeCooldownRemaining} 秒后重发` : isCaptchaReady ? "发送验证码" : "加载中..."}
             </Button>
             <Button size="sm" disabled={isSaving || !isCaptchaReady}>
               {savingAction === "bind-email" ? (
@@ -71,6 +77,11 @@ export function BindingsSection({
               ) : "绑定邮箱"}
             </Button>
           </div>
+          {codeSent && (
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+              {codeCooldownActive ? `验证码已发送，请查收邮箱；${codeCooldownRemaining} 秒后可重新发送。` : "验证码已发送，请查收邮箱。"}
+            </p>
+          )}
         </form>
       )}
     </motion.section>

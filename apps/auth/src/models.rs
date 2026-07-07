@@ -27,7 +27,11 @@ pub struct EmailPayload {
 #[derive(Deserialize)]
 pub struct LoginPayload {
     pub email: String,
-    pub password: String,
+    pub password: Option<String>,
+    #[serde(rename = "passwordCiphertext")]
+    pub password_ciphertext: Option<String>,
+    #[serde(rename = "passwordKeyId")]
+    pub password_key_id: Option<String>,
     #[serde(rename = "fcaptchaToken")]
     pub fcaptcha_token: Option<String>,
     #[serde(rename = "returnTo")]
@@ -43,9 +47,15 @@ pub struct AuthorizePayload {
 #[derive(Deserialize)]
 pub struct RegisterPayload {
     pub email: String,
-    pub password: String,
+    pub password: Option<String>,
+    #[serde(rename = "passwordCiphertext")]
+    pub password_ciphertext: Option<String>,
     #[serde(rename = "confirmPassword")]
-    pub confirm_password: String,
+    pub confirm_password: Option<String>,
+    #[serde(rename = "confirmPasswordCiphertext")]
+    pub confirm_password_ciphertext: Option<String>,
+    #[serde(rename = "passwordKeyId")]
+    pub password_key_id: Option<String>,
     pub code: String,
     #[serde(rename = "fcaptchaToken")]
     pub fcaptcha_token: Option<String>,
@@ -63,9 +73,15 @@ pub struct VerifyCodePayload {
 pub struct ResetPasswordPayload {
     pub email: String,
     pub code: String,
-    pub password: String,
+    pub password: Option<String>,
+    #[serde(rename = "passwordCiphertext")]
+    pub password_ciphertext: Option<String>,
     #[serde(rename = "confirmPassword")]
-    pub confirm_password: String,
+    pub confirm_password: Option<String>,
+    #[serde(rename = "confirmPasswordCiphertext")]
+    pub confirm_password_ciphertext: Option<String>,
+    #[serde(rename = "passwordKeyId")]
+    pub password_key_id: Option<String>,
     #[serde(rename = "fcaptchaToken")]
     pub fcaptcha_token: Option<String>,
 }
@@ -98,7 +114,11 @@ pub struct OAuthCallbackQuery {
 #[derive(Deserialize)]
 pub struct BindEmailPayload {
     pub email: String,
-    pub password: String,
+    pub password: Option<String>,
+    #[serde(rename = "passwordCiphertext")]
+    pub password_ciphertext: Option<String>,
+    #[serde(rename = "passwordKeyId")]
+    pub password_key_id: Option<String>,
     pub code: String,
     #[serde(rename = "fcaptchaToken")]
     pub fcaptcha_token: Option<String>,
@@ -121,6 +141,10 @@ pub struct OAuthPendingActionPayload {
     pub action: String,
     pub email: Option<String>,
     pub password: Option<String>,
+    #[serde(rename = "passwordCiphertext")]
+    pub password_ciphertext: Option<String>,
+    #[serde(rename = "passwordKeyId")]
+    pub password_key_id: Option<String>,
     #[serde(rename = "returnTo")]
     pub return_to: Option<String>,
 }

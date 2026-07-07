@@ -6,7 +6,7 @@ use mongodb::{
     bson::{Document, doc},
 };
 
-use crate::config::AppConfig;
+use crate::{config::AppConfig, password_crypto::PasswordCrypto};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -19,11 +19,13 @@ pub struct AppState {
     pub reset_sessions: Collection<Document>,
     pub user_billing: Collection<Document>,
     pub fcaptcha_tokens: Collection<Document>,
+    pub password_crypto: PasswordCrypto,
 }
 
 impl AppState {
-    pub fn new(config: Arc<AppConfig>, database: Database) -> Self {
-        Self {
+    pub fn new(config: Arc<AppConfig>, database: Database) -> Result<Self> {
+        let password_crypto = PasswordCrypto::new()?;
+        Ok(Self {
             config,
             users: database.collection("users"),
             auth_sessions: database.collection("auth_sessions"),
@@ -32,8 +34,9 @@ impl AppState {
             reset_sessions: database.collection("sessions"),
             user_billing: database.collection("user_billing"),
             fcaptcha_tokens: database.collection("fcaptcha_tokens"),
+            password_crypto,
             database,
-        }
+        })
     }
 }
 

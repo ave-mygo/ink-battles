@@ -9,11 +9,13 @@ import { AuthLayout } from "@/components/auth-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useCodeCooldown } from "@/hooks/use-code-cooldown"
 import { useFCaptcha } from "@/hooks/use-fcaptcha"
 import { requestPasswordReset } from "@/lib/auth-api"
 
 export default function ForgotPasswordPage() {
   const fcaptcha = useFCaptcha()
+  const { cooldownActive, cooldownRemaining, startCooldown } = useCodeCooldown()
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState("")
   const [success, setSuccess] = React.useState(false)
@@ -33,6 +35,10 @@ export default function ForgotPasswordPage() {
     event.preventDefault()
     setError("")
 
+    if (cooldownActive) {
+      return
+    }
+
     if (!email) {
       setError("请填写邮箱地址")
       return
@@ -43,6 +49,7 @@ export default function ForgotPasswordPage() {
       const fcaptchaToken = await fcaptcha.execute("forgot_password")
       await requestPasswordReset(email, fcaptchaToken)
       setSuccess(true)
+      startCooldown()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "重置验证码发送失败，请稍后重试")
     } finally {
@@ -98,9 +105,9 @@ export default function ForgotPasswordPage() {
             </div>
 
             <motion.div variants={itemVariants} className="-mt-1 z-20 mx-1">
-              <Button className="w-full h-11" disabled={isLoading || !fcaptcha.ready}>
+              <Button className="w-full h-11" disabled={isLoading || cooldownActive || !fcaptcha.ready}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isLoading ? "正在发送..." : fcaptcha.ready ? "发送重置验证码" : "加载验证中..."}
+                {isLoading ? "正在发送..." : cooldownActive ? `${cooldownRemaining} 秒后重发` : fcaptcha.ready ? "发送重置验证码" : "加载验证中..."}
               </Button>
             </motion.div>
           </motion.form>
@@ -120,12 +127,15 @@ export default function ForgotPasswordPage() {
               <p className="text-[13px] text-zinc-500 font-light">
                 如果该邮箱已注册，请使用收到的验证码设置新密码。
               </p>
+              <p className="text-[11px] text-zinc-500 font-light">
+                {cooldownActive ? `${cooldownRemaining} 秒后可重新发送。` : "如未收到可重新发送验证码。"}
+              </p>
             </div>
             <Button className="w-full mt-2" asChild>
               <Link href={resetHref}>输入验证码并重置</Link>
             </Button>
-            <Button variant="outline" className="w-full" onClick={() => setSuccess(false)}>
-              重新发送验证码
+            <Button variant="outline" className="w-full" disabled={cooldownActive} onClick={() => setSuccess(false)}>
+              {cooldownActive ? `${cooldownRemaining} 秒后重发` : "重新发送验证码"}
             </Button>
           </motion.div>
         )}

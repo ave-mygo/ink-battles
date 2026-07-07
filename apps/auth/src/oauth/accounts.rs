@@ -8,6 +8,7 @@ use crate::{
     email::consume_email_code,
     fcaptcha::verify_fcaptcha,
     models::{AccountBindingItem, AccountBindings, BindEmailPayload, UnbindProviderPayload},
+    password_crypto::resolve_password,
     response::{bad_request, internal_error, ok, unauthorized},
     session::current_session,
     state::AppState,
@@ -59,8 +60,17 @@ pub async fn bind_email(
     };
     let uid = read_uid(&user);
     let email = normalize_email(&payload.email);
+    let password = match resolve_password(
+        &state.password_crypto,
+        payload.password.as_deref(),
+        payload.password_ciphertext.as_deref(),
+        payload.password_key_id.as_deref(),
+    ) {
+        Ok(value) => value,
+        Err(error) => return bad_request(&error.to_string()).into_response(),
+    };
 
-    if !is_password_valid(&payload.password) {
+    if !is_password_valid(&password) {
         return bad_request("密码强度不足，至少需要 10 位并包含任意 3 种字符类型").into_response();
     }
     if let Err(message) = consume_email_code(&state, &email, &payload.code, "register").await {
@@ -75,7 +85,7 @@ pub async fn bind_email(
         return bad_request("您已绑定邮箱，请先解绑").into_response();
     }
 
-    let password_hash = match hash(&payload.password, DEFAULT_COST) {
+    let password_hash = match hash(&password, DEFAULT_COST) {
         Ok(value) => value,
         Err(error) => return internal_error(error).into_response(),
     };
