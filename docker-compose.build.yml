@@ -1,0 +1,15 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+
+  auth:
+    build:
+      context: .
+      dockerfile: apps/auth/Dockerfile

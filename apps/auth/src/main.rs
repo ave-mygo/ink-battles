@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{env, net::SocketAddr, sync::Arc, time::Duration};
 
 use anyhow::Result;
 use axum::{
@@ -42,6 +42,10 @@ const NEW_USER_BONUS: i32 = 25;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    if env::args().any(|argument| argument == "--healthcheck") {
+        return healthcheck().await;
+    }
+
     fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
@@ -106,6 +110,19 @@ async fn main() -> Result<()> {
     );
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+async fn healthcheck() -> Result<()> {
+    let url = env::var("AUTH_HEALTHCHECK_URL")
+        .unwrap_or_else(|_| "http://127.0.0.1:3100/api/health".to_string());
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(3))
+        .build()?;
+    let response = client.get(url).send().await?;
+    if response.status().is_success() {
+        return Ok(());
+    }
+    anyhow::bail!("auth healthcheck failed with status {}", response.status())
 }
 
 async fn health() -> axum::Json<models::ApiResponse<serde_json::Value>> {

@@ -13,6 +13,7 @@
     "auth:panel:build": "turbo run build --filter=@ink-battles/auth-panel",
     "build": "turbo run build",
     "build:all": "turbo run build",
+    "build:runtime": "bash scripts/build-runtime-artifacts.sh",
     "build:docker": "docker compose -f docker-compose.yml -f docker-compose.build.yml build",
     "build:docker:frontend": "docker compose -f docker-compose.yml -f docker-compose.build.yml build frontend",
     "build:docker:backend": "docker compose -f docker-compose.yml -f docker-compose.build.yml build backend",

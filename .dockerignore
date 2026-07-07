@@ -2,6 +2,19 @@
 node_modules
 .next
 out
+target
+
+# Runtime artifacts consumed by Dockerfiles
+!apps/frontend/.next/
+!apps/frontend/.next/standalone/
+!apps/frontend/.next/standalone/**
+!apps/frontend/.next/static/
+!apps/frontend/.next/static/**
+!apps/auth/panel/out/
+!apps/auth/panel/out/**
+!apps/auth/target/
+!apps/auth/target/release/
+!apps/auth/target/release/ink-auth-service
 # Logs
 npm-debug.log*
 yarn-debug.log*

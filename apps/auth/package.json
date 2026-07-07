@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "pnpm --filter @ink-battles/auth-panel build",
     "dev": "cargo run",
     "build": "cargo build --release",
     "start": "target/release/ink-auth-service",
