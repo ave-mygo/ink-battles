@@ -26,6 +26,7 @@ pub struct AppConfig {
     pub smtp_password: Option<String>,
     pub smtp_from_name: String,
     pub fcaptcha_enabled: bool,
+    pub fcaptcha_server_url: Option<String>,
     pub fcaptcha_site_key: Option<String>,
     pub fcaptcha_secret: Option<String>,
     pub fcaptcha_max_score: f64,
@@ -173,7 +174,7 @@ impl AppConfig {
             app_base_url: auth
                 .app_base_url
                 .map(|value| trim_trailing_slash(&value))
-                .unwrap_or_else(|| "http://localhost:3100".to_string()),
+                .unwrap_or_else(|| "https://auth.couqie.moe".to_string()),
             default_return_url,
             allowed_return_origins: auth
                 .allowed_return_origins
@@ -206,6 +207,7 @@ impl AppConfig {
                         .as_ref()
                         .is_some_and(|value| !value.trim().is_empty())
             }),
+            fcaptcha_server_url: non_empty(auth.fcaptcha_server_url),
             fcaptcha_site_key: non_empty(auth.fcaptcha_site_key),
             fcaptcha_secret: non_empty(auth.fcaptcha_secret),
             fcaptcha_max_score: auth.fcaptcha_max_score.unwrap_or(0.5),

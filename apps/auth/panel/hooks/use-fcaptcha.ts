@@ -4,6 +4,12 @@ import * as React from "react"
 
 declare global {
   interface Window {
+    __AUTH_PANEL_CONFIG__?: {
+      fcaptcha?: {
+        serverUrl?: string
+        siteKey?: string
+      }
+    }
     FCaptcha?: {
       configure: (options: { serverUrl: string }) => void
       execute: (siteKey: string, options: { action: string }) => Promise<FCaptchaExecuteResult>
@@ -24,14 +30,22 @@ interface UseFCaptchaResult {
   execute: (action: string) => Promise<string | undefined>
 }
 
-const fcaptchaServerUrl = process.env.NEXT_PUBLIC_FCAPTCHA_SERVER_URL?.replace(/\/$/, "")
-const fcaptchaSiteKey = process.env.NEXT_PUBLIC_FCAPTCHA_SITE_KEY
+function getRuntimeFCaptchaConfig() {
+  if (typeof window === "undefined") {
+    return undefined
+  }
+
+  return window.__AUTH_PANEL_CONFIG__?.fcaptcha
+}
 
 /**
  * Loads FCaptcha's framework-agnostic widget and returns Invisible Mode tokens
  * for protected auth actions.
  */
 export function useFCaptcha(): UseFCaptchaResult {
+  const runtimeConfig = getRuntimeFCaptchaConfig()
+  const fcaptchaServerUrl = (runtimeConfig?.serverUrl ?? process.env.NEXT_PUBLIC_FCAPTCHA_SERVER_URL)?.replace(/\/$/, "")
+  const fcaptchaSiteKey = runtimeConfig?.siteKey ?? process.env.NEXT_PUBLIC_FCAPTCHA_SITE_KEY
   const enabled = Boolean(fcaptchaServerUrl && fcaptchaSiteKey)
   const [ready, setReady] = React.useState(() => !enabled || (typeof window !== "undefined" && Boolean(window.FCaptcha)))
 
