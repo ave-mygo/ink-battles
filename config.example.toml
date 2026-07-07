@@ -92,6 +92,13 @@ site_cookie_name = "auth-token"
 cookie_domain = ""
 cookie_secure = false
 smtp_from_name = "Ink Battles"
+# FCaptcha 未配置时本地开发保持关闭；生产环境配置齐全后会自动启用。
+fcaptcha_server_url = ""
+fcaptcha_site_key = ""
+fcaptcha_secret = ""
+fcaptcha_max_score = 0.5
+# 只有当 Auth 服务和 FCaptcha 服务确认能看到同一个真实客户端 IP 时才开启。
+fcaptcha_verify_ip_hash = false
 
 [[grading_models]]
 id = "gemini-3-pro-preview"

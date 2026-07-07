@@ -1,12 +1,13 @@
 use anyhow::Result;
 use axum::{Json, extract::State, http::HeaderMap, response::IntoResponse};
 use bcrypt::{DEFAULT_COST, hash, verify};
-use mongodb::bson::{DateTime as BsonDateTime, doc};
+use mongodb::bson::{Bson, DateTime as BsonDateTime, Document, doc};
 
 use crate::{
     NEW_USER_BONUS,
     email::consume_email_code,
-    models::{LoginPayload, RegisterPayload},
+    fcaptcha::verify_fcaptcha,
+    models::{LoginPayload, RegisterPayload, UpdateProfilePayload},
     response::{bad_request, internal_error, ok, unauthorized},
     session::{
         append_cookie, clear_auth_cookie, current_session, issue_login_response,
@@ -46,6 +47,12 @@ pub async fn login(
     headers: HeaderMap,
     Json(payload): Json<LoginPayload>,
 ) -> impl IntoResponse {
+    if let Err(message) =
+        verify_fcaptcha(&state, &headers, payload.fcaptcha_token.as_deref(), "login").await
+    {
+        return bad_request(&message).into_response();
+    }
+
     let email = normalize_email(&payload.email);
     let Ok(Some(user)) = state.users.find_one(doc! { "email": &email }).await else {
         return bad_request("邮箱或密码错误").into_response();
@@ -65,6 +72,17 @@ pub async fn register(
     headers: HeaderMap,
     Json(payload): Json<RegisterPayload>,
 ) -> impl IntoResponse {
+    if let Err(message) = verify_fcaptcha(
+        &state,
+        &headers,
+        payload.fcaptcha_token.as_deref(),
+        "register",
+    )
+    .await
+    {
+        return bad_request(&message).into_response();
+    }
+
     let email = normalize_email(&payload.email);
     if !is_valid_email(&email) {
         return bad_request("请输入有效的邮箱地址").into_response();
@@ -153,6 +171,57 @@ pub async fn refresh_session(
             .into_response(),
         _ => unauthorized("未登录").into_response(),
     }
+}
+
+pub async fn update_profile(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<UpdateProfilePayload>,
+) -> impl IntoResponse {
+    let Ok(Some((claims, _))) = current_session(&state, &headers).await else {
+        return unauthorized("未登录").into_response();
+    };
+
+    let mut updates = Document::new();
+    if let Some(nickname) = payload.nickname {
+        let trimmed_nickname = nickname.trim();
+        if trimmed_nickname.chars().count() > 20 {
+            return bad_request("昵称不能超过 20 个字符").into_response();
+        }
+        updates.insert(
+            "nickname",
+            if trimmed_nickname.is_empty() {
+                Bson::Null
+            } else {
+                Bson::String(trimmed_nickname.to_string())
+            },
+        );
+    }
+    if let Some(bio) = payload.bio {
+        let trimmed_bio = bio.trim();
+        if trimmed_bio.chars().count() > 100 {
+            return bad_request("签名不能超过 100 个字符").into_response();
+        }
+        updates.insert(
+            "bio",
+            if trimmed_bio.is_empty() {
+                Bson::Null
+            } else {
+                Bson::String(trimmed_bio.to_string())
+            },
+        );
+    }
+    updates.insert("updatedAt", BsonDateTime::now());
+
+    if let Err(error) = state
+        .users
+        .update_one(doc! { "uid": claims.uid }, doc! { "$set": updates })
+        .await
+    {
+        return internal_error(error).into_response();
+    }
+
+    ok::<serde_json::Value>("资料更新成功", serde_json::json!({})).into_response()
 }
 
 async fn next_uid(state: &AppState) -> Result<i64> {

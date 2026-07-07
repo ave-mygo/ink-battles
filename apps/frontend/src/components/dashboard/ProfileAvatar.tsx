@@ -6,17 +6,20 @@ import { useCurrentUser } from "@/store/auth";
 interface ProfileAvatarProps {
   className?: string;
   alt?: string;
+  avatar?: string | null;
   fallbackName?: string;
 }
 
 export default function ProfileAvatar({
   className,
   alt,
+  avatar,
   fallbackName,
 }: ProfileAvatarProps) {
   const user = useCurrentUser();
 
   const displayName = user?.nickname || fallbackName || "User";
+  const avatarUrl = avatar ?? user?.avatar;
   const initials = displayName
     .split(" ")
     .map((name: string) => name[0])
@@ -26,7 +29,7 @@ export default function ProfileAvatar({
 
   return (
     <Avatar className={className}>
-      <AvatarImage src={user?.avatar} alt={alt || displayName} />
+      <AvatarImage src={avatarUrl} alt={alt || displayName} />
       <AvatarFallback>{initials}</AvatarFallback>
     </Avatar>
   );

@@ -10,10 +10,12 @@ import { AuthLayout } from "@/components/auth-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useFCaptcha } from "@/hooks/use-fcaptcha"
 import { AUTH_PANEL_DASHBOARD_PATH, createAuthorizeUrl, createOAuthStartUrl, getCurrentUser, getReturnTo, hasAuthorizationRequest, isSwitchingAccount, loginWithEmail, type AuthUserInfo } from "@/lib/auth-api"
 
 export default function LoginPage() {
   const router = useRouter()
+  const fcaptcha = useFCaptcha()
   const [isLoading, setIsLoading] = React.useState(false)
   const [isCheckingSession, setIsCheckingSession] = React.useState(true)
   const [previousUser, setPreviousUser] = React.useState<AuthUserInfo | null>(null)
@@ -77,7 +79,8 @@ export default function LoginPage() {
 
     try {
       setIsLoading(true)
-      await loginWithEmail(email, password)
+      const fcaptchaToken = await fcaptcha.execute("login")
+      await loginWithEmail(email, password, fcaptchaToken)
       const returnTo = getReturnTo()
       if (returnTo) {
         window.location.href = createAuthorizeUrl(returnTo)
@@ -106,13 +109,13 @@ export default function LoginPage() {
   return (
     <AuthLayout
       title="登入账号"
-      subtitle={hasAuthorizationRequest() ? "登录后将进入授权确认。" : "欢迎回到 Ink Battles Auth。"}
+      subtitle={hasAuthorizationRequest() ? "登录 Minato 后，将为请求的业务系统继续授权。" : "欢迎回到 Minato。"}
       englishAccent="SIGN IN"
     >
       {isCheckingSession ? (
         <div className="flex h-32 items-center justify-center text-[13px] text-zinc-500">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          正在检查认证中心登录状态...
+          正在检查 Minato 登录状态...
         </div>
       ) : (
       <>
@@ -212,9 +215,9 @@ export default function LoginPage() {
         </div>
 
         <motion.div variants={itemVariants} className="-mt-1 z-20 mx-1">
-          <Button className="w-full h-11" disabled={isLoading}>
+          <Button className="w-full h-11" disabled={isLoading || !fcaptcha.ready}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isLoading ? "正在验证..." : "确认登录"}
+            {isLoading ? "正在验证..." : fcaptcha.ready ? "确认登录" : "加载验证中..."}
           </Button>
         </motion.div>
       </motion.form>

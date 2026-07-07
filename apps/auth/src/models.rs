@@ -13,17 +13,23 @@ pub struct SendCodePayload {
     pub email: String,
     #[serde(rename = "type")]
     pub code_type: Option<String>,
+    #[serde(rename = "fcaptchaToken")]
+    pub fcaptcha_token: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct EmailPayload {
     pub email: String,
+    #[serde(rename = "fcaptchaToken")]
+    pub fcaptcha_token: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct LoginPayload {
     pub email: String,
     pub password: String,
+    #[serde(rename = "fcaptchaToken")]
+    pub fcaptcha_token: Option<String>,
     #[serde(rename = "returnTo")]
     pub return_to: Option<String>,
 }
@@ -41,6 +47,8 @@ pub struct RegisterPayload {
     #[serde(rename = "confirmPassword")]
     pub confirm_password: String,
     pub code: String,
+    #[serde(rename = "fcaptchaToken")]
+    pub fcaptcha_token: Option<String>,
     #[serde(rename = "returnTo")]
     pub return_to: Option<String>,
 }
@@ -58,6 +66,8 @@ pub struct ResetPasswordPayload {
     pub password: String,
     #[serde(rename = "confirmPassword")]
     pub confirm_password: String,
+    #[serde(rename = "fcaptchaToken")]
+    pub fcaptcha_token: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -90,11 +100,19 @@ pub struct BindEmailPayload {
     pub email: String,
     pub password: String,
     pub code: String,
+    #[serde(rename = "fcaptchaToken")]
+    pub fcaptcha_token: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct UnbindProviderPayload {
     pub provider: String,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateProfilePayload {
+    pub nickname: Option<String>,
+    pub bio: Option<String>,
 }
 
 #[derive(Deserialize)]

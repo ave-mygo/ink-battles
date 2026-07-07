@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordStrength } from "@/components/password-strength"
+import { useFCaptcha } from "@/hooks/use-fcaptcha"
 import { AUTH_PANEL_DASHBOARD_PATH, createAuthorizeUrl, createOAuthStartUrl, getReturnTo, registerWithEmail, sendVerificationCode } from "@/lib/auth-api"
 
 export default function RegisterPage() {
+  const fcaptcha = useFCaptcha()
   const [isLoading, setIsLoading] = React.useState(false)
   const [isSendingCode, setIsSendingCode] = React.useState(false)
   const [codeSent, setCodeSent] = React.useState(false)
@@ -47,7 +49,8 @@ export default function RegisterPage() {
 
     try {
       setIsSendingCode(true)
-      await sendVerificationCode(formData.email, "register")
+      const fcaptchaToken = await fcaptcha.execute("send_verification_code")
+      await sendVerificationCode(formData.email, "register", fcaptchaToken)
       setCodeSent(true)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "验证码发送失败，请稍后重试")
@@ -72,7 +75,8 @@ export default function RegisterPage() {
 
     try {
       setIsLoading(true)
-      await registerWithEmail(formData)
+      const fcaptchaToken = await fcaptcha.execute("register")
+      await registerWithEmail({ ...formData, fcaptchaToken })
       const returnTo = getReturnTo()
       if (returnTo) {
         window.location.href = createAuthorizeUrl(returnTo)
@@ -92,7 +96,7 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       title="创建账号"
-      subtitle="仅需邮箱、密码与验证码，完成后自动返回 Ink Battles。"
+      subtitle="创建 Minato 账号后，可用于登录 Ink Battles 等接入系统。"
       englishAccent="CREATE ACCOUNT"
     >
       <motion.form
@@ -202,10 +206,15 @@ export default function RegisterPage() {
                       type="button"
                       variant="outline"
                       className="h-8 shrink-0 px-3 text-[11px]"
-                      disabled={isLoading || isSendingCode}
+                      disabled={isLoading || isSendingCode || !fcaptcha.ready}
                       onClick={handleSendCode}
                     >
-                      {isSendingCode ? "发送中..." : codeSent ? "重新发送" : "发送验证码"}
+                      {isSendingCode ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                          发送中...
+                        </>
+                      ) : codeSent ? "重新发送" : fcaptcha.ready ? "发送验证码" : "加载中..."}
                     </Button>
                   </div>
                   {codeSent && (
@@ -220,9 +229,9 @@ export default function RegisterPage() {
         </div>
 
         <motion.div variants={itemVariants} className="-mt-1 z-20 mx-1">
-          <Button className="w-full h-11" disabled={isLoading}>
+          <Button className="w-full h-11" disabled={isLoading || !fcaptcha.ready}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isLoading ? "正在创建..." : "创建账户"}
+            {isLoading ? "正在创建..." : fcaptcha.ready ? "创建账户" : "加载验证中..."}
           </Button>
         </motion.div>
       </motion.form>

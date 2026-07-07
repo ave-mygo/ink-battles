@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { motion } from "motion/react"
-import { AtSign, Link2, Mail, Unlink } from "lucide-react"
+import { AtSign, Link2, Loader2, Mail, Unlink } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,8 @@ interface BindingsSectionProps {
   bindings: AccountBindings
   emailForm: { email: string; password: string; code: string }
   isSaving: boolean
+  isCaptchaReady: boolean
+  savingAction: "send-code" | "bind-email" | null
   onBindOAuth: (provider: "qq" | "afdian") => void
   onUnbind: (provider: "email" | "qq" | "afdian") => void
   onEmailFormChange: (form: { email: string; password: string; code: string }) => void
@@ -26,6 +28,8 @@ export function BindingsSection({
   bindings,
   emailForm,
   isSaving,
+  isCaptchaReady,
+  savingAction,
   onBindOAuth,
   onUnbind,
   onEmailFormChange,
@@ -50,8 +54,22 @@ export function BindingsSection({
             <Field id="bind-code" label="验证码 / Code" value={emailForm.code} onChange={(value) => onEmailFormChange({ ...emailForm, code: value })} />
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" disabled={isSaving} onClick={onSendCode}>发送验证码</Button>
-            <Button size="sm" disabled={isSaving}>绑定邮箱</Button>
+            <Button type="button" variant="outline" size="sm" disabled={isSaving || !isCaptchaReady} onClick={onSendCode}>
+              {savingAction === "send-code" ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                  发送中...
+                </>
+              ) : isCaptchaReady ? "发送验证码" : "加载中..."}
+            </Button>
+            <Button size="sm" disabled={isSaving || !isCaptchaReady}>
+              {savingAction === "bind-email" ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                  绑定中...
+                </>
+              ) : "绑定邮箱"}
+            </Button>
           </div>
         </form>
       )}

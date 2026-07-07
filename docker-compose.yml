@@ -9,8 +9,8 @@ services:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
       - APP_BASE_URL=https://ink-battles.couqie.moe
-      - AUTH_BASE_URL=${AUTH_RELEASE_BASE_URL:-https://auth.ink-battles.couqie.moe}
-      - NEXT_PUBLIC_AUTH_BASE_URL=${AUTH_RELEASE_BASE_URL:-https://auth.ink-battles.couqie.moe}
+      - AUTH_BASE_URL=${AUTH_RELEASE_BASE_URL:-https://auth.couqie.moe}
+      - NEXT_PUBLIC_AUTH_BASE_URL=${AUTH_RELEASE_BASE_URL:-https://auth.couqie.moe}
       - NEXT_PUBLIC_API_BASE_URL=/api/v2
       - INTERNAL_API_BASE_URL=http://backend:3000/api/v2
     healthcheck:
@@ -42,7 +42,7 @@ services:
       - TZ=Asia/Shanghai
       - APP_BASE_URL=https://ink-battles.couqie.moe
       - FRONTEND_ORIGIN=http://frontend:3000
-      - ALLOWED_ORIGINS=https://ink-battles.couqie.moe,${AUTH_RELEASE_BASE_URL:-https://auth.ink-battles.couqie.moe},http://localhost:${BACKEND_PORT:-3001}
+      - ALLOWED_ORIGINS=https://ink-battles.couqie.moe,${AUTH_RELEASE_BASE_URL:-https://auth.couqie.moe},http://localhost:${BACKEND_PORT:-3001}
     depends_on:
       frontend:
         condition: service_healthy

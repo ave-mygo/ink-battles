@@ -6,6 +6,7 @@ use mongodb::bson::{DateTime as BsonDateTime, Document, doc};
 use crate::{
     NEW_USER_BONUS,
     email::consume_email_code,
+    fcaptcha::verify_fcaptcha,
     models::{AccountBindingItem, AccountBindings, BindEmailPayload, UnbindProviderPayload},
     response::{bad_request, internal_error, ok, unauthorized},
     session::current_session,
@@ -42,6 +43,17 @@ pub async fn bind_email(
     headers: HeaderMap,
     Json(payload): Json<BindEmailPayload>,
 ) -> impl IntoResponse {
+    if let Err(message) = verify_fcaptcha(
+        &state,
+        &headers,
+        payload.fcaptcha_token.as_deref(),
+        "bind_email",
+    )
+    .await
+    {
+        return bad_request(&message).into_response();
+    }
+
     let Some(user) = current_user_document(&state, &headers).await else {
         return unauthorized("未登录").into_response();
     };

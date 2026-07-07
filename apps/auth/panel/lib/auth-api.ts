@@ -18,6 +18,7 @@ export interface AuthUserInfo {
   loginMethod?: string
   currentLoginMethod?: string
   nickname?: string
+  bio?: string
   avatar?: string
 }
 
@@ -50,8 +51,12 @@ export interface OAuthPendingIdentity {
 }
 
 interface AuthRequestOptions {
-  method?: "GET" | "POST" | "DELETE"
-  body?: Record<string, unknown>
+  method?: "GET" | "POST" | "PATCH" | "DELETE"
+  body?: object
+}
+
+interface FCaptchaProtectedInput {
+  fcaptchaToken?: string
 }
 
 /**
@@ -122,11 +127,12 @@ export async function requestAuth<T>(
   return payload
 }
 
-export async function loginWithEmail(email: string, password: string) {
+export async function loginWithEmail(email: string, password: string, fcaptchaToken?: string) {
   const payload = await requestAuth<LoginResult>("/api/auth/login", {
     body: {
       email,
       password,
+      fcaptchaToken,
       returnTo: getReturnTo(),
     },
   })
@@ -140,6 +146,13 @@ export async function getCurrentUser() {
   })
 
   return payload.data
+}
+
+export async function updateUserProfile(input: { nickname?: string; bio?: string }) {
+  await requestAuth("/api/auth/profile", {
+    method: "PATCH",
+    body: input,
+  })
 }
 
 export async function authorizeSite(returnTo?: string) {
@@ -191,7 +204,7 @@ export async function getAccountBindings() {
   return payload.data
 }
 
-export async function bindEmailAccount(input: { email: string; password: string; code: string }) {
+export async function bindEmailAccount(input: { email: string; password: string; code: string } & FCaptchaProtectedInput) {
   await requestAuth("/api/auth/accounts/bind-email", {
     body: input,
   })
@@ -210,7 +223,7 @@ export async function registerWithEmail(input: {
   password: string
   confirmPassword: string
   code: string
-}) {
+} & FCaptchaProtectedInput) {
   const payload = await requestAuth<LoginResult>("/api/auth/register", {
     body: {
       ...input,
@@ -221,19 +234,21 @@ export async function registerWithEmail(input: {
   return payload.data?.returnTo
 }
 
-export async function sendVerificationCode(email: string, codeType: string) {
+export async function sendVerificationCode(email: string, codeType: string, fcaptchaToken?: string) {
   await requestAuth("/api/auth/send-verification-code", {
     body: {
       email,
       type: codeType,
+      fcaptchaToken,
     },
   })
 }
 
-export async function requestPasswordReset(email: string) {
+export async function requestPasswordReset(email: string, fcaptchaToken?: string) {
   await requestAuth("/api/auth/forgot-password", {
     body: {
       email,
+      fcaptchaToken,
     },
   })
 }
@@ -252,7 +267,7 @@ export async function resetPassword(input: {
   code: string
   password: string
   confirmPassword: string
-}) {
+} & FCaptchaProtectedInput) {
   await requestAuth("/api/auth/reset-password", {
     body: input,
   })

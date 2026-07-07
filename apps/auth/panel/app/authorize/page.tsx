@@ -19,7 +19,7 @@ interface AuthorizationClient {
 
 const requestedScopes = [
   "读取您的基础公开信息，包括 UID、昵称和头像",
-  "确认您在认证中心的登录状态",
+  "确认您在 Minato 的登录状态",
   "为请求站点建立独立的业务登录会话",
 ]
 
@@ -81,13 +81,13 @@ export default function AuthorizePage() {
   return (
     <AuthLayout
       title="确认授权"
-      subtitle="请确认请求方、当前账号和权限范围后继续。"
+      subtitle="Minato 将把当前账号安全授权给请求的业务系统。"
       englishAccent="AUTHORIZE"
     >
       {isLoading ? (
         <div className="flex h-32 items-center justify-center text-[13px] text-zinc-500">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          正在读取认证中心会话...
+          正在读取 Minato 会话...
         </div>
       ) : (
         <motion.div variants={itemVariants} initial="hidden" animate="show" className="flex flex-col">
@@ -168,7 +168,7 @@ export default function AuthorizePage() {
           </div>
 
           <div className="mt-8 text-center text-[11px] font-light text-zinc-400 dark:text-zinc-500">
-            授权后，{client?.name ?? "请求站点"} 将获得上述权限；Auth 服务仍会独立保留当前登录会话。
+            授权后，{client?.name ?? "请求站点"} 将获得上述权限；Minato 会独立保留当前登录会话。
             <br />
             <Link href={createSwitchAccountUrl(client?.returnTo)} className="text-zinc-500 underline-offset-4 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-200">
               切换账号

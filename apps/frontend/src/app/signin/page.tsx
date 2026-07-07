@@ -5,7 +5,7 @@ import { createAuthRedirectUrl } from "@/utils/auth/redirect";
 export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "用户登录",
-    description: "跳转到 Ink Battles 统一认证中心登录",
+    description: "跳转到 Minato 统一认证中心登录",
   };
 }
 
@@ -17,4 +17,3 @@ export default async function SignInPage({
   const params = await searchParams;
   redirect(createAuthRedirectUrl("/", params?.returnTo || params?.redirect));
 }
-

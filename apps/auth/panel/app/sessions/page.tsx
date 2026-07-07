@@ -44,7 +44,7 @@ export default function SessionsPage() {
       <header className="border-b border-zinc-200 dark:border-zinc-900/50 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="text-sm font-medium tracking-widest uppercase cursor-pointer">
-            Ink Battles Auth
+            Minato
           </Link>
           <div className="flex items-center gap-3">
             <ThemeToggle />

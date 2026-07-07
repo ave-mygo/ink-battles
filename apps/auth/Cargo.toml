@@ -6,9 +6,12 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.103"
 axum = "0.8.9"
+base64 = "0.22.1"
 bcrypt = "0.19.2"
 chrono = { version = "0.4.45", features = [ "serde" ] }
 cookie = "0.18.1"
+hex = "0.4.3"
+hmac = "0.12.1"
 jsonwebtoken = { version = "10.4.0", features = ["rust_crypto"] }
 lettre = { version = "0.11.22", default-features = false, features = [
   "builder",
@@ -25,6 +28,7 @@ reqwest = { version = "0.12.25", default-features = false, features = [
 rust-embed = "8.11.0"
 serde = { version = "1.0.228", features = [ "derive" ] }
 serde_json = "1.0.150"
+sha2 = "0.10.9"
 tokio = { version = "1.52.3", features = [
   "macros",
   "rt-multi-thread",

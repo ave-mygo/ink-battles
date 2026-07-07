@@ -19,7 +19,7 @@ export default function ProfileLoading() {
         </div>
       </div>
 
-      {/* ProfileHeader 骨架 */}
+      {/* 用户信息卡片骨架 */}
       <div className="p-6 border-0 rounded-xl bg-white/80 shadow-lg backdrop-blur-sm dark:bg-slate-900/80">
         <div className="flex flex-col gap-4 items-center sm:flex-row sm:gap-6 sm:items-start">
           {/* 头像 */}

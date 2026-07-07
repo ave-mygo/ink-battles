@@ -7,8 +7,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 const playfair = Playfair_Display({ subsets: ['latin'], variable: '--font-serif' });
 
 export const metadata: Metadata = {
-  title: 'Minato 凑 | 认证中心',
-  description: '极简风格认证前端',
+  title: 'Minato 凑 | 统一认证中心',
+  description: 'Minato 统一认证前端，用于登录和授权接入系统。',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {

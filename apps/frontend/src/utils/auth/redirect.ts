@@ -19,3 +19,8 @@ export const createAuthRedirectUrl = (path: "/" | "/register" | "/forgot-passwor
   return target.toString();
 };
 
+/**
+ * 生成跳转至 Minato 控制面板的 URL。
+ */
+export const createAuthPanelUrl = (path: "/dashboard" = "/dashboard"): string =>
+  new URL(path, getAuthBaseUrl()).toString();

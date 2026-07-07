@@ -2,6 +2,7 @@ use anyhow::Result;
 use axum::{
     Json,
     extract::{Query, State},
+    http::HeaderMap,
     response::{IntoResponse, Redirect},
 };
 use bcrypt::{DEFAULT_COST, hash, verify};
@@ -15,6 +16,7 @@ use uuid::Uuid;
 
 use crate::{
     EMAIL_CODE_TTL_MINUTES, RESET_SESSION_TTL_MINUTES,
+    fcaptcha::verify_fcaptcha,
     mail::send_verification_email,
     models::{
         EmailPayload, ResetPasswordPayload, SendCodePayload, VerifyCodePayload, VerifyEmailQuery,
@@ -29,8 +31,20 @@ use crate::{
 
 pub async fn send_verification_code(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(payload): Json<SendCodePayload>,
 ) -> impl IntoResponse {
+    if let Err(message) = verify_fcaptcha(
+        &state,
+        &headers,
+        payload.fcaptcha_token.as_deref(),
+        "send_verification_code",
+    )
+    .await
+    {
+        return bad_request(&message).into_response();
+    }
+
     let email = normalize_email(&payload.email);
     let code_type = normalize_code_type(payload.code_type.as_deref());
     match create_email_code(&state, &email, code_type).await {
@@ -63,8 +77,20 @@ pub async fn verify_email_link(
 
 pub async fn forgot_password(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(payload): Json<EmailPayload>,
 ) -> impl IntoResponse {
+    if let Err(message) = verify_fcaptcha(
+        &state,
+        &headers,
+        payload.fcaptcha_token.as_deref(),
+        "forgot_password",
+    )
+    .await
+    {
+        return bad_request(&message).into_response();
+    }
+
     let email = normalize_email(&payload.email);
     if state
         .users
@@ -80,6 +106,7 @@ pub async fn forgot_password(
         "如果该邮箱已注册，您将收到重置密码验证码",
         serde_json::json!({}),
     )
+    .into_response()
 }
 
 pub async fn verify_reset_code(
@@ -100,8 +127,20 @@ pub async fn verify_reset_code(
 
 pub async fn reset_password(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Json(payload): Json<ResetPasswordPayload>,
 ) -> impl IntoResponse {
+    if let Err(message) = verify_fcaptcha(
+        &state,
+        &headers,
+        payload.fcaptcha_token.as_deref(),
+        "reset_password",
+    )
+    .await
+    {
+        return bad_request(&message).into_response();
+    }
+
     let email = normalize_email(&payload.email);
     if payload.password != payload.confirm_password {
         return bad_request("两次输入的密码不一致").into_response();

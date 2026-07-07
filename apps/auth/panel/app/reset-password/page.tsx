@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordStrength } from "@/components/password-strength"
+import { useFCaptcha } from "@/hooks/use-fcaptcha"
 import { resetPassword, verifyResetCode } from "@/lib/auth-api"
 
 export default function ResetPasswordPage() {
+  const fcaptcha = useFCaptcha()
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState("")
   const [success, setSuccess] = React.useState(false)
@@ -59,7 +61,8 @@ export default function ResetPasswordPage() {
     try {
       setIsLoading(true)
       await verifyResetCode(formData.email, formData.code)
-      await resetPassword(formData)
+      const fcaptchaToken = await fcaptcha.execute("reset_password")
+      await resetPassword({ ...formData, fcaptchaToken })
       setSuccess(true)
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "密码重置失败，请稍后重试")
@@ -153,9 +156,9 @@ export default function ResetPasswordPage() {
             </div>
 
             <motion.div variants={itemVariants} className="-mt-1 z-20 mx-1">
-              <Button className="w-full h-11" disabled={isLoading}>
+              <Button className="w-full h-11" disabled={isLoading || !fcaptcha.ready}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isLoading ? "正在重置..." : "确认重置"}
+                {isLoading ? "正在重置..." : fcaptcha.ready ? "确认重置" : "加载验证中..."}
               </Button>
             </motion.div>
           </motion.form>

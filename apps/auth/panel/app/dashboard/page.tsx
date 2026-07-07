@@ -15,10 +15,12 @@ import {
   revokeSession,
   sendVerificationCode,
   unbindProvider,
+  updateUserProfile,
   type AccountBindings,
   type AuthUserInfo,
   type SessionInfo,
 } from "@/lib/auth-api"
+import { useFCaptcha } from "@/hooks/use-fcaptcha"
 
 import { BindingsSection } from "./_components/bindings-section"
 import { DashboardFrame, itemVariants } from "./_components/dashboard-frame"
@@ -33,12 +35,14 @@ const emptyBindings: AccountBindings = {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const fcaptcha = useFCaptcha()
   const [user, setUser] = React.useState<AuthUserInfo | null>(null)
   const [bindings, setBindings] = React.useState<AccountBindings>(emptyBindings)
   const [sessions, setSessions] = React.useState<SessionInfo[]>([])
   const [emailForm, setEmailForm] = React.useState({ email: "", password: "", code: "" })
   const [isLoading, setIsLoading] = React.useState(true)
   const [isSaving, setIsSaving] = React.useState(false)
+  const [savingAction, setSavingAction] = React.useState<"send-code" | "bind-email" | null>(null)
   const [isEditingProfile, setIsEditingProfile] = React.useState(false)
   const [message, setMessage] = React.useState("")
   const [error, setError] = React.useState("")
@@ -120,13 +124,16 @@ export default function DashboardPage() {
     }
     try {
       setIsSaving(true)
+      setSavingAction("send-code")
       setError("")
-      await sendVerificationCode(emailForm.email, "register")
+      const fcaptchaToken = await fcaptcha.execute("send_verification_code")
+      await sendVerificationCode(emailForm.email, "register", fcaptchaToken)
       setMessage("验证码已发送，请查收邮箱")
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "验证码发送失败")
     } finally {
       setIsSaving(false)
+      setSavingAction(null)
     }
   }
 
@@ -138,13 +145,30 @@ export default function DashboardPage() {
     }
     try {
       setIsSaving(true)
+      setSavingAction("bind-email")
       setError("")
-      await bindEmailAccount(emailForm)
+      const fcaptchaToken = await fcaptcha.execute("bind_email")
+      await bindEmailAccount({ ...emailForm, fcaptchaToken })
       setEmailForm({ email: "", password: "", code: "" })
       setMessage("邮箱绑定成功")
       await loadData()
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "邮箱绑定失败")
+    } finally {
+      setIsSaving(false)
+      setSavingAction(null)
+    }
+  }
+
+  const handleProfileSave = async (input: { nickname?: string; bio?: string }) => {
+    try {
+      setIsSaving(true)
+      setError("")
+      await updateUserProfile(input)
+      setMessage("资料已更新")
+      await loadData()
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "资料更新失败")
     } finally {
       setIsSaving(false)
     }
@@ -166,11 +190,19 @@ export default function DashboardPage() {
             </motion.div>
           )}
 
-          <ProfileSection user={user} isEditing={isEditingProfile} onEditChange={setIsEditingProfile} />
+          <ProfileSection
+            user={user}
+            isEditing={isEditingProfile}
+            isSaving={isSaving}
+            onEditChange={setIsEditingProfile}
+            onProfileSave={handleProfileSave}
+          />
           <BindingsSection
             bindings={bindings}
             emailForm={emailForm}
             isSaving={isSaving}
+            isCaptchaReady={fcaptcha.ready}
+            savingAction={savingAction}
             onBindOAuth={handleOAuthBind}
             onUnbind={handleUnbind}
             onEmailFormChange={setEmailForm}

@@ -3,7 +3,7 @@ use std::{env, net::SocketAddr, sync::Arc, time::Duration};
 use anyhow::Result;
 use axum::{
     Router,
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post},
 };
 use mongodb::{Client, options::ClientOptions};
 use tower_http::trace::TraceLayer;
@@ -13,6 +13,7 @@ mod account;
 mod assets;
 mod config;
 mod email;
+mod fcaptcha;
 mod mail;
 mod models;
 mod oauth;
@@ -21,7 +22,7 @@ mod session;
 mod state;
 mod utils;
 
-use account::{login, logout, me, refresh_session, register};
+use account::{login, logout, me, refresh_session, register, update_profile};
 use assets::static_handler;
 use config::{AppConfig, cors_layer};
 use email::{
@@ -70,6 +71,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/api/health", get(health))
         .route("/api/auth/me", get(me))
+        .route("/api/auth/profile", patch(update_profile))
         .route("/api/auth/login", post(login))
         .route("/api/auth/register", post(register))
         .route("/api/auth/logout", post(logout))

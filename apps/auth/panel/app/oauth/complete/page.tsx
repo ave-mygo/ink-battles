@@ -155,7 +155,7 @@ export default function OAuthCompletePage() {
             {mode === "create" && (
               <motion.div key="create" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
                 <p className="text-[13px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-                  将使用当前第三方身份初始化一个新的 Ink Battles Auth 账号。后续您可以在 Dashboard 继续绑定邮箱或其他登录方式。
+                  将使用当前第三方身份初始化一个新的 Minato 账号。后续您可以在控制面板继续绑定邮箱或其他登录方式。
                 </p>
                 <Button className="h-11 w-full" disabled={!identity || isSubmitting} onClick={handleCreateAccount}>
                   {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
