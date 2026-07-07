@@ -1,8 +1,8 @@
 import { Elysia } from "elysia";
-import { canReviewExcellentSentences, getCookie, getCurrentUser, isAdminUser, isHonoraryWriterUser } from "../middleware/auth";
+import { canReviewExcellentSentences, getCookies, getCurrentUserWithToken, isAdminUser, isHonoraryWriterUser } from "../middleware/auth";
 import { writeAuditLog } from "../utils/audit";
 import { createAuthSession, revokeAuthSession } from "../utils/auth-sessions";
-import { authCookie, clearAuthCookie, gravatarUrl, signAuthToken, verifyAuthTokenPayload } from "../utils/crypto";
+import { authCookie, clearAuthCookies, gravatarUrl, normalizeAuthCookies, signAuthToken, verifyAuthTokenPayload } from "../utils/crypto";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { safeUser } from "../utils/response";
 
@@ -22,12 +22,15 @@ export async function issueLoginResponse(uid: number, data: Record<string, unkno
 
 export const authModule = new Elysia()
   .get("/api/v2/auth/me", async ({ request }) => {
-    const user = await getCurrentUser(request.headers);
-    const safe = safeUser(user as Record<string, unknown> | null);
+    const session = await getCurrentUserWithToken(request.headers);
+    if (!session)
+      return { success: false, message: "未登录", data: null };
+    const user = session.user;
+    const safe = safeUser(user as unknown as Record<string, unknown>);
     if (!safe)
       return { success: false, message: "未登录", data: null };
     const avatar = user?.avatar || (user?.email ? gravatarUrl(user.email, user.uid) : gravatarUrl("", user!.uid));
-    return {
+    const response = {
       success: true,
       data: {
         ...safe,
@@ -37,15 +40,33 @@ export const authModule = new Elysia()
         canReviewExcellentSentences: await canReviewExcellentSentences(user),
       },
     };
+    return new Response(JSON.stringify(response), {
+      headers: normalizedAuthHeaders(session.token),
+    });
   }, { detail: { tags: ["REST: Auth"] } })
   .post("/api/v2/rpc/auth.logout", async ({ request }) => {
-    const token = getCookie(request.headers, "auth-token");
-    const payload = await verifyAuthTokenPayload(token);
-    if (payload) {
+    const tokens = getCookies(request.headers, "auth-token");
+    for (const token of tokens) {
+      const payload = await verifyAuthTokenPayload(token);
+      if (!payload)
+        continue;
+
       await revokeAuthSession(payload.uid, payload.sessionId);
       writeAuditLog({ event: "logout", uid: payload.uid, ip: getRequestIp(request), userAgent: getRequestUserAgent(request) });
     }
     return new Response(JSON.stringify({ success: true, message: "注销成功" }), {
-      headers: { "Content-Type": "application/json", "Set-Cookie": clearAuthCookie() },
+      headers: normalizedClearAuthHeaders(),
     });
   }, { detail: { tags: ["RPC: Auth"] } });
+
+function normalizedAuthHeaders(token: string) {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  normalizeAuthCookies(token).forEach(cookie => headers.append("Set-Cookie", cookie));
+  return headers;
+}
+
+function normalizedClearAuthHeaders() {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  clearAuthCookies().forEach(cookie => headers.append("Set-Cookie", cookie));
+  return headers;
+}

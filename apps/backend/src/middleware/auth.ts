@@ -12,12 +12,26 @@ const BEARER_PREFIX_REGEX = /^Bearer\s+/i;
  * @returns Cookie 值，如果不存在则返回 undefined
  */
 export function getCookie(headers: Headers, name: string) {
+  return getCookies(headers, name)[0];
+}
+
+/**
+ * 从请求头中获取指定名称的所有 Cookie 值。
+ *
+ * 浏览器可能同时携带同名的 host-only Cookie 和 Domain Cookie。
+ * 鉴权时必须逐个尝试，否则一个旧 token 排在前面就会覆盖后面的有效 token。
+ * @param headers - 请求头对象
+ * @param name - Cookie 名称
+ * @returns 所有同名 Cookie 值
+ */
+export function getCookies(headers: Headers, name: string) {
   const cookie = headers.get("cookie") ?? "";
   return cookie
     .split(";")
     .map(item => item.trim())
-    .find(item => item.startsWith(`${name}=`))
-    ?.slice(name.length + 1);
+    .filter(item => item.startsWith(`${name}=`))
+    .map(item => item.slice(name.length + 1))
+    .filter(Boolean);
 }
 
 /**
@@ -26,11 +40,31 @@ export function getCookie(headers: Headers, name: string) {
  * @returns 用户信息对象，如果未登录则返回 null
  */
 export async function getCurrentUser(headers: Headers): Promise<AuthUser | null> {
-  const token = getCookie(headers, "auth-token") ?? headers.get("authorization")?.replace(BEARER_PREFIX_REGEX, "");
-  const uid = await verifyAuthToken(token);
-  if (!uid)
-    return null;
-  return findOne<AuthUser>(COLLECTIONS.users, { uid });
+  return (await getCurrentUserWithToken(headers))?.user ?? null;
+}
+
+/**
+ * 从请求头中解析当前登录用户和实际可用的 token。
+ * @param headers - 请求头对象
+ * @returns 用户和有效 token，如果未登录则返回 null
+ */
+export async function getCurrentUserWithToken(headers: Headers): Promise<{ user: AuthUser; token: string } | null> {
+  const tokens = [
+    ...getCookies(headers, "auth-token"),
+    headers.get("authorization")?.replace(BEARER_PREFIX_REGEX, ""),
+  ].filter((token): token is string => !!token);
+
+  for (const token of tokens) {
+    const uid = await verifyAuthToken(token);
+    if (!uid)
+      continue;
+
+    const user = await findOne<AuthUser>(COLLECTIONS.users, { uid });
+    if (user)
+      return { user, token };
+  }
+
+  return null;
 }
 
 /**

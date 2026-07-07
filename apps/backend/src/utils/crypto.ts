@@ -5,6 +5,7 @@ import { getConfig } from "../config";
 import { isAuthSessionValid } from "./auth-sessions";
 
 const sevenDays = 7 * 24 * 60 * 60;
+const COOKIE_NAME = "auth-token";
 
 /**
  * 获取 JWT 密钥的编码形式
@@ -65,14 +66,58 @@ export async function verifyAuthToken(token?: string | null): Promise<number | n
  * @returns Cookie 字符串
  */
 export function authCookie(token: string) {
-  return `auth-token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sevenDays}; ${process.env.NODE_ENV === "production" ? "Secure;" : ""}`;
+  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${sevenDays}; ${secureCookieAttribute()}`;
 }
 
 /**
  * 生成清除认证 Cookie 的字符串
  * @returns 清除 Cookie 的字符串
  */
-export const clearAuthCookie = () => "auth-token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
+export const clearAuthCookie = () => clearAuthCookieForDomain();
+
+/**
+ * 生成所有常见作用域的认证 Cookie 清理头。
+ */
+export function clearAuthCookies() {
+  return [
+    clearAuthCookieForDomain(),
+    ...authCookieDomainCandidates().map(domain => clearAuthCookieForDomain(domain)),
+  ];
+}
+
+/**
+ * 清理旧 Cookie 后写回有效 token，避免同名无效 token 继续抢占鉴权。
+ */
+export function normalizeAuthCookies(token: string) {
+  return [...clearAuthCookies(), authCookie(token)];
+}
+
+function clearAuthCookieForDomain(domain?: string) {
+  const domainPart = domain ? `Domain=${domain}; ` : "";
+  return `${COOKIE_NAME}=; Path=/; ${domainPart}HttpOnly; SameSite=Lax; Max-Age=0; ${secureCookieAttribute()}`;
+}
+
+function secureCookieAttribute() {
+  return process.env.NODE_ENV === "production" ? "Secure;" : "";
+}
+
+function authCookieDomainCandidates() {
+  const hostname = appHostname();
+  if (!hostname || hostname === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(hostname))
+    return [];
+
+  const parts = hostname.split(".").filter(Boolean);
+  const parentDomain = parts.length >= 2 ? parts.slice(-2).join(".") : hostname;
+  return Array.from(new Set([hostname, parentDomain]));
+}
+
+function appHostname() {
+  try {
+    return new URL(getConfig().app.base_url).hostname;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 生成用户头像 URL
