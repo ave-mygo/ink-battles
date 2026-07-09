@@ -58,9 +58,8 @@ fn inject_runtime_config(bytes: &[u8], config: &AppConfig) -> Vec<u8> {
 
 fn runtime_config_script(config: &AppConfig) -> String {
     let runtime_config = serde_json::json!({
-        "fcaptcha": {
-            "serverUrl": config.fcaptcha_server_url,
-            "siteKey": config.fcaptcha_site_key,
+        "turnstile": {
+            "siteKey": config.turnstile_site_key,
         },
     });
 

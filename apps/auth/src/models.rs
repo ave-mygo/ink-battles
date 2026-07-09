@@ -13,15 +13,15 @@ pub struct SendCodePayload {
     pub email: String,
     #[serde(rename = "type")]
     pub code_type: Option<String>,
-    #[serde(rename = "fcaptchaToken")]
-    pub fcaptcha_token: Option<String>,
+    #[serde(rename = "turnstileToken", alias = "fcaptchaToken")]
+    pub turnstile_token: Option<String>,
 }
 
 #[derive(Deserialize)]
 pub struct EmailPayload {
     pub email: String,
-    #[serde(rename = "fcaptchaToken")]
-    pub fcaptcha_token: Option<String>,
+    #[serde(rename = "turnstileToken", alias = "fcaptchaToken")]
+    pub turnstile_token: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -32,8 +32,8 @@ pub struct LoginPayload {
     pub password_ciphertext: Option<String>,
     #[serde(rename = "passwordKeyId")]
     pub password_key_id: Option<String>,
-    #[serde(rename = "fcaptchaToken")]
-    pub fcaptcha_token: Option<String>,
+    #[serde(rename = "turnstileToken", alias = "fcaptchaToken")]
+    pub turnstile_token: Option<String>,
     #[serde(rename = "returnTo")]
     pub return_to: Option<String>,
 }
@@ -57,8 +57,8 @@ pub struct RegisterPayload {
     #[serde(rename = "passwordKeyId")]
     pub password_key_id: Option<String>,
     pub code: String,
-    #[serde(rename = "fcaptchaToken")]
-    pub fcaptcha_token: Option<String>,
+    #[serde(rename = "turnstileToken", alias = "fcaptchaToken")]
+    pub turnstile_token: Option<String>,
     #[serde(rename = "returnTo")]
     pub return_to: Option<String>,
 }
@@ -82,8 +82,8 @@ pub struct ResetPasswordPayload {
     pub confirm_password_ciphertext: Option<String>,
     #[serde(rename = "passwordKeyId")]
     pub password_key_id: Option<String>,
-    #[serde(rename = "fcaptchaToken")]
-    pub fcaptcha_token: Option<String>,
+    #[serde(rename = "turnstileToken", alias = "fcaptchaToken")]
+    pub turnstile_token: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -120,8 +120,8 @@ pub struct BindEmailPayload {
     #[serde(rename = "passwordKeyId")]
     pub password_key_id: Option<String>,
     pub code: String,
-    #[serde(rename = "fcaptchaToken")]
-    pub fcaptcha_token: Option<String>,
+    #[serde(rename = "turnstileToken", alias = "fcaptchaToken")]
+    pub turnstile_token: Option<String>,
 }
 
 #[derive(Deserialize)]

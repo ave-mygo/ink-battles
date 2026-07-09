@@ -61,8 +61,8 @@ interface AuthRequestOptions {
   body?: object
 }
 
-interface FCaptchaProtectedInput {
-  fcaptchaToken?: string
+interface TurnstileProtectedInput {
+  turnstileToken?: string
 }
 
 interface EncryptedPasswordInput {
@@ -216,13 +216,13 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   return window.btoa(binary)
 }
 
-export async function loginWithEmail(email: string, password: string, fcaptchaToken?: string) {
+export async function loginWithEmail(email: string, password: string, turnstileToken?: string) {
   const passwordPayload = await encryptPassword(password)
   const payload = await requestAuth<LoginResult>("/api/auth/login", {
     body: {
       email,
       ...passwordPayload,
-      fcaptchaToken,
+      turnstileToken,
       returnTo: getReturnTo(),
     },
   })
@@ -303,13 +303,13 @@ export async function getAccountBindings() {
   return payload.data
 }
 
-export async function bindEmailAccount(input: { email: string; password: string; code: string } & FCaptchaProtectedInput) {
+export async function bindEmailAccount(input: { email: string; password: string; code: string } & TurnstileProtectedInput) {
   const passwordPayload = await encryptPassword(input.password)
   await requestAuth("/api/auth/accounts/bind-email", {
     body: {
       email: input.email,
       code: input.code,
-      fcaptchaToken: input.fcaptchaToken,
+      turnstileToken: input.turnstileToken,
       ...passwordPayload,
     },
   })
@@ -328,13 +328,13 @@ export async function registerWithEmail(input: {
   password: string
   confirmPassword: string
   code: string
-} & FCaptchaProtectedInput) {
+} & TurnstileProtectedInput) {
   const passwordPayload = await encryptPasswordPair(input.password, input.confirmPassword)
   const payload = await requestAuth<LoginResult>("/api/auth/register", {
     body: {
       email: input.email,
       code: input.code,
-      fcaptchaToken: input.fcaptchaToken,
+      turnstileToken: input.turnstileToken,
       ...passwordPayload,
       returnTo: getReturnTo(),
     },
@@ -343,21 +343,21 @@ export async function registerWithEmail(input: {
   return payload.data?.returnTo
 }
 
-export async function sendVerificationCode(email: string, codeType: string, fcaptchaToken?: string) {
+export async function sendVerificationCode(email: string, codeType: string, turnstileToken?: string) {
   await requestAuth("/api/auth/send-verification-code", {
     body: {
       email,
       type: codeType,
-      fcaptchaToken,
+      turnstileToken,
     },
   })
 }
 
-export async function requestPasswordReset(email: string, fcaptchaToken?: string) {
+export async function requestPasswordReset(email: string, turnstileToken?: string) {
   await requestAuth("/api/auth/forgot-password", {
     body: {
       email,
-      fcaptchaToken,
+      turnstileToken,
     },
   })
 }
@@ -376,13 +376,13 @@ export async function resetPassword(input: {
   code: string
   password: string
   confirmPassword: string
-} & FCaptchaProtectedInput) {
+} & TurnstileProtectedInput) {
   const passwordPayload = await encryptPasswordPair(input.password, input.confirmPassword)
   await requestAuth("/api/auth/reset-password", {
     body: {
       email: input.email,
       code: input.code,
-      fcaptchaToken: input.fcaptchaToken,
+      turnstileToken: input.turnstileToken,
       ...passwordPayload,
     },
   })

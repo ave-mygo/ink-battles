@@ -6,12 +6,12 @@ use mongodb::bson::{DateTime as BsonDateTime, Document, doc};
 use crate::{
     NEW_USER_BONUS,
     email::consume_email_code,
-    fcaptcha::verify_fcaptcha,
     models::{AccountBindingItem, AccountBindings, BindEmailPayload, UnbindProviderPayload},
     password_crypto::resolve_password,
     response::{bad_request, internal_error, ok, unauthorized},
     session::current_session,
     state::AppState,
+    turnstile::verify_turnstile,
     utils::{is_password_valid, normalize_email, read_uid},
 };
 
@@ -44,10 +44,10 @@ pub async fn bind_email(
     headers: HeaderMap,
     Json(payload): Json<BindEmailPayload>,
 ) -> impl IntoResponse {
-    if let Err(message) = verify_fcaptcha(
+    if let Err(message) = verify_turnstile(
         &state,
         &headers,
-        payload.fcaptcha_token.as_deref(),
+        payload.turnstile_token.as_deref(),
         "bind_email",
     )
     .await

@@ -16,7 +16,6 @@ use uuid::Uuid;
 
 use crate::{
     EMAIL_CODE_COOLDOWN_SECONDS, EMAIL_CODE_TTL_MINUTES, RESET_SESSION_TTL_MINUTES,
-    fcaptcha::verify_fcaptcha,
     mail::send_verification_email,
     models::{
         EmailPayload, ResetPasswordPayload, SendCodePayload, VerifyCodePayload, VerifyEmailQuery,
@@ -24,6 +23,7 @@ use crate::{
     password_crypto::resolve_password,
     response::{bad_request, internal_error, ok},
     state::AppState,
+    turnstile::verify_turnstile,
     utils::{
         is_valid_email, normalize_code_type, normalize_email, read_uid, sanitize_return_url,
         url_encode,
@@ -35,10 +35,10 @@ pub async fn send_verification_code(
     headers: HeaderMap,
     Json(payload): Json<SendCodePayload>,
 ) -> impl IntoResponse {
-    if let Err(message) = verify_fcaptcha(
+    if let Err(message) = verify_turnstile(
         &state,
         &headers,
-        payload.fcaptcha_token.as_deref(),
+        payload.turnstile_token.as_deref(),
         "send_verification_code",
     )
     .await
@@ -81,10 +81,10 @@ pub async fn forgot_password(
     headers: HeaderMap,
     Json(payload): Json<EmailPayload>,
 ) -> impl IntoResponse {
-    if let Err(message) = verify_fcaptcha(
+    if let Err(message) = verify_turnstile(
         &state,
         &headers,
-        payload.fcaptcha_token.as_deref(),
+        payload.turnstile_token.as_deref(),
         "forgot_password",
     )
     .await
@@ -133,10 +133,10 @@ pub async fn reset_password(
     headers: HeaderMap,
     Json(payload): Json<ResetPasswordPayload>,
 ) -> impl IntoResponse {
-    if let Err(message) = verify_fcaptcha(
+    if let Err(message) = verify_turnstile(
         &state,
         &headers,
-        payload.fcaptcha_token.as_deref(),
+        payload.turnstile_token.as_deref(),
         "reset_password",
     )
     .await

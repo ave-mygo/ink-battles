@@ -25,12 +25,9 @@ pub struct AppConfig {
     pub smtp_user: Option<String>,
     pub smtp_password: Option<String>,
     pub smtp_from_name: String,
-    pub fcaptcha_enabled: bool,
-    pub fcaptcha_server_url: Option<String>,
-    pub fcaptcha_site_key: Option<String>,
-    pub fcaptcha_secret: Option<String>,
-    pub fcaptcha_max_score: f64,
-    pub fcaptcha_verify_ip_hash: bool,
+    pub turnstile_enabled: bool,
+    pub turnstile_site_key: Option<String>,
+    pub turnstile_secret: Option<String>,
     pub afdian_client_id: Option<String>,
     pub afdian_client_secret: Option<String>,
     pub afdian_redirect_uri: Option<String>,
@@ -62,12 +59,9 @@ struct AuthSection {
     allowed_return_origins: Option<Vec<String>>,
     allowed_origins: Option<Vec<String>>,
     smtp_from_name: Option<String>,
-    fcaptcha_enabled: Option<bool>,
-    fcaptcha_server_url: Option<String>,
-    fcaptcha_site_key: Option<String>,
-    fcaptcha_secret: Option<String>,
-    fcaptcha_max_score: Option<f64>,
-    fcaptcha_verify_ip_hash: Option<bool>,
+    turnstile_enabled: Option<bool>,
+    turnstile_site_key: Option<String>,
+    turnstile_secret: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -194,24 +188,17 @@ impl AppConfig {
                 .map(|section| section.password.clone())
                 .filter(|value| !value.trim().is_empty()),
             smtp_from_name: auth.smtp_from_name.unwrap_or_else(|| "Minato".to_string()),
-            fcaptcha_enabled: auth.fcaptcha_enabled.unwrap_or_else(|| {
-                auth.fcaptcha_server_url
+            turnstile_enabled: auth.turnstile_enabled.unwrap_or_else(|| {
+                auth.turnstile_site_key
                     .as_ref()
                     .is_some_and(|value| !value.trim().is_empty())
                     && auth
-                        .fcaptcha_site_key
-                        .as_ref()
-                        .is_some_and(|value| !value.trim().is_empty())
-                    && auth
-                        .fcaptcha_secret
+                        .turnstile_secret
                         .as_ref()
                         .is_some_and(|value| !value.trim().is_empty())
             }),
-            fcaptcha_server_url: non_empty(auth.fcaptcha_server_url),
-            fcaptcha_site_key: non_empty(auth.fcaptcha_site_key),
-            fcaptcha_secret: non_empty(auth.fcaptcha_secret),
-            fcaptcha_max_score: auth.fcaptcha_max_score.unwrap_or(0.5),
-            fcaptcha_verify_ip_hash: auth.fcaptcha_verify_ip_hash.unwrap_or(false),
+            turnstile_site_key: non_empty(auth.turnstile_site_key),
+            turnstile_secret: non_empty(auth.turnstile_secret),
             afdian_client_id: afdian
                 .as_ref()
                 .and_then(|section| non_empty(section.client_id.clone())),

@@ -18,7 +18,6 @@ pub struct AppState {
     pub oauth_states: Collection<Document>,
     pub reset_sessions: Collection<Document>,
     pub user_billing: Collection<Document>,
-    pub fcaptcha_tokens: Collection<Document>,
     pub password_crypto: PasswordCrypto,
 }
 
@@ -33,7 +32,6 @@ impl AppState {
             oauth_states: database.collection("oauth_states"),
             reset_sessions: database.collection("sessions"),
             user_billing: database.collection("user_billing"),
-            fcaptcha_tokens: database.collection("fcaptcha_tokens"),
             password_crypto,
             database,
         })
@@ -70,16 +68,6 @@ pub async fn ensure_indexes(state: &AppState) -> Result<()> {
             "indexes": [
                 { "key": { "state": 1 }, "name": "uniq_oauth_states_state", "unique": true },
                 { "key": { "expiresAt": 1 }, "name": "ttl_oauth_states_expiresAt", "expireAfterSeconds": 0 }
-            ]
-        })
-        .await;
-    let _ = state
-        .database
-        .run_command(doc! {
-            "createIndexes": "fcaptcha_tokens",
-            "indexes": [
-                { "key": { "sig": 1 }, "name": "uniq_fcaptcha_tokens_sig", "unique": true },
-                { "key": { "expiresAt": 1 }, "name": "ttl_fcaptcha_tokens_expiresAt", "expireAfterSeconds": 0 }
             ]
         })
         .await;

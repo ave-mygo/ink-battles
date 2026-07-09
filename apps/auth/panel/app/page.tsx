@@ -10,12 +10,12 @@ import { AuthLayout } from "@/components/auth-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useFCaptcha } from "@/hooks/use-fcaptcha"
+import { useTurnstile } from "@/hooks/use-turnstile"
 import { AUTH_PANEL_DASHBOARD_PATH, createAuthorizeUrl, createOAuthStartUrl, getCurrentUser, getReturnTo, hasAuthorizationRequest, isSwitchingAccount, loginWithEmail, type AuthUserInfo } from "@/lib/auth-api"
 
 export default function LoginPage() {
   const router = useRouter()
-  const fcaptcha = useFCaptcha()
+  const turnstile = useTurnstile()
   const [isLoading, setIsLoading] = React.useState(false)
   const [isCheckingSession, setIsCheckingSession] = React.useState(true)
   const [previousUser, setPreviousUser] = React.useState<AuthUserInfo | null>(null)
@@ -79,8 +79,8 @@ export default function LoginPage() {
 
     try {
       setIsLoading(true)
-      const fcaptchaToken = await fcaptcha.execute("login")
-      await loginWithEmail(email, password, fcaptchaToken)
+      const turnstileToken = await turnstile.execute("login")
+      await loginWithEmail(email, password, turnstileToken)
       const returnTo = getReturnTo()
       if (returnTo) {
         window.location.href = createAuthorizeUrl(returnTo)
@@ -215,9 +215,9 @@ export default function LoginPage() {
         </div>
 
         <motion.div variants={itemVariants} className="-mt-1 z-20 mx-1">
-          <Button className="w-full h-11" disabled={isLoading || !fcaptcha.ready}>
+          <Button className="w-full h-11" disabled={isLoading || !turnstile.ready}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isLoading ? "正在验证..." : fcaptcha.ready ? "确认登录" : "加载验证中..."}
+            {isLoading ? "正在验证..." : turnstile.ready ? "确认登录" : "加载验证中..."}
           </Button>
         </motion.div>
       </motion.form>

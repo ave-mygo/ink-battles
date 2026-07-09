@@ -6,7 +6,6 @@ use mongodb::bson::{Bson, DateTime as BsonDateTime, Document, doc};
 use crate::{
     NEW_USER_BONUS,
     email::consume_email_code,
-    fcaptcha::verify_fcaptcha,
     models::{LoginPayload, RegisterPayload, UpdateProfilePayload},
     password_crypto::resolve_password,
     response::{bad_request, internal_error, ok, unauthorized},
@@ -15,6 +14,7 @@ use crate::{
         issue_login_response_with_method,
     },
     state::AppState,
+    turnstile::verify_turnstile,
     utils::{is_password_valid, is_valid_email, normalize_email, read_uid, safe_user},
 };
 
@@ -48,8 +48,13 @@ pub async fn login(
     headers: HeaderMap,
     Json(payload): Json<LoginPayload>,
 ) -> impl IntoResponse {
-    if let Err(message) =
-        verify_fcaptcha(&state, &headers, payload.fcaptcha_token.as_deref(), "login").await
+    if let Err(message) = verify_turnstile(
+        &state,
+        &headers,
+        payload.turnstile_token.as_deref(),
+        "login",
+    )
+    .await
     {
         return bad_request(&message).into_response();
     }
@@ -82,10 +87,10 @@ pub async fn register(
     headers: HeaderMap,
     Json(payload): Json<RegisterPayload>,
 ) -> impl IntoResponse {
-    if let Err(message) = verify_fcaptcha(
+    if let Err(message) = verify_turnstile(
         &state,
         &headers,
-        payload.fcaptcha_token.as_deref(),
+        payload.turnstile_token.as_deref(),
         "register",
     )
     .await

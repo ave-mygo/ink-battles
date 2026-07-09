@@ -21,7 +21,7 @@ import {
   type SessionInfo,
 } from "@/lib/auth-api"
 import { useCodeCooldown } from "@/hooks/use-code-cooldown"
-import { useFCaptcha } from "@/hooks/use-fcaptcha"
+import { useTurnstile } from "@/hooks/use-turnstile"
 
 import { BindingsSection } from "./_components/bindings-section"
 import { DashboardFrame, itemVariants } from "./_components/dashboard-frame"
@@ -36,7 +36,7 @@ const emptyBindings: AccountBindings = {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const fcaptcha = useFCaptcha()
+  const turnstile = useTurnstile()
   const { cooldownActive, cooldownRemaining, startCooldown } = useCodeCooldown()
   const [user, setUser] = React.useState<AuthUserInfo | null>(null)
   const [bindings, setBindings] = React.useState<AccountBindings>(emptyBindings)
@@ -133,8 +133,8 @@ export default function DashboardPage() {
       setIsSaving(true)
       setSavingAction("send-code")
       setError("")
-      const fcaptchaToken = await fcaptcha.execute("send_verification_code")
-      await sendVerificationCode(emailForm.email, "register", fcaptchaToken)
+      const turnstileToken = await turnstile.execute("send_verification_code")
+      await sendVerificationCode(emailForm.email, "register", turnstileToken)
       setMessage("验证码已发送，请查收邮箱")
       setEmailCodeSent(true)
       startCooldown()
@@ -156,8 +156,8 @@ export default function DashboardPage() {
       setIsSaving(true)
       setSavingAction("bind-email")
       setError("")
-      const fcaptchaToken = await fcaptcha.execute("bind_email")
-      await bindEmailAccount({ ...emailForm, fcaptchaToken })
+      const turnstileToken = await turnstile.execute("bind_email")
+      await bindEmailAccount({ ...emailForm, turnstileToken })
       setEmailForm({ email: "", password: "", code: "" })
       setEmailCodeSent(false)
       setMessage("邮箱绑定成功")
@@ -214,7 +214,7 @@ export default function DashboardPage() {
             codeCooldownActive={cooldownActive}
             codeCooldownRemaining={cooldownRemaining}
             isSaving={isSaving}
-            isCaptchaReady={fcaptcha.ready}
+            isCaptchaReady={turnstile.ready}
             savingAction={savingAction}
             onBindOAuth={handleOAuthBind}
             onUnbind={handleUnbind}

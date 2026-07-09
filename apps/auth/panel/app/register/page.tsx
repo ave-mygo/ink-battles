@@ -11,11 +11,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordStrength } from "@/components/password-strength"
 import { useCodeCooldown } from "@/hooks/use-code-cooldown"
-import { useFCaptcha } from "@/hooks/use-fcaptcha"
+import { useTurnstile } from "@/hooks/use-turnstile"
 import { AUTH_PANEL_DASHBOARD_PATH, createAuthorizeUrl, createOAuthStartUrl, getReturnTo, registerWithEmail, sendVerificationCode } from "@/lib/auth-api"
 
 export default function RegisterPage() {
-  const fcaptcha = useFCaptcha()
+  const turnstile = useTurnstile()
   const { cooldownActive, cooldownRemaining, startCooldown } = useCodeCooldown()
   const [isLoading, setIsLoading] = React.useState(false)
   const [isSendingCode, setIsSendingCode] = React.useState(false)
@@ -55,8 +55,8 @@ export default function RegisterPage() {
 
     try {
       setIsSendingCode(true)
-      const fcaptchaToken = await fcaptcha.execute("send_verification_code")
-      await sendVerificationCode(formData.email, "register", fcaptchaToken)
+      const turnstileToken = await turnstile.execute("send_verification_code")
+      await sendVerificationCode(formData.email, "register", turnstileToken)
       setCodeSent(true)
       startCooldown()
     } catch (requestError) {
@@ -82,8 +82,8 @@ export default function RegisterPage() {
 
     try {
       setIsLoading(true)
-      const fcaptchaToken = await fcaptcha.execute("register")
-      await registerWithEmail({ ...formData, fcaptchaToken })
+      const turnstileToken = await turnstile.execute("register")
+      await registerWithEmail({ ...formData, turnstileToken })
       const returnTo = getReturnTo()
       if (returnTo) {
         window.location.href = createAuthorizeUrl(returnTo)
@@ -213,7 +213,7 @@ export default function RegisterPage() {
                       type="button"
                       variant="outline"
                       className="h-8 shrink-0 px-3 text-[11px]"
-                      disabled={isLoading || isSendingCode || cooldownActive || !fcaptcha.ready}
+                      disabled={isLoading || isSendingCode || cooldownActive || !turnstile.ready}
                       onClick={handleSendCode}
                     >
                       {isSendingCode ? (
@@ -221,7 +221,7 @@ export default function RegisterPage() {
                           <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
                           发送中...
                         </>
-                      ) : cooldownActive ? `${cooldownRemaining} 秒后重发` : codeSent ? "重新发送" : fcaptcha.ready ? "发送验证码" : "加载中..."}
+                      ) : cooldownActive ? `${cooldownRemaining} 秒后重发` : codeSent ? "重新发送" : turnstile.ready ? "发送验证码" : "加载中..."}
                     </Button>
                   </div>
                   {codeSent && (
@@ -236,9 +236,9 @@ export default function RegisterPage() {
         </div>
 
         <motion.div variants={itemVariants} className="-mt-1 z-20 mx-1">
-          <Button className="w-full h-11" disabled={isLoading || !fcaptcha.ready}>
+          <Button className="w-full h-11" disabled={isLoading || !turnstile.ready}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {isLoading ? "正在创建..." : fcaptcha.ready ? "创建账户" : "加载验证中..."}
+            {isLoading ? "正在创建..." : turnstile.ready ? "创建账户" : "加载验证中..."}
           </Button>
         </motion.div>
       </motion.form>

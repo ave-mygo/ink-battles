@@ -10,11 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCodeCooldown } from "@/hooks/use-code-cooldown"
-import { useFCaptcha } from "@/hooks/use-fcaptcha"
+import { useTurnstile } from "@/hooks/use-turnstile"
 import { requestPasswordReset } from "@/lib/auth-api"
 
 export default function ForgotPasswordPage() {
-  const fcaptcha = useFCaptcha()
+  const turnstile = useTurnstile()
   const { cooldownActive, cooldownRemaining, startCooldown } = useCodeCooldown()
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState("")
@@ -46,8 +46,8 @@ export default function ForgotPasswordPage() {
 
     try {
       setIsLoading(true)
-      const fcaptchaToken = await fcaptcha.execute("forgot_password")
-      await requestPasswordReset(email, fcaptchaToken)
+      const turnstileToken = await turnstile.execute("forgot_password")
+      await requestPasswordReset(email, turnstileToken)
       setSuccess(true)
       startCooldown()
     } catch (requestError) {
@@ -105,9 +105,9 @@ export default function ForgotPasswordPage() {
             </div>
 
             <motion.div variants={itemVariants} className="-mt-1 z-20 mx-1">
-              <Button className="w-full h-11" disabled={isLoading || cooldownActive || !fcaptcha.ready}>
+              <Button className="w-full h-11" disabled={isLoading || cooldownActive || !turnstile.ready}>
                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isLoading ? "正在发送..." : cooldownActive ? `${cooldownRemaining} 秒后重发` : fcaptcha.ready ? "发送重置验证码" : "加载验证中..."}
+                {isLoading ? "正在发送..." : cooldownActive ? `${cooldownRemaining} 秒后重发` : turnstile.ready ? "发送重置验证码" : "加载验证中..."}
               </Button>
             </motion.div>
           </motion.form>

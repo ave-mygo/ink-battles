@@ -13,7 +13,6 @@ mod account;
 mod assets;
 mod config;
 mod email;
-mod fcaptcha;
 mod mail;
 mod models;
 mod oauth;
@@ -21,6 +20,7 @@ mod password_crypto;
 mod response;
 mod session;
 mod state;
+mod turnstile;
 mod utils;
 
 use account::{login, logout, me, refresh_session, register, update_profile};
@@ -61,6 +61,7 @@ async fn main() -> Result<()> {
         config_path = %config.config_path.display(),
         database = %config.database_name,
         app_base_url = %config.app_base_url,
+        turnstile_enabled = config.turnstile_enabled,
         "ink auth service config loaded"
     );
     let client = Client::with_options(ClientOptions::parse(&config.mongodb_uri).await?)?;
