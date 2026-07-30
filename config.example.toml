@@ -101,6 +101,7 @@ cookie_domain = ""
 cookie_secure = false
 smtp_from_name = "Minato"
 # Turnstile 未配置时本地开发保持关闭；生产环境配置齐全后会自动启用。
+# Cloudflare 控制台中的 Widget Mode 必须选择 Managed，以便高风险访客可完成手动验证。
 turnstile_site_key = ""
 turnstile_secret = ""
 
