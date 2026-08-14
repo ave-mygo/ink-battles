@@ -404,7 +404,7 @@ export const billingModule = new Elysia()
     const user = await requireUser(request.headers) as AuthUser;
     const orderNo = body.orderNo.trim();
 
-    if (orderNo.length !== BILLING_CONSTANTS.ORDER_NO_LENGTH) {
+    if (!orderNo) {
       return ok({
         orderNo,
         order: {
@@ -413,7 +413,7 @@ export const billingModule = new Elysia()
           redeemed: false,
           accountMatched: false,
           amount: null,
-          message: `订单号需要 ${BILLING_CONSTANTS.ORDER_NO_LENGTH} 位`,
+          message: "请输入订单号",
         } satisfies OrderRedemptionOrderPreview,
         promoCode: createEmptyPromoCodePreview(),
         calculation: null,
@@ -507,8 +507,8 @@ export const billingModule = new Elysia()
     if (!user.afdId)
       return { success: false, message: "请先绑定爱发电账户" };
     const orderNo = body.orderNo.trim();
-    if (orderNo.length !== BILLING_CONSTANTS.ORDER_NO_LENGTH)
-      return { success: false, message: `订单号需要 ${BILLING_CONSTANTS.ORDER_NO_LENGTH} 位` };
+    if (!orderNo)
+      return { success: false, message: "请输入订单号" };
     const redeemedOrder = await (await collection<AfdOrder>(COLLECTIONS.afdOrders)).findOne({ orderNo });
     if (redeemedOrder)
       return { success: false, message: "该订单已被兑换，请勿重复使用" };

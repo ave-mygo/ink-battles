@@ -1,7 +1,6 @@
 "use client";
 
 import type { OrderRedemptionPreviewPayload } from "@ink-battles/shared/types/common/billing";
-import { BILLING_CONSTANTS } from "@ink-battles/shared/constants/billing";
 import { CheckCircle2, ExternalLink, Gift, Info, Loader2, Percent, Receipt, Sparkles, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -71,7 +70,6 @@ function StatusLine(props: StatusLineProps) {
  * 展示订单、优惠码和最终兑换预览。
  * @param props - 预览面板参数
  * @param props.preview - 订单兑换预览数据
- * @param props.orderNoLength - 当前订单号长度
  * @param props.validating - 是否正在预检
  * @param props.message - 手动提交后的内联提示
  * @returns 预览面板
@@ -189,11 +187,11 @@ export default function OrderRedemption() {
   const trimmedOrderNo = orderNo.trim();
   const trimmedPromoCode = promoCode.trim();
   const normalizedPromoCode = trimmedPromoCode.toUpperCase();
-  const canAutoPreview = trimmedOrderNo.length === BILLING_CONSTANTS.ORDER_NO_LENGTH;
+  const canAutoPreview = trimmedOrderNo.length > 0;
   const currentPreview = preview?.orderNo === trimmedOrderNo && (preview.promoCode.code ?? "") === normalizedPromoCode ? preview : null;
   const canRedeem = useMemo(
-    () => canAutoPreview && !loading && (!currentPreview || currentPreview.order.valid) && (!currentPreview?.promoCode.checked || currentPreview.promoCode.valid),
-    [canAutoPreview, currentPreview, loading],
+    () => trimmedOrderNo.length > 0 && !loading,
+    [loading, trimmedOrderNo],
   );
 
   /**
@@ -264,17 +262,6 @@ export default function OrderRedemption() {
       return;
     }
 
-    if (trimmedOrderNo.length !== BILLING_CONSTANTS.ORDER_NO_LENGTH) {
-      setInlineMessage(`订单号需要 ${BILLING_CONSTANTS.ORDER_NO_LENGTH} 位`);
-      return;
-    }
-
-    const latestPreview = currentPreview ?? await runPreview({ force: true });
-    if (latestPreview && (!latestPreview.order.valid || !latestPreview.promoCode.valid)) {
-      setInlineMessage(latestPreview.order.valid ? latestPreview.promoCode.message : latestPreview.order.message);
-      return;
-    }
-
     setLoading(true);
     setInlineMessage(null);
 
@@ -327,11 +314,10 @@ export default function OrderRedemption() {
             <Receipt className="text-muted-foreground h-4 w-4 left-3 top-1/2 absolute -translate-y-1/2" />
             <Input
               id="order-no"
-              placeholder={`请输入 ${BILLING_CONSTANTS.ORDER_NO_LENGTH} 位订单号`}
+              placeholder="请输入订单号"
               value={orderNo}
-              maxLength={BILLING_CONSTANTS.ORDER_NO_LENGTH}
               onChange={(event) => {
-                setOrderNo(event.target.value.replace(/\s/g, "").slice(0, BILLING_CONSTANTS.ORDER_NO_LENGTH));
+                setOrderNo(event.target.value.replace(/\s/g, ""));
               }}
               disabled={loading}
               className="pl-9 h-11"
