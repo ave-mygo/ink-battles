@@ -29,7 +29,7 @@ export interface SubmitAnalysisInput {
 
 export async function submitAnalysis(input: SubmitAnalysisInput) {
   const response = await createClientEden().api.v2.analysis.tasks.post(input);
-  return normalizeEdenResult<{ success: boolean; taskId?: string; status?: string; error?: string; progress?: AnalysisTaskProgress }>(
+  return normalizeEdenResult<{ success: boolean; taskId?: string; status?: string; error?: string; message?: string; progress?: AnalysisTaskProgress }>(
     response.data,
     response.error,
     "提交分析任务失败",

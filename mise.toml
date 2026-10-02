@@ -1,0 +1,4 @@
+[tools]
+bun = "latest"
+"github:can1357/oh-my-pi" = "18.4.10"
+node = "lts"

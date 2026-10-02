@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
 import { getServerConfig } from "../config";
-import { COLLECTIONS, ensureCollectionExists, findOneAndUpdate } from "../db/mongo";
+import { COLLECTIONS, ensureCollectionExists, findMany, findOneAndUpdate, insertOne } from "../db/mongo";
+import { hasDonatedAccount } from "../modules/billing";
+import { getCachedEffectiveGradingModelById } from "../modules/site-settings";
 import { getRequestIp } from "../utils/request";
 import { normalizeEmail } from "../utils/validators";
 import { getCurrentUser } from "./auth";
@@ -12,15 +14,26 @@ interface RateLimitRecord {
   expiresAt: Date;
 }
 
+interface FreeAnalysisTokenSlot {
+  key: string;
+  lastUsedAt: Date;
+  expiresAt: Date;
+  updatedAt: Date;
+}
+
 interface RateLimitRule {
   name: string;
   limit: number;
   windowMs: number;
+  /** 超限后抛出的错误哨兵值，缺省为 RATE_LIMITED，由 errors.ts 映射为 HTTP 响应 */
+  error?: string;
   key: (request: Request, body: Record<string, unknown>) => Promise<string | null> | string | null;
 }
 
 const ONE_MINUTE_MS = 60 * 1000;
-const FIVE_HOURS_MS = 5 * 60 * ONE_MINUTE_MS;
+const FREE_ANALYSIS_TOKEN_CAPACITY = 3;
+const SPONSOR_FREE_ANALYSIS_REFILL_MS = 5 * ONE_MINUTE_MS;
+const STANDARD_FREE_ANALYSIS_REFILL_MS = 30 * ONE_MINUTE_MS;
 const serverConfig = getServerConfig();
 
 /**
@@ -110,11 +123,90 @@ async function incrementRateLimit(key: string, windowStart: Date, windowMs: numb
 }
 
 /**
+ * 判断错误是否为 MongoDB 重复键错误
+ * @param error - 错误对象
+ * @returns 如果是重复键错误则返回 true，否则返回 false
+ */
+function isDuplicateKeyError(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: number }).code === 11000;
+}
+
+/**
+ * 创建免费分析令牌槽位键
+ * @param identity - 用户或游客身份键
+ * @param slot - 令牌槽位编号
+ * @returns 脱敏后的令牌槽位键
+ */
+function createFreeAnalysisTokenKey(identity: string, slot: number) {
+  return `free_analysis_token:${hashPart(identity)}:${slot}`;
+}
+
+/**
+ * 初始化免费分析令牌槽位。重复初始化由唯一键保证幂等。
+ * @param identity - 用户或游客身份键
+ * @param now - 当前时间
+ * @param refillMs - 令牌恢复间隔
+ */
+async function initializeFreeAnalysisTokenSlots(identity: string, now: Date, refillMs: number) {
+  const expiresAt = new Date(now.getTime() + refillMs * FREE_ANALYSIS_TOKEN_CAPACITY);
+  const initialLastUsedAt = new Date(now.getTime() - refillMs);
+  for (let slot = 0; slot < FREE_ANALYSIS_TOKEN_CAPACITY; slot++) {
+    try {
+      await insertOne<FreeAnalysisTokenSlot>(COLLECTIONS.rateLimits, {
+        key: createFreeAnalysisTokenKey(identity, slot),
+        lastUsedAt: initialLastUsedAt,
+        expiresAt,
+        updatedAt: now,
+      });
+    } catch (error) {
+      if (!isDuplicateKeyError(error))
+        throw error;
+    }
+  }
+}
+
+/**
+ * 原子领取一个已恢复的免费分析令牌槽位。
+ * @param identity - 用户或游客身份键
+ * @param refillMs - 令牌恢复间隔
+ * @throws ANALYSIS_QUOTA_EXCEEDED 如果所有令牌均未恢复
+ */
+async function consumeFreeAnalysisToken(identity: string, refillMs: number) {
+  const now = new Date();
+  try {
+    await initializeFreeAnalysisTokenSlots(identity, now, refillMs);
+  } catch (error) {
+    if (!isNamespaceNotFound(error))
+      throw error;
+    await ensureCollectionExists(COLLECTIONS.rateLimits);
+    await initializeFreeAnalysisTokenSlots(identity, now, refillMs);
+  }
+
+  const recoveredBefore = new Date(now.getTime() - refillMs);
+  for (let slot = 0; slot < FREE_ANALYSIS_TOKEN_CAPACITY; slot++) {
+    const claimed = await findOneAndUpdate<FreeAnalysisTokenSlot>(COLLECTIONS.rateLimits, {
+      key: createFreeAnalysisTokenKey(identity, slot),
+      lastUsedAt: { $lte: recoveredBefore },
+    }, {
+      $set: {
+        lastUsedAt: now,
+        expiresAt: new Date(now.getTime() + refillMs * FREE_ANALYSIS_TOKEN_CAPACITY),
+        updatedAt: now,
+      },
+    });
+    if (claimed)
+      return;
+  }
+
+  throw new Error("ANALYSIS_QUOTA_EXCEEDED");
+}
+
+/**
  * 执行单条限流规则，计数并在超出限制时抛出错误
  * @param rule - 限流规则
  * @param request - 请求对象
  * @param body - 请求体对象
- * @throws 如果请求数量超过限制则抛出 RATE_LIMITED 错误
+ * @throws 如果请求数量超过限制则抛出规则配置的错误哨兵（默认 RATE_LIMITED）
  */
 async function consumeRateLimit(rule: RateLimitRule, request: Request, body: Record<string, unknown>) {
   const rawKey = await rule.key(request, body);
@@ -134,15 +226,17 @@ async function consumeRateLimit(rule: RateLimitRule, request: Request, body: Rec
   }
 
   if ((record?.count ?? 0) > rule.limit)
-    throw new Error("RATE_LIMITED");
+    throw new Error(rule.error ?? "RATE_LIMITED");
 }
 
 /**
- * 根据请求路径返回适用的限流规则列表
- * @param request - 请求对象
+ * 根据请求路径和请求体返回适用的限流规则列表。
+ * 免费分析使用可恢复令牌：登录用户按账号计数，游客分别按 fingerprint 与 IP 计数，任一额度耗尽即拒绝。
+ * @param request - HTTP 请求对象
+ * @param body - 请求体对象
  * @returns 适用于该请求的限流规则数组
  */
-function rulesForRequest(request: Request): RateLimitRule[] {
+async function rulesForRequest(request: Request, body: Record<string, unknown>): Promise<RateLimitRule[]> {
   if (pathMatches(request, "/api/v2/rpc/accounts.sendEmailBindingCode")) {
     return [{
       name: "email_binding_ip",
@@ -153,7 +247,7 @@ function rulesForRequest(request: Request): RateLimitRule[] {
       name: "email_binding_email",
       limit: 3,
       windowMs: ONE_MINUTE_MS,
-      key: (_currentRequest, body) => normalizeEmail(body.email),
+      key: (_currentRequest, currentBody) => normalizeEmail(currentBody.email),
     }];
   }
 
@@ -162,7 +256,7 @@ function rulesForRequest(request: Request): RateLimitRule[] {
       name: "order_redeem",
       limit: 10,
       windowMs: ONE_MINUTE_MS,
-      key: async (currentRequest) => {
+      key: async currentRequest => {
         const user = await getCurrentUser(currentRequest.headers);
         return user ? String(user.uid) : null;
       },
@@ -170,38 +264,104 @@ function rulesForRequest(request: Request): RateLimitRule[] {
   }
 
   if (pathMatches(request, "/api/v2/analysis/tasks")) {
-    return [{
-      name: "anonymous_analysis",
-      limit: 5,
-      windowMs: FIVE_HOURS_MS,
-      key: async (currentRequest, body) => {
-        const user = await getCurrentUser(currentRequest.headers);
-        if (user)
-          return null;
-        const fingerprint = typeof body.fingerprint === "string" ? body.fingerprint.trim() : "missing";
-        return `${normalizeIp(currentRequest)}:${fingerprint}`;
-      },
+    const user = await getCurrentUser(request.headers);
+    const modelId = typeof body.modelId === "string" ? body.modelId : "";
+    if (getCachedEffectiveGradingModelById(modelId)?.premium === true)
+      return [];
+
+    const fingerprint = typeof body.fingerprint === "string" ? body.fingerprint.trim() : "";
+    const hasConsumption = user ? await hasDonatedAccount(user.uid) : false;
+    const windowMs = hasConsumption ? SPONSOR_FREE_ANALYSIS_REFILL_MS : STANDARD_FREE_ANALYSIS_REFILL_MS;
+    if (user) {
+      return [{
+        name: "free_analysis_account_tokens",
+        limit: FREE_ANALYSIS_TOKEN_CAPACITY,
+        windowMs,
+        error: "ANALYSIS_QUOTA_EXCEEDED",
+        key: () => `uid:${user.uid}`,
+      }];
+    }
+
+    const rules: RateLimitRule[] = [{
+      name: "free_analysis_ip_tokens",
+      limit: FREE_ANALYSIS_TOKEN_CAPACITY,
+      windowMs,
+      error: "ANALYSIS_QUOTA_EXCEEDED",
+      key: currentRequest => `ip:${normalizeIp(currentRequest)}`,
     }];
+    if (fingerprint) {
+      rules.unshift({
+        name: "free_analysis_fingerprint_tokens",
+        limit: FREE_ANALYSIS_TOKEN_CAPACITY,
+        windowMs,
+        error: "ANALYSIS_QUOTA_EXCEEDED",
+        key: () => `fp:${fingerprint}`,
+      });
+    }
+    return rules;
   }
 
   return [];
 }
 
 /**
- * 验证请求是否触发限流规则，若多条规则匹配将依次执行
- *
- * 对于敏感接口（如登录、验证码发送、订单兑换、匿名分析等）会按 IP、
- * 邮箱或用户 ID 进行计数，超出阈值将抛出 RATE_LIMITED 错误由上层统一处理。
- * @param request - 请求对象
- * @throws 如果请求数量超过限制则抛出 RATE_LIMITED 错误
- * @throws 如果请求体过大则抛出 PAYLOAD_TOO_LARGE 错误
+ * 只读查询免费额度，复用提交规则；游客取 IP 与指纹额度的较小值。
+ * @param request - 当前请求，用于确定账号与 IP
+ * @param fingerprint - 与分析提交相同的浏览器指纹
+ * @returns 剩余次数、恢复间隔与下一次可用额度的恢复时间
+ */
+export async function getFreeAnalysisQuota(request: Request, fingerprint: string): Promise<{
+  remaining: number;
+  capacity: number;
+  refillMs: number;
+  nextRefillAt: string | null;
+}> {
+  const rules = await rulesForRequest(new Request(new URL("/api/v2/analysis/tasks", request.url), {
+    headers: request.headers,
+  }), { fingerprint });
+  const now = Date.now();
+  const quotas = await Promise.all(rules.map(async (rule) => {
+    const identity = await rule.key(request, { fingerprint });
+    const keys = Array.from({ length: FREE_ANALYSIS_TOKEN_CAPACITY }, (_, slot) =>
+      createFreeAnalysisTokenKey(identity!, slot));
+    const records = await findMany<FreeAnalysisTokenSlot>(COLLECTIONS.rateLimits, { key: { $in: keys } });
+    const pending = records
+      .map(record => new Date(record.lastUsedAt).getTime() + rule.windowMs)
+      .filter(time => time > now)
+      .sort((a, b) => a - b);
+    return {
+      remaining: FREE_ANALYSIS_TOKEN_CAPACITY - pending.length,
+      nextRefill: pending[0] ?? null,
+    };
+  }));
+  const remaining = Math.min(...quotas.map(quota => quota.remaining));
+  const nextRefill = remaining < FREE_ANALYSIS_TOKEN_CAPACITY
+    ? Math.max(...quotas.filter(quota => quota.remaining === remaining).map(quota => quota.nextRefill ?? now))
+    : null;
+  return {
+    remaining,
+    capacity: FREE_ANALYSIS_TOKEN_CAPACITY,
+    refillMs: rules[0].windowMs,
+    nextRefillAt: nextRefill === null ? null : new Date(nextRefill).toISOString(),
+  };
+}
+
+/**
+ * 验证请求是否触发限流规则，若多条规则匹配将依次执行。
+ * 对于敏感接口会按 IP、邮箱或用户身份计数；免费分析令牌按身份独立恢复。
+ * @param request - HTTP 请求对象
  */
 export async function assertRateLimit(request: Request) {
-  const rules = rulesForRequest(request);
-  if (rules.length === 0)
-    return;
   const body = await readJsonBody(request);
+  const rules = await rulesForRequest(request, body);
   for (const rule of rules) {
+    const rawKey = await rule.key(request, body);
+    if (!rawKey)
+      continue;
+    if (rule.name.endsWith("_tokens")) {
+      await consumeFreeAnalysisToken(rawKey, rule.windowMs);
+      continue;
+    }
     await consumeRateLimit(rule, request, body);
   }
 }

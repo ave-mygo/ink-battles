@@ -16,6 +16,7 @@ interface WriterModelSelectorProps {
   searchModel?: "none" | "gemini" | "gemini-lite" | "ds-search";
   onSearchModelChange?: (model: "none" | "gemini" | "gemini-lite" | "ds-search") => void;
   validatorModels: PublicValidatorModelConfig[];
+  isAuthenticated: boolean;
 }
 
 // 特性图标映射
@@ -36,11 +37,13 @@ export default function WriterModelSelector({
   searchModel = "none",
   onSearchModelChange,
   validatorModels,
+  isAuthenticated,
 }: WriterModelSelectorProps) {
   const selectedModel = availableModels.find(model => model.id === selectedModelId);
   const displayedValidatorModels = validatorModels.length > 0
     ? validatorModels
     : [{ id: "none", name: "关闭搜索", enabled: true } satisfies PublicValidatorModelConfig];
+  const canUseSearch = displayedValidatorModels.some(model => model.id !== "none");
 
   return (
     <Card className="border-0 bg-white/80 flex flex-col h-full shadow-lg backdrop-blur-sm dark:bg-slate-900/40">
@@ -209,11 +212,17 @@ export default function WriterModelSelector({
                 <span>联网搜索/校验模型</span>
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                允许模型在分析时获取网络最新资料
+                {!isAuthenticated
+                  ? "联网搜索需登录后使用，关闭搜索也可正常评测。"
+                  : canUseSearch
+                    ? "开启后可参考网络资料，辅助内容校验。"
+                    : "当前账户暂未开放联网搜索，关闭搜索也可正常评测。"}
               </div>
-              <div className="text-xs text-amber-600 mt-1 dark:text-amber-400">
-                若多次校验失败，建议切换不同的搜索模型
-              </div>
+              {canUseSearch && (
+                <div className="text-xs text-muted-foreground">
+                  若校验失败，可尝试切换搜索模型。
+                </div>
+              )}
             </div>
             <Select
               value={searchModel}

@@ -12,11 +12,13 @@ import WriterAnalysisInput from "@/components/layouts/WriterPage/WriterAnalysisI
 import WriterAnalysisModes from "@/components/layouts/WriterPage/WriterAnalysisModes";
 import WriterAnalysisResultPlaceholder from "@/components/layouts/WriterPage/WriterAnalysisResultPlaceholder";
 import WriterModelSelector from "@/components/layouts/WriterPage/WriterModelSelector";
+import { WriterFreeQuota } from "@/components/layouts/WriterPage/WriterFreeQuota";
 import { Button } from "@/components/ui/button";
 import { getFingerprintId } from "@/lib/fingerprint";
+import { useIsAuthenticated } from "@/store";
 import { useAvailableGradingModels, useValidatorModels } from "@/store/writer-config-context";
+import { getBillingInfo, notifyBillingBalanceUpdated } from "@/utils/billing/client";
 import { submitAnalysis } from "@/utils/analysis";
-import { notifyBillingBalanceUpdated } from "@/utils/billing/client";
 
 // 预编译正则表达式，避免每次调用时重新编译
 const NEWLINE_REGEX = /\n/g;
@@ -132,6 +134,8 @@ const evaluationModes = [
 export default function WriterAnalysisSystem() {
   const availableGradingModels = useAvailableGradingModels();
   const validatorModels = useValidatorModels();
+  const isAuthenticated = useIsAuthenticated();
+  const [hasConsumption, setHasConsumption] = useState<boolean | null>(null);
   const [articleText, setArticleText] = useState("");
   const [selectedMode, setSelectedMode] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -147,12 +151,10 @@ export default function WriterAnalysisSystem() {
   const [percentileData, setPercentileData] = useState<ScorePercentileResult | null>(null);
   const SEARCH_STORAGE_KEY = "writer.searchModel";
   const SEARCH_MODEL_DEFAULT = "none" as const;
-  const availableSearchModels = validatorModels.length > 0
+  const availableSearchModels = hasConsumption
     ? validatorModels.map(model => model.id as SearchModel)
     : [SEARCH_MODEL_DEFAULT];
-  const fallbackSearchModel = availableSearchModels.includes(SEARCH_MODEL_DEFAULT)
-    ? SEARCH_MODEL_DEFAULT
-    : availableSearchModels[0] ?? SEARCH_MODEL_DEFAULT;
+  const fallbackSearchModel = SEARCH_MODEL_DEFAULT;
   const validSearchModels = new Set<SearchModel>(availableSearchModels);
 
   const searchModelSubscribe = (callback: () => void) => {
@@ -182,6 +184,25 @@ export default function WriterAnalysisSystem() {
   };
   const searchModelServerSnapshot = () => fallbackSearchModel;
   const searchModel = useSyncExternalStore(searchModelSubscribe, searchModelSnapshot, searchModelServerSnapshot);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isAuthenticated) {
+      setHasConsumption(false);
+      return;
+    }
+    setHasConsumption(null);
+    void getBillingInfo().then((result) => {
+      if (!cancelled)
+        setHasConsumption(result.success ? (result.data?.billing.totalAmount ?? 0) > 0 : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+  useEffect(() => {
+    if (!hasConsumption && searchModel !== SEARCH_MODEL_DEFAULT)
+      setSearchModel(SEARCH_MODEL_DEFAULT);
+  }, [hasConsumption, searchModel]);
 
   const setSearchModel = (model: SearchModel) => {
     try {
@@ -340,7 +361,7 @@ export default function WriterAnalysisSystem() {
       });
 
       if (!res.success || !res.taskId) {
-        throw new Error(res.error || "提交任务失败");
+        throw new Error(res.error || res.message || "提交任务失败");
       }
 
       toast.success("分析任务已提交后台处理");
@@ -384,7 +405,9 @@ export default function WriterAnalysisSystem() {
 
         <div className="mb-6 gap-6 grid lg:gap-8 lg:grid-cols-8">
           <div className="lg:col-span-5">
-            <WriterAnalysisInput articleText={articleText} setArticleText={setArticleText} />
+            <WriterAnalysisInput articleText={articleText} setArticleText={setArticleText}>
+              {(!isAuthenticated || hasConsumption === false) && <WriterFreeQuota isAnalyzing={isAnalyzing} />}
+            </WriterAnalysisInput>
           </div>
           <div className="lg:col-span-3">
             <WriterModelSelector
@@ -394,7 +417,8 @@ export default function WriterAnalysisSystem() {
               disabled={isAnalyzing}
               searchModel={searchModel}
               onSearchModelChange={setSearchModel}
-              validatorModels={validatorModels}
+              validatorModels={hasConsumption ? validatorModels : validatorModels.filter(model => model.id === "none")}
+              isAuthenticated={isAuthenticated}
             />
           </div>
         </div>

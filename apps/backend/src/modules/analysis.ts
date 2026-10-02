@@ -4,6 +4,7 @@ import { Elysia, t } from "elysia";
 import { ObjectId } from "mongodb";
 import { COLLECTIONS, count, findOne, insertOne, isObjectId, objectId, updateOne, withTransaction } from "../db/mongo";
 import { getCurrentUser } from "../middleware/auth";
+import { getFreeAnalysisQuota } from "../middleware/rate-limit";
 import { writeAuditLog } from "../utils/audit";
 import { getRequestIp, getRequestUserAgent } from "../utils/request";
 import { createProgress } from "./analysis-progress";
@@ -74,6 +75,13 @@ async function canMutateAnalysisTask(request: Request, task: AnalysisTaskMutatio
 }
 
 export const analysisModule = new Elysia()
+  .post("/api/v2/analysis/free-quota", async ({ request, body }) => ({
+    success: true,
+    data: await getFreeAnalysisQuota(request, body.fingerprint),
+  }), {
+    body: t.Object({ fingerprint: t.String({ minLength: 1, maxLength: 512 }) }),
+    detail: { tags: ["REST: Analysis"], summary: "查询剩余免费分析额度（不消耗次数）" },
+  })
   .post("/api/v2/analysis/tasks", async ({ request, body }) => {
     const analysisConfig = await getSiteSettingValue("analysis.runtime");
     console.log(`[analysis:submit] mode="${body.mode}" modelId="${body.modelId}" searchModel="${body.searchModel ?? "none"}" articleLength=${body.articleText?.length ?? 0}`);
@@ -94,10 +102,12 @@ export const analysisModule = new Elysia()
     const isSponsor = user ? await hasDonatedAccount(user.uid) : false;
     if (model.premium && !user)
       return { success: false, error: "会员模型需要登录后使用，请先登录" };
+    const normalizedSearchModel = normalizeSearchModel(body.searchModel);
+    if (!isSponsor && normalizedSearchModel !== "none")
+      return { success: false, error: "游客和免费用户只能使用关闭搜索的校验模型，请先消费后使用搜索校验" };
     const pool: AnalysisTaskPool = isSponsor ? "sponsor" : "standard";
     const sha1 = sha1Article(body.articleText);
     const modelName = cleanModelName(model.model);
-    const normalizedSearchModel = normalizeSearchModel(body.searchModel);
     const cached = await findCachedAnalysis(sha1, body.mode, modelName, normalizedSearchModel);
     if (cached?.article?.output?.result && cached.status !== "processing") {
       const taskId = await createCachedTask({

@@ -14,6 +14,9 @@ export function mapError(error: unknown) {
   if (message === "RATE_LIMITED") {
     return Response.json({ success: false, message: "请求过于频繁，请稍后再试" }, { status: 429 });
   }
+  if (message === "ANALYSIS_QUOTA_EXCEEDED") {
+    return Response.json({ success: false, message: "免费分析次数已用尽，请等待次数恢复后再试" }, { status: 429 });
+  }
   if (message === "PAYLOAD_TOO_LARGE") {
     return Response.json({ success: false, message: "请求内容过大，请分段提交" }, { status: 413 });
   }

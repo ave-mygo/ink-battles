@@ -18,7 +18,18 @@ import { FILE_ACCEPT_STRING, parseFile, SUPPORTED_EXTENSIONS } from "@/utils/com
 import { getDynamicUserLimits } from "./WriterAnalysisInputLimits";
 import { LimitModal, UsageProgress, WordCounter, WriterAnalysisInputLoading } from "./WriterAnalysisInputParts";
 
-export default function WriterAnalysisInput({ articleText, setArticleText }: { articleText: string; setArticleText: (text: string) => void }) {
+interface WriterAnalysisInputProps {
+  articleText: string;
+  setArticleText: (text: string) => void;
+  children?: React.ReactNode;
+}
+
+/**
+ * 作品输入卡片，将补充额度信息与用户权益放在同一区域。
+ * @param props - 文本、文本更新回调及权益补充内容
+ * @returns 作品输入界面
+ */
+export default function WriterAnalysisInput({ articleText, setArticleText, children }: WriterAnalysisInputProps): React.JSX.Element {
   const uploadLimits = useWriterUploadLimits();
   const dynamicUserLimits = useMemo(() => getDynamicUserLimits(uploadLimits), [uploadLimits]);
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -368,6 +379,8 @@ export default function WriterAnalysisInput({ articleText, setArticleText }: { a
                   <div className="text-slate-400 px-2 py-1.5 border border-slate-200 rounded-md border-dashed bg-white/40 flex items-center justify-center dark:text-slate-500 dark:border-slate-700 dark:bg-slate-800/40">暂无高级模型额度</div>
                 )}
           </div>
+
+          {children}
 
           {/* 行动按钮 */}
           {tierData.userType === UserType.GUEST && (
