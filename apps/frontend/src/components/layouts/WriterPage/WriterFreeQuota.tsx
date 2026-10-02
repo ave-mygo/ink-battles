@@ -142,7 +142,7 @@ export function WriterFreeQuota({ isAnalyzing }: { isAnalyzing: boolean }): Reac
       <div id={rulesId} hidden={!showRules} className="space-y-1.5 pt-2 text-xs leading-relaxed text-muted-foreground">
         <p>
           <span className="font-medium text-foreground">免费次数不用等明天！</span>
-          最多能存 {quota?.capacity ?? 3} 次。用掉的次数会排队恢复，每过 {quota ? quota.refillMs / 60000 : "几"} 分钟自动补回 1 次。实心圆表示随时能用，空心圆表示还在恢复。
+          最多能存 {quota?.capacity ?? 3} 次。用掉的次数会排队恢复，每过 {quota ? quota.refillMs / 60000 : "几"} 分钟自动补回 1 次。
         </p>
         <p>
           {isAuthenticated
